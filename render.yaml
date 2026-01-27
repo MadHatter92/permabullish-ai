@@ -120,13 +120,13 @@ services:
 databases:
   # Production Database
   - name: permabullish-db
-    plan: basic  # New plan name (was 'starter')
+    plan: standard  # $20/month
     region: oregon
     postgresMajorVersion: 15
 
   # Staging Database
   - name: permabullish-db-staging
-    plan: basic  # Using basic for staging too
+    plan: free  # Free tier (90-day expiry)
     region: oregon
     postgresMajorVersion: 15
 
@@ -152,8 +152,8 @@ databases:
 #
 # Cost Estimate:
 # - Production API (Starter): $7/month
-# - Production DB (Basic): $7/month
+# - Production DB (Standard): $20/month
 # - Staging API (Starter): $7/month
-# - Staging DB (Basic): $7/month
+# - Staging DB (Free): $0/month
 # - Static Sites: $0/month
-# - Total: ~$28/month + Claude API usage
+# - Total: ~$34/month + Claude API usage
