@@ -22,9 +22,41 @@ import {
 } from 'lucide-react';
 // Production URLs for the three modules
 const STOCK_RESEARCH_URL = 'https://permabullish-web.onrender.com';
+// MF Analytics URL - uses localhost in development, Render URL for production
+const MF_ANALYTICS_URL = import.meta.env.DEV
+  ? 'http://localhost:5174'
+  : 'https://permabullish-mf.onrender.com';
 // Future URLs (uncomment when ready):
-// const MF_ANALYTICS_URL = '#';
 // const PMS_TRACKER_URL = '#';
+
+// Helper to get MF category link based on allocation type
+const getMFCategoryLink = (allocationType: string, riskLevel: number): string => {
+  const baseUrl = MF_ANALYTICS_URL;
+
+  switch (allocationType) {
+    case 'debt':
+      return `${baseUrl}/category/debt`;
+    case 'equity':
+      if (riskLevel >= 66) {
+        // Aggressive - link to small cap
+        return `${baseUrl}/category/equity/small-cap`;
+      } else if (riskLevel >= 33) {
+        // Moderate - link to flexi cap
+        return `${baseUrl}/category/equity/flexi-cap`;
+      } else {
+        // Conservative - link to large cap
+        return `${baseUrl}/category/equity/large-cap`;
+      }
+    case 'smallmid':
+      return `${baseUrl}/category/equity/small-cap`;
+    case 'hybrid':
+      return `${baseUrl}/category/hybrid`;
+    case 'index':
+      return `${baseUrl}/category/index`;
+    default:
+      return `${baseUrl}`;
+  }
+};
 
 // Types for our flow states
 type FlowState =
@@ -575,27 +607,50 @@ export default function Landing() {
 
             {/* Allocation Cards */}
             <StaggeredCards className={`grid gap-4 ${Object.keys(allocation).length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-              {Object.entries(allocation).map(([key, item]) => (
-                <div
-                  key={key}
-                  className="bg-gradient-to-br from-[#1e3a5f] to-[#243b53] rounded-2xl p-6 border border-[#334e68] hover:border-[#e8913a]/30 transition-all duration-300 hover:scale-[1.02]"
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={`w-12 h-12 bg-${item.color}-500/20 rounded-xl flex items-center justify-center`}>
-                      {key === 'pms' && <Briefcase className={`w-6 h-6 text-purple-400`} />}
-                      {key === 'mf' && <PieChart className={`w-6 h-6 text-blue-400`} />}
-                      {key === 'stocks' && <TrendingUp className={`w-6 h-6 text-emerald-400`} />}
-                      {key === 'fd' && <Bookmark className={`w-6 h-6 text-green-400`} />}
+              {Object.entries(allocation).map(([key, item]) => {
+                // Determine if this card should link to MF Analytics
+                const isMFCard = key === 'mf';
+                const mfLink = isMFCard ? getMFCategoryLink(
+                  item.label.includes('Debt') ? 'debt' :
+                  item.label.includes('Small') || item.label.includes('Mid') ? 'smallmid' :
+                  'equity',
+                  riskLevel
+                ) : null;
+
+                const CardWrapper = isMFCard ? 'a' : 'div';
+                const cardProps = isMFCard ? { href: mfLink } : {};
+
+                return (
+                  <CardWrapper
+                    key={key}
+                    {...cardProps}
+                    className={`bg-gradient-to-br from-[#1e3a5f] to-[#243b53] rounded-2xl p-6 border border-[#334e68] hover:border-[#e8913a]/30 transition-all duration-300 hover:scale-[1.02] ${isMFCard ? 'cursor-pointer group' : ''}`}
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`w-12 h-12 bg-${item.color}-500/20 rounded-xl flex items-center justify-center`}>
+                        {key === 'pms' && <Briefcase className={`w-6 h-6 text-purple-400`} />}
+                        {key === 'mf' && <PieChart className={`w-6 h-6 text-blue-400`} />}
+                        {key === 'stocks' && <TrendingUp className={`w-6 h-6 text-emerald-400`} />}
+                        {key === 'fd' && <Bookmark className={`w-6 h-6 text-green-400`} />}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-white">{item.label}</h3>
+                        <p className="text-[#9fb3c8] text-sm">{item.percent}%</p>
+                      </div>
+                      {isMFCard && (
+                        <ChevronRight className="w-5 h-5 text-[#829ab1] group-hover:text-[#e8913a] group-hover:translate-x-1 transition-all" />
+                      )}
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">{item.label}</h3>
-                      <p className="text-[#9fb3c8] text-sm">{item.percent}%</p>
-                    </div>
-                  </div>
-                  <p className="text-2xl font-bold text-white mb-2">{formatCurrency(item.amount)}</p>
-                  <p className="text-sm text-[#829ab1]">{item.description}</p>
-                </div>
-              ))}
+                    <p className="text-2xl font-bold text-white mb-2">{formatCurrency(item.amount)}</p>
+                    <p className="text-sm text-[#829ab1]">{item.description}</p>
+                    {isMFCard && (
+                      <p className="text-xs text-[#e8913a] mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        Click to explore funds →
+                      </p>
+                    )}
+                  </CardWrapper>
+                );
+              })}
             </StaggeredCards>
 
             {/* Projection */}
@@ -617,10 +672,18 @@ export default function Landing() {
 
             {/* CTA */}
             <FadeIn delay={600} className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="px-8 py-4 bg-[#e8913a] hover:bg-[#d97316] text-white rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#e8913a]/30">
+              <a
+                href={getMFCategoryLink(
+                  allocation.mf?.label.includes('Debt') ? 'debt' :
+                  allocation.mf?.label.includes('Small') || allocation.mf?.label.includes('Mid') ? 'smallmid' :
+                  'equity',
+                  riskLevel
+                )}
+                className="px-8 py-4 bg-[#e8913a] hover:bg-[#d97316] text-white rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#e8913a]/30"
+              >
                 Show me top recommendations
                 <ArrowRight className="w-5 h-5" />
-              </button>
+              </a>
               <button
                 onClick={() => setFlowState('path1-risk')}
                 className="px-8 py-4 bg-[#243b53] hover:bg-[#334e68] text-white rounded-xl font-medium transition-colors"
@@ -938,10 +1001,16 @@ export default function Landing() {
 
             {/* CTA */}
             <FadeIn delay={800} className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="px-8 py-4 bg-[#e8913a] hover:bg-[#d97316] text-white rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#e8913a]/30">
+              <a
+                href={getMFCategoryLink(
+                  riskLevel < 33 ? 'debt' : 'equity',
+                  riskLevel
+                )}
+                className="px-8 py-4 bg-[#e8913a] hover:bg-[#d97316] text-white rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#e8913a]/30"
+              >
                 Show me recommended funds
                 <ArrowRight className="w-5 h-5" />
-              </button>
+              </a>
               <button
                 onClick={() => setFlowState('path2-risk')}
                 className="px-8 py-4 bg-[#243b53] hover:bg-[#334e68] text-white rounded-xl font-medium transition-colors"

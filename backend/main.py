@@ -450,6 +450,80 @@ async def delete_report(
     return {"message": "Report deleted successfully"}
 
 
+# ============================================
+# MF Analytics Routes
+# ============================================
+
+@app.get("/api/mf/categories/stats")
+async def get_mf_category_stats():
+    """Get fund counts per category and sub-category."""
+    try:
+        stats = db.get_mf_category_stats()
+        return stats
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch category stats: {str(e)}"
+        )
+
+
+@app.get("/api/mf/funds")
+async def get_mf_funds(
+    category: Optional[str] = None,
+    sub_category: Optional[str] = None,
+    plan: str = "direct",
+    option: str = "growth",
+    limit: int = 100,
+    offset: int = 0
+):
+    """Get mutual funds by category with filtering."""
+    try:
+        result = db.get_mf_funds(
+            category=category,
+            sub_category=sub_category,
+            plan=plan,
+            option=option,
+            limit=min(limit, 500),  # Cap at 500
+            offset=offset
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch funds: {str(e)}"
+        )
+
+
+@app.get("/api/mf/funds/{scheme_code}")
+async def get_mf_fund_detail(scheme_code: str):
+    """Get details for a specific mutual fund."""
+    fund = db.get_mf_fund_by_scheme_code(scheme_code)
+
+    if not fund:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fund not found"
+        )
+
+    return fund
+
+
+@app.get("/api/mf/search")
+async def search_mf_funds(q: str, limit: int = 20):
+    """Search for mutual funds by name."""
+    if not q or len(q) < 2:
+        return []
+
+    try:
+        results = db.search_mf_funds(q, limit=min(limit, 50))
+        return results
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Search failed: {str(e)}"
+        )
+
+
 # Future: Stripe webhook endpoint (placeholder for Phase 4)
 @app.post("/api/webhooks/stripe")
 async def stripe_webhook(request: Request):

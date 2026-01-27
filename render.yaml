@@ -79,6 +79,23 @@ services:
         source: /*
         destination: /index.html
 
+  # MF Analytics Frontend (React SPA)
+  - type: web
+    name: permabullish-mf
+    runtime: static
+    branch: main
+    rootDir: mf-frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=3600
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
   # ============================================
   # STAGING SERVICES
   # ============================================

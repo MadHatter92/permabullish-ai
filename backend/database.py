@@ -568,5 +568,178 @@ def increment_anonymous_usage(identifier: str) -> bool:
     return True
 
 
+# ============================================
+# MF Analytics Operations
+# ============================================
+
+def get_mf_category_stats() -> List[dict]:
+    """Get fund counts per category and sub-category."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        cursor.execute("""
+            SELECT
+                category,
+                sub_category,
+                COUNT(*) as count
+            FROM mutual_funds
+            WHERE category IS NOT NULL
+              AND category != 'uncategorized'
+              AND category != 'fmp'
+            GROUP BY category, sub_category
+            ORDER BY category, count DESC
+        """)
+        rows = cursor.fetchall()
+        return [_dict_from_row(row) for row in rows]
+
+
+def get_mf_funds(
+    category: str = None,
+    sub_category: str = None,
+    plan: str = 'direct',
+    option: str = 'growth',
+    limit: int = 100,
+    offset: int = 0
+) -> dict:
+    """Get funds by category with filtering and pagination."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+
+        where_conditions = ["mf.category IS NOT NULL"]
+        params = []
+
+        if category:
+            where_conditions.append(f"mf.category = {p}")
+            params.append(category)
+
+        if sub_category:
+            where_conditions.append(f"mf.sub_category = {p}")
+            params.append(sub_category)
+
+        # Filter by plan type
+        if plan == 'direct':
+            where_conditions.append("mf.scheme_name LIKE '%Direct%'")
+        elif plan == 'regular':
+            where_conditions.append("(mf.scheme_name LIKE '%Regular%' OR mf.scheme_name NOT LIKE '%Direct%')")
+
+        # Filter by option type
+        if option == 'growth':
+            where_conditions.append("mf.scheme_name LIKE '%Growth%'")
+        elif option == 'dividend':
+            where_conditions.append("(mf.scheme_name LIKE '%IDCW%' OR mf.scheme_name LIKE '%Dividend%')")
+
+        # Exclude FMPs
+        where_conditions.append("mf.category != 'fmp'")
+
+        # Only show active funds (NAV within last 30 days)
+        if USE_POSTGRES:
+            where_conditions.append("cr.latest_nav_date >= CURRENT_DATE - INTERVAL '30 days'")
+        else:
+            where_conditions.append("cr.latest_nav_date >= date('now', '-30 days')")
+
+        where_clause = " AND ".join(where_conditions)
+
+        # Get funds with returns
+        query = f"""
+            SELECT
+                mf.scheme_code,
+                mf.scheme_name,
+                mf.fund_house as amc,
+                mf.category,
+                mf.sub_category,
+                cr.latest_nav as nav,
+                cr.latest_nav_date as nav_date,
+                cr.return_1m as returns_1m,
+                cr.return_3m as returns_3m,
+                cr.return_6m as returns_6m,
+                cr.return_1y as returns_1y,
+                cr.return_3y as returns_3y,
+                cr.return_5y as returns_5y
+            FROM mutual_funds mf
+            INNER JOIN mf_calculated_returns cr ON mf.scheme_code = cr.scheme_code
+            WHERE {where_clause}
+            ORDER BY mf.scheme_name
+            LIMIT {p} OFFSET {p}
+        """
+        params.extend([limit, offset])
+        cursor.execute(query, tuple(params))
+        funds = [_dict_from_row(row) for row in cursor.fetchall()]
+
+        # Get total count
+        count_query = f"""
+            SELECT COUNT(*) as total
+            FROM mutual_funds mf
+            INNER JOIN mf_calculated_returns cr ON mf.scheme_code = cr.scheme_code
+            WHERE {where_clause}
+        """
+        cursor.execute(count_query, tuple(params[:-2]))  # Exclude limit/offset
+        count_row = cursor.fetchone()
+        total = count_row['total'] if USE_POSTGRES else count_row[0]
+
+        return {
+            "funds": funds,
+            "total": total,
+            "limit": limit,
+            "offset": offset
+        }
+
+
+def get_mf_fund_by_scheme_code(scheme_code: str) -> Optional[dict]:
+    """Get a single fund by scheme code."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"""
+            SELECT
+                mf.*,
+                cr.latest_nav as nav,
+                cr.latest_nav_date as nav_date,
+                cr.return_1m as returns_1m,
+                cr.return_3m as returns_3m,
+                cr.return_6m as returns_6m,
+                cr.return_1y as returns_1y,
+                cr.return_3y as returns_3y,
+                cr.return_5y as returns_5y,
+                cr.calculated_at
+            FROM mutual_funds mf
+            LEFT JOIN mf_calculated_returns cr ON mf.scheme_code = cr.scheme_code
+            WHERE mf.scheme_code = {p}
+        """, (scheme_code,))
+        row = cursor.fetchone()
+        return _dict_from_row(row)
+
+
+def search_mf_funds(query: str, limit: int = 20) -> List[dict]:
+    """Search for mutual funds by name."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+
+        if USE_POSTGRES:
+            nav_date_filter = "cr.latest_nav_date >= CURRENT_DATE - INTERVAL '30 days'"
+        else:
+            nav_date_filter = "cr.latest_nav_date >= date('now', '-30 days')"
+
+        cursor.execute(f"""
+            SELECT
+                mf.scheme_code,
+                mf.scheme_name,
+                mf.fund_house as amc,
+                mf.category,
+                mf.sub_category
+            FROM mutual_funds mf
+            INNER JOIN mf_calculated_returns cr ON mf.scheme_code = cr.scheme_code
+            WHERE mf.scheme_name ILIKE {p}
+              AND mf.category != 'fmp'
+              AND mf.scheme_name LIKE '%Direct%'
+              AND mf.scheme_name LIKE '%Growth%'
+              AND {nav_date_filter}
+            ORDER BY mf.scheme_name
+            LIMIT {p}
+        """, (f"%{query}%", limit))
+        rows = cursor.fetchall()
+        return [_dict_from_row(row) for row in rows]
+
+
 # Initialize database on module import
 init_database()
