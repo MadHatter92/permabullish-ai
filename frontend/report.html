@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Report - Permabullish</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        .gradient-header {
+            background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
+        }
+        #reportFrame {
+            width: 100%;
+            height: calc(100vh - 64px);
+            border: none;
+        }
+        @media print {
+            nav { display: none !important; }
+            #reportContainer { padding-top: 0 !important; }
+        }
+        body {
+            font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
+        }
+        .font-display {
+            font-family: 'DM Serif Display', Georgia, serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="gradient-header text-white shadow-lg fixed top-0 left-0 right-0 z-50">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
+                    <a id="backLink" href="index.html" class="flex items-center space-x-1 sm:space-x-2 text-[#9fb3c8] hover:text-white transition-all flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        <span id="backText" class="hidden sm:inline">Home</span>
+                    </a>
+                    <span class="text-[#334e68] hidden sm:inline">|</span>
+                    <h1 id="reportTitle" class="text-base sm:text-xl font-display truncate">Loading Report...</h1>
+                </div>
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <button onclick="printReport()" class="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 sm:px-4 py-2 rounded-lg transition-all" title="Print">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                        </svg>
+                        <span class="hidden sm:inline">Print</span>
+                    </button>
+                    <button onclick="downloadReport()" class="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 sm:px-4 py-2 rounded-lg transition-all" title="Download">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        <span class="hidden sm:inline">Download</span>
+                    </button>
+                    <a href="generate.html" class="flex items-center space-x-2 bg-[#e8913a] hover:bg-[#d97316] px-3 sm:px-4 py-2 rounded-lg transition-all" title="New Report">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        <span class="hidden sm:inline">New Report</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="flex items-center justify-center min-h-screen pt-16">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-[#e8913a] mx-auto mb-4"></div>
+            <p class="text-gray-600">Loading report...</p>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="hidden flex items-center justify-center min-h-screen pt-16">
+        <div class="text-center max-w-md mx-auto p-6">
+            <svg class="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">Report Not Found</h3>
+            <p class="text-gray-600 mb-4">The report you're looking for doesn't exist or you don't have access to it.</p>
+            <a href="dashboard.html" class="inline-block bg-[#e8913a] text-white px-6 py-2 rounded-lg hover:bg-[#d97316] transition-all">
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Report Container -->
+    <div id="reportContainer" class="hidden pt-16">
+        <iframe id="reportFrame" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // API_BASE is now loaded from config.js
+        let currentReport = null;
+        let reportHtmlContent = null; // Store HTML for printing
+        const token = localStorage.getItem('token');
+        const isLoggedIn = !!token;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            // Update back link based on auth status
+            if (isLoggedIn) {
+                document.getElementById('backLink').href = 'dashboard.html';
+                document.getElementById('backText').textContent = 'Dashboard';
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const reportId = urlParams.get('id');
+
+            if (!reportId) {
+                showError();
+                return;
+            }
+
+            loadReport(reportId);
+        });
+
+        function getHeaders() {
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
+        async function loadReport(reportId) {
+            try {
+                // First get report metadata
+                const metaResponse = await fetch(`${API_BASE}/reports/${reportId}`, {
+                    headers: getHeaders()
+                });
+
+                if (!metaResponse.ok) {
+                    throw new Error('Report not found');
+                }
+
+                currentReport = await metaResponse.json();
+                document.getElementById('reportTitle').textContent = `${currentReport.company_name} (${currentReport.ticker})`;
+
+                // Then get HTML content
+                const htmlResponse = await fetch(`${API_BASE}/reports/${reportId}/html`, {
+                    headers: getHeaders()
+                });
+
+                if (!htmlResponse.ok) {
+                    throw new Error('Failed to load report content');
+                }
+
+                const html = await htmlResponse.text();
+                reportHtmlContent = html; // Store for printing
+
+                // Load into iframe
+                const iframe = document.getElementById('reportFrame');
+                const blob = new Blob([html], { type: 'text/html' });
+                iframe.src = URL.createObjectURL(blob);
+
+                // Show report
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('reportContainer').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Failed to load report:', error);
+                showError();
+            }
+        }
+
+        function showError() {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('errorState').classList.remove('hidden');
+        }
+
+        function printReport() {
+            if (!reportHtmlContent) {
+                alert('Report not loaded yet. Please wait.');
+                return;
+            }
+
+            // Open a new window with the report content for printing
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            if (!printWindow) {
+                alert('Please allow pop-ups to print the report.');
+                return;
+            }
+
+            printWindow.document.write(reportHtmlContent);
+            printWindow.document.close();
+
+            // Wait for content to load, then print
+            printWindow.onload = function() {
+                printWindow.print();
+            };
+
+            // Fallback for browsers where onload doesn't fire reliably
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        }
+
+        function downloadReport() {
+            if (!currentReport || !reportHtmlContent) {
+                alert('Report not loaded yet. Please wait.');
+                return;
+            }
+
+            const blob = new Blob([reportHtmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentReport.ticker}_Research_Report.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
