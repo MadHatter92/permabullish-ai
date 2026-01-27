@@ -154,38 +154,31 @@ def generate_report(period: str = "daily") -> tuple[str, str]:
 
 
 def send_via_resend(to_email: str, subject: str, body: str) -> bool:
-    """Send email via Resend API."""
-    import httpx
+    """Send email via Resend official SDK."""
+    import resend
 
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
         print("Error: RESEND_API_KEY not set")
         return False
 
+    resend.api_key = api_key
+
     try:
-        response = httpx.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "from": "Permabullish <onboarding@resend.dev>",
-                "to": [to_email],
-                "subject": subject,
-                "text": body,
-            },
-            timeout=30.0,
-        )
+        params = {
+            "from": "Permabullish <onboarding@resend.dev>",
+            "to": [to_email],
+            "subject": subject,
+            "text": body,
+        }
 
-        if response.status_code == 200:
-            result = response.json()
-            print(f"Email sent successfully: {result.get('id')}")
-            return True
-        else:
-            print(f"Error sending email: {response.status_code} - {response.text}")
-            return False
+        email = resend.Emails.send(params)
+        print(f"Email sent successfully: {email.get('id')}")
+        return True
 
+    except resend.exceptions.ResendError as e:
+        print(f"Resend API error: {e}")
+        return False
     except Exception as e:
         print(f"Error sending email: {e}")
         return False
