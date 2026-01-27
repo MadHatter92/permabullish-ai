@@ -63,6 +63,8 @@ if IS_PRODUCTION:
         "https://permabullish.com",
         "https://www.permabullish.com",
         "https://api.permabullish.com",
+        "https://permabullish-web.onrender.com",
+        "https://permabullish-api.onrender.com",
     ])
 elif IS_STAGING:
     CORS_ORIGINS.extend([
