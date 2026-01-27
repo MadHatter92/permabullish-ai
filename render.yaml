@@ -113,9 +113,9 @@ services:
         source: /*
         destination: /index.html
 
-# ============================================
-# CRON JOBS
-# ============================================
+  # ============================================
+  # CRON JOBS
+  # ============================================
 
   # Daily User Report (runs at 9:00 AM UTC daily)
   - type: cron
@@ -157,10 +157,6 @@ services:
       - key: RESEND_API_KEY
         sync: false  # Set in Render dashboard
 
-# ============================================
-# DATABASES
-# ============================================
-
 databases:
   # Production Database
   - name: permabullish-db
@@ -174,9 +170,7 @@ databases:
     region: oregon
     postgresMajorVersion: 15
 
-# ============================================
-# NOTES
-# ============================================
+# Notes:
 #
 # Deployment Workflow:
 # 1. Development: Work locally with SQLite
