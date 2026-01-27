@@ -155,38 +155,39 @@ def generate_report(period: str = "daily") -> tuple[str, str]:
 
 def send_via_resend(to_email: str, subject: str, body: str) -> bool:
     """Send email via Resend API."""
-    import urllib.request
-    import json
+    import httpx
 
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
         print("Error: RESEND_API_KEY not set")
         return False
 
-    data = json.dumps({
-        "from": "Permabullish <onboarding@resend.dev>",
-        "to": [to_email],
-        "subject": subject,
-        "text": body,
-    }).encode("utf-8")
-
-    req = urllib.request.Request(
-        "https://api.resend.com/emails",
-        data=data,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "User-Agent": "Permabullish/1.0",
-        },
-    )
-
     try:
-        with urllib.request.urlopen(req) as response:
-            result = json.loads(response.read().decode("utf-8"))
+        response = httpx.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": "Permabullish <onboarding@resend.dev>",
+                "to": [to_email],
+                "subject": subject,
+                "text": body,
+            },
+            timeout=30.0,
+        )
+
+        if response.status_code == 200:
+            result = response.json()
             print(f"Email sent successfully: {result.get('id')}")
             return True
-    except urllib.error.HTTPError as e:
-        print(f"Error sending email: {e.code} - {e.read().decode()}")
+        else:
+            print(f"Error sending email: {response.status_code} - {response.text}")
+            return False
+
+    except Exception as e:
+        print(f"Error sending email: {e}")
         return False
 
 
