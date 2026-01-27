@@ -176,6 +176,7 @@ def send_via_resend(to_email: str, subject: str, body: str) -> bool:
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "Permabullish/1.0",
         },
     )
 
