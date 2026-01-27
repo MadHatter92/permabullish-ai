@@ -120,13 +120,13 @@ services:
 databases:
   # Production Database
   - name: permabullish-db
-    plan: flex  # New flex plan (pay for usage)
+    plan: basic-256mb  # Smallest paid plan
     region: oregon
     postgresMajorVersion: 15
 
   # Staging Database
   - name: permabullish-db-staging
-    plan: flex  # Using flex for staging too
+    plan: free  # Free tier
     region: oregon
     postgresMajorVersion: 15
 
@@ -152,8 +152,8 @@ databases:
 #
 # Cost Estimate:
 # - Production API (Starter): $7/month
-# - Production DB (Flex): ~$7-20/month (usage-based)
+# - Production DB (basic-256mb): ~$7/month
 # - Staging API (Starter): $7/month
-# - Staging DB (Flex): ~$1-5/month (minimal usage)
+# - Staging DB (Free): $0/month
 # - Static Sites: $0/month
-# - Total: ~$22-40/month + Claude API usage
+# - Total: ~$21/month + Claude API usage
