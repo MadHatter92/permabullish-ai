@@ -164,7 +164,7 @@ def send_via_resend(to_email: str, subject: str, body: str) -> bool:
         return False
 
     data = json.dumps({
-        "from": "Permabullish <reports@resend.dev>",
+        "from": "Permabullish <onboarding@resend.dev>",
         "to": [to_email],
         "subject": subject,
         "text": body,
