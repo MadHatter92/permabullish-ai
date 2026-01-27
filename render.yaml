@@ -46,7 +46,24 @@ services:
       - key: ANONYMOUS_REPORT_LIMIT
         value: "3"
 
-  # Production Frontend (Static)
+  # Main Landing Page (React SPA)
+  - type: web
+    name: permabullish-landing
+    runtime: static
+    branch: main
+    rootDir: landing
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=3600
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # Stock Research App Frontend (Static)
   - type: web
     name: permabullish-web
     runtime: static
