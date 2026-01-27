@@ -2,7 +2,7 @@
 # Deploy with: render blueprint sync
 #
 # Architecture:
-# - Production API (Starter plan) + DB (Starter plan)
+# - Production API (Starter plan) + DB (Basic plan)
 # - Staging API (Free tier) + DB (Free tier)
 # - Static frontend sites (Free tier)
 
@@ -47,10 +47,8 @@ services:
         value: "3"
 
   # Production Frontend (Static)
-  - type: web
+  - type: static_site
     name: permabullish-web
-    runtime: static
-    plan: free
     branch: main
     rootDir: frontend
     staticPublishPath: .
@@ -71,7 +69,7 @@ services:
   - type: web
     name: permabullish-api-staging
     runtime: python
-    plan: free
+    plan: starter  # Using starter for staging too (free tier limited)
     region: oregon
     branch: staging
     rootDir: backend
@@ -103,10 +101,8 @@ services:
         value: "3"
 
   # Staging Frontend (Static)
-  - type: web
+  - type: static_site
     name: permabullish-web-staging
-    runtime: static
-    plan: free
     branch: staging
     rootDir: frontend
     staticPublishPath: .
@@ -122,13 +118,13 @@ services:
 databases:
   # Production Database
   - name: permabullish-db
-    plan: starter  # $7/month, 1GB storage
+    plan: basic  # New plan name (was 'starter')
     region: oregon
     postgresMajorVersion: 15
 
   # Staging Database
   - name: permabullish-db-staging
-    plan: free  # 100MB storage, 90-day expiry (need to refresh)
+    plan: basic  # Using basic for staging too
     region: oregon
     postgresMajorVersion: 15
 
@@ -154,7 +150,8 @@ databases:
 #
 # Cost Estimate:
 # - Production API (Starter): $7/month
-# - Production DB (Starter): $7/month
-# - Staging (Free tier): $0/month
-# - Static Sites (Free): $0/month
-# - Total: ~$14/month + Claude API usage
+# - Production DB (Basic): $7/month
+# - Staging API (Starter): $7/month
+# - Staging DB (Basic): $7/month
+# - Static Sites: $0/month
+# - Total: ~$28/month + Claude API usage
