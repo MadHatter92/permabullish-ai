@@ -114,6 +114,50 @@ services:
         destination: /index.html
 
 # ============================================
+# CRON JOBS
+# ============================================
+
+  # Daily User Report (runs at 9:00 AM UTC daily)
+  - type: cron
+    name: permabullish-daily-report
+    runtime: python
+    schedule: "0 9 * * *"
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/send_user_report.py daily
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: permabullish-db
+          property: connectionString
+      - key: REPORT_EMAIL_TO
+        value: mail@mayaskara.com
+      - key: RESEND_API_KEY
+        sync: false  # Set in Render dashboard
+
+  # Weekly User Report (runs Monday at 9:00 AM UTC)
+  - type: cron
+    name: permabullish-weekly-report
+    runtime: python
+    schedule: "0 9 * * 1"
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/send_user_report.py weekly
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: permabullish-db
+          property: connectionString
+      - key: REPORT_EMAIL_TO
+        value: mail@mayaskara.com
+      - key: RESEND_API_KEY
+        sync: false  # Set in Render dashboard
+
+# ============================================
 # DATABASES
 # ============================================
 
@@ -144,6 +188,7 @@ databases:
 # - ANTHROPIC_API_KEY: Your Claude API key
 # - GOOGLE_CLIENT_ID: Google OAuth client ID
 # - GOOGLE_CLIENT_SECRET: Google OAuth client secret
+# - RESEND_API_KEY: Resend API key (for cron job email reports)
 #
 # Custom Domain Setup (after initial deploy):
 # 1. Add custom domain in Render dashboard
