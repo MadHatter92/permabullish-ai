@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Info, ChevronRight, Bookmark } from 'lucide-react';
+import { TrendingUp, TrendingDown, ChevronRight, Bookmark } from 'lucide-react';
 
 export interface FundCardProps {
   schemeCode: number;

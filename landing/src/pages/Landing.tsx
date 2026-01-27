@@ -22,8 +22,9 @@ import {
 } from 'lucide-react';
 // Production URLs for the three modules
 const STOCK_RESEARCH_URL = 'https://permabullish-web.onrender.com';
-const MF_ANALYTICS_URL = '#'; // Coming soon
-const PMS_TRACKER_URL = '#'; // Coming soon
+// Future URLs (uncomment when ready):
+// const MF_ANALYTICS_URL = '#';
+// const PMS_TRACKER_URL = '#';
 
 // Types for our flow states
 type FlowState =
@@ -195,7 +196,7 @@ function StaggeredCards({ children, className = '' }: { children: React.ReactNod
 export default function Landing() {
   const [flowState, setFlowState] = useState<FlowState>('initial');
   const [selectedAmount, setSelectedAmount] = useState<number>(0);
-  const [selectedGoal, setSelectedGoal] = useState<typeof goalPresets[0] | null>(null);
+  const [, setSelectedGoal] = useState<typeof goalPresets[0] | null>(null);
   const [goalAmount, setGoalAmount] = useState<number>(50000000);
   const [goalYears, setGoalYears] = useState<number>(15);
   const [riskLevel, setRiskLevel] = useState<number>(50);
