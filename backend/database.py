@@ -616,17 +616,17 @@ def get_mf_funds(
             where_conditions.append(f"mf.sub_category = {p}")
             params.append(sub_category)
 
-        # Filter by plan type
+        # Filter by plan type (escape % for psycopg2)
         if plan == 'direct':
-            where_conditions.append("mf.scheme_name LIKE '%Direct%'")
+            where_conditions.append("mf.scheme_name LIKE '%%Direct%%'")
         elif plan == 'regular':
-            where_conditions.append("(mf.scheme_name LIKE '%Regular%' OR mf.scheme_name NOT LIKE '%Direct%')")
+            where_conditions.append("(mf.scheme_name LIKE '%%Regular%%' OR mf.scheme_name NOT LIKE '%%Direct%%')")
 
-        # Filter by option type
+        # Filter by option type (escape % for psycopg2)
         if option == 'growth':
-            where_conditions.append("mf.scheme_name LIKE '%Growth%'")
+            where_conditions.append("mf.scheme_name LIKE '%%Growth%%'")
         elif option == 'dividend':
-            where_conditions.append("(mf.scheme_name LIKE '%IDCW%' OR mf.scheme_name LIKE '%Dividend%')")
+            where_conditions.append("(mf.scheme_name LIKE '%%IDCW%%' OR mf.scheme_name LIKE '%%Dividend%%')")
 
         # Exclude FMPs
         where_conditions.append("mf.category != 'fmp'")
@@ -731,8 +731,8 @@ def search_mf_funds(query: str, limit: int = 20) -> List[dict]:
             INNER JOIN mf_calculated_returns cr ON mf.scheme_code = cr.scheme_code
             WHERE mf.scheme_name ILIKE {p}
               AND mf.category != 'fmp'
-              AND mf.scheme_name LIKE '%Direct%'
-              AND mf.scheme_name LIKE '%Growth%'
+              AND mf.scheme_name LIKE '%%Direct%%'
+              AND mf.scheme_name LIKE '%%Growth%%'
               AND {nav_date_filter}
             ORDER BY mf.scheme_name
             LIMIT {p}
