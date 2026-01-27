@@ -30,7 +30,7 @@ env/
 .venv/
 
 # SQLite database (local development)
-data/
+/data/
 *.db
 *.sqlite
 *.sqlite3
