@@ -47,8 +47,9 @@ services:
         value: "3"
 
   # Production Frontend (Static)
-  - type: static_site
+  - type: web
     name: permabullish-web
+    runtime: static
     branch: main
     rootDir: frontend
     staticPublishPath: .
@@ -101,8 +102,9 @@ services:
         value: "3"
 
   # Staging Frontend (Static)
-  - type: static_site
+  - type: web
     name: permabullish-web-staging
+    runtime: static
     branch: staging
     rootDir: frontend
     staticPublishPath: .
