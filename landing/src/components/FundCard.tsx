@@ -73,7 +73,6 @@ const shortenName = (name: string, maxLength: number = 45): string => {
 };
 
 export default function FundCard({
-  schemeCode,
   schemeName,
   fundHouse,
   category,
@@ -81,7 +80,6 @@ export default function FundCard({
   nav,
   returns,
   riskLevel = 'Moderate',
-  inceptionDate,
   expenseRatio,
   onClick,
   onBookmark,
@@ -225,13 +223,12 @@ export default function FundCard({
 
 // Compact variant for lists
 export function FundCardCompact({
-  schemeCode,
   schemeName,
   fundHouse,
   category,
   returns,
   onClick,
-}: Pick<FundCardProps, 'schemeCode' | 'schemeName' | 'fundHouse' | 'category' | 'returns' | 'onClick'>) {
+}: Pick<FundCardProps, 'schemeName' | 'fundHouse' | 'category' | 'returns' | 'onClick'>) {
   return (
     <div
       onClick={onClick}
