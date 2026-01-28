@@ -14,8 +14,23 @@ from bs4 import BeautifulSoup
 import logging
 
 from config import NSE_SUFFIX, BSE_SUFFIX
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Load Tickertape slugs from JSON file
+def _load_tickertape_slugs() -> dict:
+    """Load Tickertape symbol-to-slug mapping from JSON file."""
+    slugs_file = Path(__file__).parent / "data" / "tickertape_slugs.json"
+    try:
+        if slugs_file.exists():
+            with open(slugs_file, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"Failed to load Tickertape slugs: {e}")
+    return {}
+
+TICKERTAPE_SLUGS = _load_tickertape_slugs()
 
 # Simple in-memory cache with TTL
 class SimpleCache:
@@ -186,62 +201,6 @@ class TickertapeProvider(StockDataProvider):
     name = "Tickertape"
     BASE_URL = "https://www.tickertape.in"
 
-    # Common NSE symbols to Tickertape slug mapping
-    SYMBOL_SLUGS = {
-        "RELIANCE": "reliance-industries-RELI",
-        "TCS": "tata-consultancy-services-TCS",
-        "HDFCBANK": "hdfc-bank-HDBK",
-        "INFY": "infosys-INFY",
-        "ICICIBANK": "icici-bank-ICBK",
-        "HINDUNILVR": "hindustan-unilever-HILL",
-        "ITC": "itc-ITC",
-        "SBIN": "state-bank-of-india-SBIN",
-        "BHARTIARTL": "bharti-airtel-BHAR",
-        "KOTAKBANK": "kotak-mahindra-bank-KTKM",
-        "LT": "larsen-toubro-LART",
-        "AXISBANK": "axis-bank-AXBK",
-        "BAJFINANCE": "bajaj-finance-BJFN",
-        "MARUTI": "maruti-suzuki-india-MRTI",
-        "ASIANPAINT": "asian-paints-ASPN",
-        "TITAN": "titan-company-TITN",
-        "SUNPHARMA": "sun-pharmaceutical-industries-SUNP",
-        "ULTRACEMCO": "ultratech-cement-ULTC",
-        "WIPRO": "wipro-WIPR",
-        "HCLTECH": "hcl-technologies-HCLT",
-        "TATAMOTORS": "tata-motors-TAMO",
-        "TATASTEEL": "tata-steel-TATA",
-        "POWERGRID": "power-grid-corporation-of-india-PGRD",
-        "NTPC": "ntpc-NTPC",
-        "ONGC": "oil-natural-gas-corporation-ONGC",
-        "BAJAJFINSV": "bajaj-finserv-BJFS",
-        "JSWSTEEL": "jsw-steel-JSTL",
-        "M&M": "mahindra-mahindra-MAHM",
-        "ADANIENT": "adani-enterprises-ADEL",
-        "ADANIPORTS": "adani-ports-special-economic-zone-APSE",
-        "COALINDIA": "coal-india-COAL",
-        "TECHM": "tech-mahindra-TEML",
-        "NESTLEIND": "nestle-india-NEST",
-        "GRASIM": "grasim-industries-GRAS",
-        "DIVISLAB": "divis-laboratories-DIVI",
-        "BPCL": "bharat-petroleum-corporation-BPCL",
-        "CIPLA": "cipla-CIPLA",
-        "DRREDDY": "dr-reddys-laboratories-DRRP",
-        "BRITANNIA": "britannia-industries-BRIT",
-        "EICHERMOT": "eicher-motors-EICH",
-        "HINDALCO": "hindalco-industries-HALC",
-        "INDUSINDBK": "indusind-bank-INBK",
-        "APOLLOHOSP": "apollo-hospitals-enterprise-APHS",
-        "SBILIFE": "sbi-life-insurance-SBIL",
-        "TATACONSUM": "tata-consumer-products-TACN",
-        "HEROMOTOCO": "hero-motocorp-HROM",
-        "AMBUJACEM": "ambuja-cements-ABJA",
-        "SHREECEM": "shree-cement-SHCM",
-        "DMART": "avenue-supermarts-AVEU",
-        "VEDL": "vedanta-VDAN",
-        "ZOMATO": "zomato-ZOMT",
-        "PAYTM": "one-97-communications-PAYT",
-    }
-
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
@@ -254,11 +213,11 @@ class TickertapeProvider(StockDataProvider):
         """Get Tickertape URL slug for a symbol."""
         symbol = symbol.upper().strip()
 
-        # Check hardcoded mapping first
-        if symbol in self.SYMBOL_SLUGS:
-            return self.SYMBOL_SLUGS[symbol]
+        # Check loaded mapping first
+        if symbol in TICKERTAPE_SLUGS:
+            return TICKERTAPE_SLUGS[symbol]
 
-        # Check cache
+        # Check cache for dynamically discovered slugs
         cached = tickertape_symbol_cache.get(f"tt_slug:{symbol}")
         if cached:
             return cached
