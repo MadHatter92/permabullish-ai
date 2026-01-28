@@ -202,9 +202,20 @@ class NSEIndiaProvider(StockDataProvider):
                 return None
 
             if response.status_code != 200:
+                logger.warning(f"NSE India returned status {response.status_code} for {symbol}")
                 return None
 
-            data = response.json()
+            # Check if response is actually JSON (NSE may return HTML block page)
+            content_type = response.headers.get("content-type", "")
+            if "application/json" not in content_type:
+                logger.warning(f"NSE India returned non-JSON response for {symbol}: {content_type}")
+                return None
+
+            try:
+                data = response.json()
+            except ValueError as e:
+                logger.warning(f"NSE India returned invalid JSON for {symbol}: {e}")
+                return None
 
             if not data or "info" not in data:
                 return None
@@ -564,13 +575,17 @@ class StockDataManager:
     """
 
     def __init__(self, alpha_vantage_key: str = ""):
+        # Yahoo Finance first (more reliable from cloud IPs)
+        # NSE India second (blocks cloud IPs but good when it works)
+        # Alpha Vantage last (limited daily calls)
         self.providers: List[StockDataProvider] = [
-            NSEIndiaProvider(),
             YahooFinanceProvider(),
+            NSEIndiaProvider(),
         ]
 
         if alpha_vantage_key:
             self.providers.append(AlphaVantageProvider(alpha_vantage_key))
+            logger.info(f"Alpha Vantage provider initialized with API key")
 
         self.cache = stock_cache
 
@@ -594,10 +609,10 @@ class StockDataManager:
         # Try each provider
         for provider in self.providers:
             if not provider.is_available():
-                logger.info(f"Skipping {provider.name} (rate limited)")
+                logger.warning(f"Skipping {provider.name} (rate limited until {provider.rate_limit_until})")
                 continue
 
-            logger.info(f"Trying {provider.name} for {symbol}")
+            logger.warning(f"Trying {provider.name} for {symbol}")  # Use warning level to ensure it shows in logs
 
             try:
                 data = provider.fetch_stock_data(symbol, exchange)
@@ -605,14 +620,16 @@ class StockDataManager:
                 if data:
                     # Cache successful response
                     self.cache.set(cache_key, data)
-                    logger.info(f"Success: {provider.name} returned data for {symbol}")
+                    logger.warning(f"Success: {provider.name} returned data for {symbol}")
                     return data
+                else:
+                    logger.warning(f"{provider.name} returned no data for {symbol}")
 
             except Exception as e:
-                logger.error(f"{provider.name} failed for {symbol}: {e}")
+                logger.error(f"{provider.name} exception for {symbol}: {e}")
                 continue
 
-        logger.warning(f"All providers failed for {symbol}")
+        logger.error(f"All providers failed for {symbol}")
         return None
 
     def search_stocks(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
