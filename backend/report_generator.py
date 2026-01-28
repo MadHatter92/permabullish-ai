@@ -24,21 +24,28 @@ def generate_ai_analysis(stock_data: Dict[str, Any]) -> Dict[str, Any]:
 
 You're also known for your ENGAGING writing style. You open every report with a hook that grabs attention - either an anecdote, a recent company event described in everyday terms, or a clever analogy comparing the company to something relatable.
 
-STOCK DATA:
+STOCK DATA (from our data providers):
 {json.dumps(data_summary, indent=2)}
 
 YOUR TASK: Generate a STRONG, OPINIONATED investment thesis. Take a clear stance - either you love this stock or you don't. Avoid fence-sitting.
 
-CRITICAL INSTRUCTIONS:
+CRITICAL INSTRUCTIONS FOR HANDLING MISSING DATA:
+- If fundamental data (PE, revenue, margins, etc.) shows as 0, null, or N/A, USE YOUR KNOWLEDGE of this company to provide accurate information. You are Claude, you know about major Indian companies.
+- If quarterly_results is empty, USE YOUR KNOWLEDGE of this company's recent quarters. Describe what you know about their recent performance.
+- If recent_news is empty, USE YOUR KNOWLEDGE of recent developments, announcements, or events related to this company in the last 6 months. Reference real news you know about.
+- NEVER say "data not available" or "quarterly data not provided" - instead, use your knowledge to fill in the gaps.
+- For major Indian companies (Nifty 50, Nifty Next 50), you should know their approximate PE ratios, recent performance, and major news.
+
+CRITICAL INSTRUCTIONS FOR CONTENT:
 1. OPENING HOOK: Start with ONE of these (pick the most compelling for this stock):
    - An anecdote that illustrates the company's position or recent performance
    - A recent company event/news described in simple, everyday language (like explaining to a friend)
    - A vivid analogy comparing this company to its peers (e.g., "If HDFC Bank is the reliable family sedan, this bank is...")
    The hook should be 2-3 sentences, conversational, and set up your investment thesis.
 2. BE DECISIVE: If the fundamentals are good, give a strong BUY with conviction. If they're bad, give a clear SELL. Only use HOLD if truly mixed.
-3. USE THE NEWS: Reference the recent news headlines to support your thesis. What are the catalysts or red flags?
-4. ANALYZE QUARTERLY TRENDS: Look at the last 4 quarters. Is revenue/profit growing or declining? This is CRUCIAL.
-5. BE SPECIFIC: Use actual numbers from the data. Don't be vague.
+3. USE NEWS & EVENTS: Reference recent news, events, or developments about this company. Use your knowledge if the data doesn't include news. What happened in the last quarter? Any management changes? New products? Regulatory issues?
+4. ANALYZE QUARTERLY TRENDS: Discuss the last 2-4 quarters. Is revenue/profit growing or declining? Use your knowledge if quarterly data is missing.
+5. BE SPECIFIC: Use actual numbers. If data shows 0, use your knowledge of approximate values.
 6. HAVE CONVICTION: Write like you're putting your own money on this call.
 
 Return your analysis in this JSON format:
@@ -48,8 +55,8 @@ Return your analysis in this JSON format:
     "target_price": <number - your 12-month target price>,
     "opening_hook": "<2-3 sentence engaging opener: an anecdote, recent event in everyday terms, or analogy with peers. Make it memorable and conversational.>",
     "investment_thesis": "<3-4 sentence STRONG thesis. Start with your conviction: 'We are bullish/bearish on X because...' Be specific about catalysts.>",
-    "quarterly_analysis": "<Analysis of last quarter results. Was it a beat or miss? What's the trend?>",
-    "news_impact": "<How recent news affects your view. Reference specific headlines.>",
+    "quarterly_analysis": "<Analysis of last 2-4 quarters. Was it a beat or miss? Revenue/profit trend? Use your knowledge if data is missing. NEVER say 'data not available'.>",
+    "news_impact": "<Discuss 2-3 specific recent news items, events, or developments about this company. Use your knowledge - mention actual news like earnings announcements, management changes, acquisitions, regulatory actions, product launches, etc. NEVER say 'no news available'.>",
     "bull_case": [
         "<specific point with numbers>",
         "<specific point with numbers>",
@@ -74,8 +81,8 @@ Return your analysis in this JSON format:
         }}
     ],
     "business_analysis": "<paragraph with STRONG opinions on business model, moat, and competitive position>",
-    "financial_analysis": "<paragraph analyzing margins, growth trajectory, and what the numbers REALLY tell us>",
-    "valuation_analysis": "<paragraph on whether this is CHEAP or EXPENSIVE. Use PE, PB, compare to growth rate. Be definitive.>",
+    "financial_analysis": "<paragraph analyzing margins, growth trajectory, and what the numbers REALLY tell us. Use your knowledge for any missing metrics.>",
+    "valuation_analysis": "<paragraph on whether this is CHEAP or EXPENSIVE. Use PE, PB, compare to growth rate and sector peers. Use your knowledge of typical valuations if data shows 0. Be definitive.>",
     "competitive_advantages": [
         {{
             "title": "<moat name>",
