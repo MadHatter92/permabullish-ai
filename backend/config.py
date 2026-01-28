@@ -50,6 +50,9 @@ else:
 NSE_SUFFIX = ".NS"
 BSE_SUFFIX = ".BO"
 
+# Alpha Vantage API (backup stock data provider)
+ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "")
+
 # CORS Origins
 CORS_ORIGINS = [
     "http://localhost:3000",

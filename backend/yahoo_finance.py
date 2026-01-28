@@ -2,8 +2,23 @@ import yfinance as yf
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 import json
+import logging
 
-from config import NSE_SUFFIX, BSE_SUFFIX
+from config import NSE_SUFFIX, BSE_SUFFIX, ALPHA_VANTAGE_API_KEY
+from stock_providers import get_stock_manager, StockDataManager
+
+logger = logging.getLogger(__name__)
+
+# Initialize the multi-provider stock data manager
+_stock_manager: Optional[StockDataManager] = None
+
+
+def get_manager() -> StockDataManager:
+    """Get or create the stock data manager singleton."""
+    global _stock_manager
+    if _stock_manager is None:
+        _stock_manager = get_stock_manager(ALPHA_VANTAGE_API_KEY)
+    return _stock_manager
 
 
 def get_ticker_symbol(symbol: str, exchange: str = "NSE") -> str:
@@ -21,35 +36,52 @@ def get_ticker_symbol(symbol: str, exchange: str = "NSE") -> str:
 
 def fetch_stock_data(symbol: str, exchange: str = "NSE") -> Optional[Dict[str, Any]]:
     """
-    Fetch comprehensive stock data from Yahoo Finance.
+    Fetch comprehensive stock data using multi-provider rotation.
+    Primary: NSE India direct, Backup: Yahoo Finance, Fallback: Alpha Vantage.
     Returns structured data for report generation.
     """
+    manager = get_manager()
+
+    # Try to get basic data from the provider rotation
+    basic_data = manager.fetch_stock_data(symbol, exchange)
+
+    if not basic_data:
+        logger.warning(f"All providers failed for {symbol}")
+        return None
+
+    # If we got data from NSE India or Alpha Vantage,
+    # try to enrich with Yahoo Finance for detailed fundamentals
+    provider = basic_data.get("provider", "")
+
+    if provider != "Yahoo Finance":
+        # Try to get additional data from Yahoo Finance
+        try:
+            yahoo_data = _fetch_yahoo_enrichment(symbol, exchange)
+            if yahoo_data:
+                basic_data = _merge_stock_data(basic_data, yahoo_data)
+        except Exception as e:
+            logger.warning(f"Yahoo enrichment failed for {symbol}: {e}")
+
+    return basic_data
+
+
+def _fetch_yahoo_enrichment(symbol: str, exchange: str) -> Optional[Dict[str, Any]]:
+    """Fetch additional data from Yahoo Finance for enrichment."""
     ticker_symbol = get_ticker_symbol(symbol, exchange)
 
     try:
         ticker = yf.Ticker(ticker_symbol)
         info = ticker.info
 
-        # Check if we got valid data
         if not info or info.get("regularMarketPrice") is None:
-            # Try the other exchange
-            alt_exchange = "BSE" if exchange == "NSE" else "NSE"
-            ticker_symbol = get_ticker_symbol(symbol, alt_exchange)
-            ticker = yf.Ticker(ticker_symbol)
-            info = ticker.info
-
-            if not info or info.get("regularMarketPrice") is None:
-                return None
+            return None
 
         # Get historical data for charts
-        hist = ticker.history(period="5y")
+        hist = ticker.history(period="1y")
 
         # Get financials
         financials = ticker.financials
-        balance_sheet = ticker.balance_sheet
-        cashflow = ticker.cashflow
         quarterly_financials = ticker.quarterly_financials
-        quarterly_balance_sheet = ticker.quarterly_balance_sheet
 
         # Get latest news
         try:
@@ -57,29 +89,11 @@ def fetch_stock_data(symbol: str, exchange: str = "NSE") -> Optional[Dict[str, A
         except:
             news = []
 
-        # Extract key data
-        stock_data = {
+        enrichment_data = {
             "basic_info": {
-                "company_name": info.get("longName", info.get("shortName", symbol)),
-                "ticker": symbol.upper(),
-                "exchange": exchange,
-                "sector": info.get("sector", "N/A"),
-                "industry": info.get("industry", "N/A"),
-                "website": info.get("website", ""),
                 "description": info.get("longBusinessSummary", ""),
+                "website": info.get("website", ""),
                 "employees": info.get("fullTimeEmployees", 0),
-                "country": info.get("country", "India"),
-            },
-            "price_info": {
-                "current_price": info.get("regularMarketPrice", info.get("currentPrice", 0)),
-                "previous_close": info.get("previousClose", 0),
-                "open": info.get("regularMarketOpen", info.get("open", 0)),
-                "day_high": info.get("dayHigh", 0),
-                "day_low": info.get("dayLow", 0),
-                "fifty_two_week_high": info.get("fiftyTwoWeekHigh", 0),
-                "fifty_two_week_low": info.get("fiftyTwoWeekLow", 0),
-                "volume": info.get("volume", 0),
-                "avg_volume": info.get("averageVolume", 0),
             },
             "valuation": {
                 "market_cap": info.get("marketCap", 0),
@@ -144,23 +158,17 @@ def fetch_stock_data(symbol: str, exchange: str = "NSE") -> Optional[Dict[str, A
 
         # Process historical financials if available
         if financials is not None and not financials.empty:
-            stock_data["historical_financials"] = process_financials(financials)
+            enrichment_data["historical_financials"] = process_financials(financials)
 
-        if balance_sheet is not None and not balance_sheet.empty:
-            stock_data["historical_balance_sheet"] = process_financials(balance_sheet)
-
-        if cashflow is not None and not cashflow.empty:
-            stock_data["historical_cashflow"] = process_financials(cashflow)
-
-        # Process quarterly financials (last 4 quarters)
+        # Process quarterly financials
         if quarterly_financials is not None and not quarterly_financials.empty:
-            stock_data["quarterly_results"] = process_quarterly_financials(quarterly_financials)
+            enrichment_data["quarterly_results"] = process_quarterly_financials(quarterly_financials)
 
         # Add news
-        stock_data["recent_news"] = []
+        enrichment_data["recent_news"] = []
         for article in news:
             try:
-                stock_data["recent_news"].append({
+                enrichment_data["recent_news"].append({
                     "title": article.get("title", ""),
                     "publisher": article.get("publisher", ""),
                     "link": article.get("link", ""),
@@ -172,17 +180,35 @@ def fetch_stock_data(symbol: str, exchange: str = "NSE") -> Optional[Dict[str, A
 
         # Get historical prices for charts
         if not hist.empty:
-            stock_data["price_history"] = {
-                "dates": hist.index.strftime("%Y-%m-%d").tolist()[-252:],  # Last 1 year
+            enrichment_data["price_history"] = {
+                "dates": hist.index.strftime("%Y-%m-%d").tolist()[-252:],
                 "prices": hist["Close"].tolist()[-252:],
                 "volumes": hist["Volume"].tolist()[-252:],
             }
 
-        return stock_data
+        return enrichment_data
 
     except Exception as e:
-        print(f"Error fetching data for {symbol}: {str(e)}")
+        logger.warning(f"Yahoo enrichment error for {symbol}: {e}")
         return None
+
+
+def _merge_stock_data(primary: Dict[str, Any], enrichment: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge enrichment data into primary data, preferring primary for conflicts."""
+    result = primary.copy()
+
+    for key, value in enrichment.items():
+        if key not in result:
+            result[key] = value
+        elif isinstance(value, dict) and isinstance(result.get(key), dict):
+            # Merge nested dicts, preferring values from primary
+            for sub_key, sub_value in value.items():
+                if sub_key not in result[key] or not result[key][sub_key]:
+                    result[key][sub_key] = sub_value
+        elif isinstance(value, list) and not result.get(key):
+            result[key] = value
+
+    return result
 
 
 def process_financials(df) -> Dict[str, Dict[str, float]]:
