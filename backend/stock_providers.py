@@ -1,18 +1,17 @@
 """
 Multi-source stock data providers with automatic rotation and fallback.
-Providers: NSE India (primary), Yahoo Finance (backup), Alpha Vantage (fallback)
+Providers: Yahoo Finance (primary), Tickertape (backup), Alpha Vantage (fallback)
 """
 
 import requests
 import yfinance as yf
+import re
+import json
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
-from functools import lru_cache
-import time
+from bs4 import BeautifulSoup
 import logging
-import hashlib
-import json
 
 from config import NSE_SUFFIX, BSE_SUFFIX
 
@@ -44,6 +43,9 @@ class SimpleCache:
 # Global cache instance (1 hour TTL)
 stock_cache = SimpleCache(default_ttl=3600)
 
+# Tickertape symbol mapping cache
+tickertape_symbol_cache = SimpleCache(default_ttl=86400)  # 24 hour TTL
+
 
 class StockDataProvider(ABC):
     """Abstract base class for stock data providers."""
@@ -74,268 +76,6 @@ class StockDataProvider(ABC):
         self.is_rate_limited = True
         self.rate_limit_until = datetime.now() + timedelta(minutes=duration_minutes)
         logger.warning(f"{self.name} rate limited for {duration_minutes} minutes")
-
-
-class NSEIndiaProvider(StockDataProvider):
-    """Fetches data directly from NSE India website."""
-
-    name = "NSE India"
-    BASE_URL = "https://www.nseindia.com"
-
-    def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "application/json, text/plain, */*",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Referer": "https://www.nseindia.com/",
-        })
-        self._cookies_initialized = False
-
-    def _init_cookies(self):
-        """Initialize session cookies by visiting the main page."""
-        if self._cookies_initialized:
-            return
-        try:
-            self.session.get(self.BASE_URL, timeout=10)
-            self._cookies_initialized = True
-        except Exception as e:
-            logger.warning(f"Failed to initialize NSE cookies: {e}")
-
-    def _fetch_corporate_info(self, symbol: str) -> Optional[Dict[str, Any]]:
-        """Fetch corporate info (quarterly results, shareholding, actions) from NSE."""
-        try:
-            corp_url = f"{self.BASE_URL}/api/top-corp-info?symbol={symbol}&market=equities"
-            response = self.session.get(corp_url, timeout=10)
-
-            if response.status_code != 200:
-                return None
-
-            return response.json()
-        except Exception as e:
-            logger.warning(f"NSE corporate info fetch failed for {symbol}: {e}")
-            return None
-
-    def _parse_quarterly_results(self, financial_data: List[Dict]) -> List[Dict[str, Any]]:
-        """Parse quarterly financial results into standardized format."""
-        results = []
-        for item in financial_data[:8]:  # Last 8 quarters (2 years)
-            try:
-                results.append({
-                    "period_end": item.get("to_date", ""),
-                    "revenue": self._parse_number(item.get("income", 0)),
-                    "profit_before_tax": self._parse_number(item.get("reProLossBefTax", 0)),
-                    "profit_after_tax": self._parse_number(item.get("proLossAftTax", 0)),
-                    "eps": self._parse_float(item.get("reDilEPS", 0)),
-                    "audited": item.get("audited", ""),
-                    "consolidated": item.get("consolidated", ""),
-                })
-            except Exception:
-                continue
-        return results
-
-    def _parse_shareholding(self, shareholding_data: Dict) -> Dict[str, Any]:
-        """Parse shareholding pattern data."""
-        if not shareholding_data:
-            return {}
-
-        # Get the most recent quarter
-        quarters = sorted(shareholding_data.keys(), reverse=True)
-        if not quarters:
-            return {}
-
-        latest = quarters[0]
-        latest_data = shareholding_data[latest]
-
-        result = {"as_of": latest, "breakdown": {}}
-        for item in latest_data:
-            for key, value in item.items():
-                if key != "Total":
-                    result["breakdown"][key] = self._parse_float(value)
-
-        return result
-
-    def _parse_corporate_actions(self, actions_data: List[Dict]) -> List[Dict[str, str]]:
-        """Parse corporate actions (dividends, bonuses, splits)."""
-        actions = []
-        for item in actions_data[:10]:  # Last 10 actions
-            actions.append({
-                "date": item.get("exdate", ""),
-                "action": item.get("purpose", ""),
-            })
-        return actions
-
-    def _parse_number(self, value) -> int:
-        """Parse numeric value, handling None and strings."""
-        if value is None:
-            return 0
-        try:
-            return int(str(value).replace(",", "").strip())
-        except (ValueError, TypeError):
-            return 0
-
-    def _parse_float(self, value) -> float:
-        """Parse float value, handling None and strings."""
-        if value is None:
-            return 0.0
-        try:
-            return float(str(value).replace(",", "").strip())
-        except (ValueError, TypeError):
-            return 0.0
-
-    def fetch_stock_data(self, symbol: str, exchange: str = "NSE") -> Optional[Dict[str, Any]]:
-        """Fetch stock data from NSE India."""
-        if exchange.upper() != "NSE":
-            return None  # NSE India only supports NSE
-
-        self._init_cookies()
-        symbol = symbol.upper().strip()
-
-        try:
-            # Fetch quote data
-            quote_url = f"{self.BASE_URL}/api/quote-equity?symbol={symbol}"
-            response = self.session.get(quote_url, timeout=15)
-
-            if response.status_code == 429:
-                self.mark_rate_limited(30)
-                return None
-
-            if response.status_code != 200:
-                logger.warning(f"NSE India returned status {response.status_code} for {symbol}")
-                return None
-
-            # Check if response is actually JSON (NSE may return HTML block page)
-            content_type = response.headers.get("content-type", "")
-            if "application/json" not in content_type:
-                logger.warning(f"NSE India returned non-JSON response for {symbol}: {content_type}")
-                return None
-
-            try:
-                data = response.json()
-            except ValueError as e:
-                logger.warning(f"NSE India returned invalid JSON for {symbol}: {e}")
-                return None
-
-            if not data or "info" not in data:
-                return None
-
-            info = data.get("info", {})
-            metadata = data.get("metadata", {})
-            price_info = data.get("priceInfo", {})
-            security_info = data.get("securityInfo", {})
-            industry_info = data.get("industryInfo", {})
-
-            # Build standardized response
-            stock_data = {
-                "basic_info": {
-                    "company_name": info.get("companyName", symbol),
-                    "ticker": symbol,
-                    "exchange": "NSE",
-                    "sector": industry_info.get("sector", metadata.get("pdSectorInd", "N/A")),
-                    "industry": industry_info.get("industry", info.get("industry", "N/A")),
-                    "website": "",
-                    "description": "",
-                    "employees": 0,
-                    "country": "India",
-                    "isin": info.get("isin", ""),
-                },
-                "price_info": {
-                    "current_price": price_info.get("lastPrice", 0),
-                    "previous_close": price_info.get("previousClose", 0),
-                    "open": price_info.get("open", 0),
-                    "day_high": price_info.get("intraDayHighLow", {}).get("max", 0),
-                    "day_low": price_info.get("intraDayHighLow", {}).get("min", 0),
-                    "fifty_two_week_high": price_info.get("weekHighLow", {}).get("max", 0),
-                    "fifty_two_week_low": price_info.get("weekHighLow", {}).get("min", 0),
-                    "change": price_info.get("change", 0),
-                    "change_percent": price_info.get("pChange", 0),
-                    "vwap": price_info.get("vwap", 0),
-                },
-                "valuation": {
-                    "market_cap": 0,  # Not directly available, calculate if needed
-                    "pe_ratio": metadata.get("pdSymbolPe", 0),
-                    "sector_pe": metadata.get("pdSectorPe", 0),
-                    "face_value": security_info.get("faceValue", 0),
-                    "issued_size": security_info.get("issuedSize", 0),
-                },
-                "trading_info": {
-                    "volume": 0,  # Would need trade info endpoint
-                    "upper_circuit": price_info.get("upperCP", ""),
-                    "lower_circuit": price_info.get("lowerCP", ""),
-                    "listing_date": metadata.get("listingDate", ""),
-                    "is_fno": info.get("isFNOSec", False),
-                },
-                "provider": self.name,
-            }
-
-            # Fetch corporate info (quarterly results, shareholding, actions)
-            # This is a secondary call - don't fail if it doesn't work
-            corp_info = self._fetch_corporate_info(symbol)
-            if corp_info:
-                # Quarterly financial results
-                fin_results = corp_info.get("financial_results", {}).get("data", [])
-                if fin_results:
-                    stock_data["quarterly_results"] = self._parse_quarterly_results(fin_results)
-
-                # Shareholding pattern
-                shareholding = corp_info.get("shareholdings_patterns", {}).get("data", {})
-                if shareholding:
-                    stock_data["shareholding"] = self._parse_shareholding(shareholding)
-
-                # Corporate actions (dividends, bonuses)
-                actions = corp_info.get("corporate_actions", {}).get("data", [])
-                if actions:
-                    stock_data["corporate_actions"] = self._parse_corporate_actions(actions)
-
-                # Latest announcements (just the subjects)
-                announcements = corp_info.get("latest_announcements", {}).get("data", [])
-                if announcements:
-                    stock_data["recent_announcements"] = [
-                        {
-                            "date": a.get("broadcastdate", ""),
-                            "subject": a.get("subject", ""),
-                        }
-                        for a in announcements[:5]  # Last 5 announcements
-                    ]
-
-            return stock_data
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"NSE India request failed for {symbol}: {e}")
-            if "429" in str(e) or "rate" in str(e).lower():
-                self.mark_rate_limited(30)
-            return None
-        except Exception as e:
-            logger.error(f"NSE India error for {symbol}: {e}")
-            return None
-
-    def search_stocks(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Search for stocks on NSE."""
-        self._init_cookies()
-
-        try:
-            search_url = f"{self.BASE_URL}/api/search/autocomplete?q={query}"
-            response = self.session.get(search_url, timeout=10)
-
-            if response.status_code != 200:
-                return []
-
-            data = response.json()
-            results = []
-
-            for item in data.get("symbols", [])[:limit]:
-                results.append({
-                    "symbol": item.get("symbol", ""),
-                    "name": item.get("symbol_info", ""),
-                    "exchange": "NSE",
-                })
-
-            return results
-
-        except Exception as e:
-            logger.error(f"NSE India search failed: {e}")
-            return []
 
 
 class YahooFinanceProvider(StockDataProvider):
@@ -433,12 +173,306 @@ class YahooFinanceProvider(StockDataProvider):
     def search_stocks(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Search for stocks via Yahoo Finance."""
         try:
-            # Use yfinance search (limited functionality)
             results = []
-            # Yahoo doesn't have great search, return empty and let other providers handle it
             return results
         except Exception as e:
             logger.error(f"Yahoo Finance search failed: {e}")
+            return []
+
+
+class TickertapeProvider(StockDataProvider):
+    """Fetches data from Tickertape by scraping (has comprehensive fundamentals)."""
+
+    name = "Tickertape"
+    BASE_URL = "https://www.tickertape.in"
+
+    # Common NSE symbols to Tickertape slug mapping
+    SYMBOL_SLUGS = {
+        "RELIANCE": "reliance-industries-RELI",
+        "TCS": "tata-consultancy-services-TCS",
+        "HDFCBANK": "hdfc-bank-HDBK",
+        "INFY": "infosys-INFY",
+        "ICICIBANK": "icici-bank-ICBK",
+        "HINDUNILVR": "hindustan-unilever-HILL",
+        "ITC": "itc-ITC",
+        "SBIN": "state-bank-of-india-SBIN",
+        "BHARTIARTL": "bharti-airtel-BHAR",
+        "KOTAKBANK": "kotak-mahindra-bank-KTKM",
+        "LT": "larsen-toubro-LART",
+        "AXISBANK": "axis-bank-AXBK",
+        "BAJFINANCE": "bajaj-finance-BJFN",
+        "MARUTI": "maruti-suzuki-india-MRTI",
+        "ASIANPAINT": "asian-paints-ASPN",
+        "TITAN": "titan-company-TITN",
+        "SUNPHARMA": "sun-pharmaceutical-industries-SUNP",
+        "ULTRACEMCO": "ultratech-cement-ULTC",
+        "WIPRO": "wipro-WIPR",
+        "HCLTECH": "hcl-technologies-HCLT",
+        "TATAMOTORS": "tata-motors-TAMO",
+        "TATASTEEL": "tata-steel-TATA",
+        "POWERGRID": "power-grid-corporation-of-india-PGRD",
+        "NTPC": "ntpc-NTPC",
+        "ONGC": "oil-natural-gas-corporation-ONGC",
+        "BAJAJFINSV": "bajaj-finserv-BJFS",
+        "JSWSTEEL": "jsw-steel-JSTL",
+        "M&M": "mahindra-mahindra-MAHM",
+        "ADANIENT": "adani-enterprises-ADEL",
+        "ADANIPORTS": "adani-ports-special-economic-zone-APSE",
+        "COALINDIA": "coal-india-COAL",
+        "TECHM": "tech-mahindra-TEML",
+        "NESTLEIND": "nestle-india-NEST",
+        "GRASIM": "grasim-industries-GRAS",
+        "DIVISLAB": "divis-laboratories-DIVI",
+        "BPCL": "bharat-petroleum-corporation-BPCL",
+        "CIPLA": "cipla-CIPLA",
+        "DRREDDY": "dr-reddys-laboratories-DRRP",
+        "BRITANNIA": "britannia-industries-BRIT",
+        "EICHERMOT": "eicher-motors-EICH",
+        "HINDALCO": "hindalco-industries-HALC",
+        "INDUSINDBK": "indusind-bank-INBK",
+        "APOLLOHOSP": "apollo-hospitals-enterprise-APHS",
+        "SBILIFE": "sbi-life-insurance-SBIL",
+        "TATACONSUM": "tata-consumer-products-TACN",
+        "HEROMOTOCO": "hero-motocorp-HROM",
+        "AMBUJACEM": "ambuja-cements-ABJA",
+        "SHREECEM": "shree-cement-SHCM",
+        "DMART": "avenue-supermarts-AVEU",
+        "VEDL": "vedanta-VDAN",
+        "ZOMATO": "zomato-ZOMT",
+        "PAYTM": "one-97-communications-PAYT",
+    }
+
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        })
+
+    def _get_tickertape_slug(self, symbol: str) -> Optional[str]:
+        """Get Tickertape URL slug for a symbol."""
+        symbol = symbol.upper().strip()
+
+        # Check hardcoded mapping first
+        if symbol in self.SYMBOL_SLUGS:
+            return self.SYMBOL_SLUGS[symbol]
+
+        # Check cache
+        cached = tickertape_symbol_cache.get(f"tt_slug:{symbol}")
+        if cached:
+            return cached
+
+        # Try to search for it
+        try:
+            search_url = f"{self.BASE_URL}/search?text={symbol}"
+            response = self.session.get(search_url, timeout=10)
+
+            if response.status_code == 200:
+                # Look for stock link in the page
+                match = re.search(rf'/stocks/([a-z0-9-]+-[A-Z]+)"', response.text)
+                if match:
+                    slug = match.group(1)
+                    tickertape_symbol_cache.set(f"tt_slug:{symbol}", slug)
+                    return slug
+        except Exception as e:
+            logger.warning(f"Tickertape slug search failed for {symbol}: {e}")
+
+        return None
+
+    def _parse_json_ld(self, html: str) -> List[Dict]:
+        """Extract JSON-LD data from HTML."""
+        json_ld_data = []
+        try:
+            soup = BeautifulSoup(html, 'html.parser')
+            scripts = soup.find_all('script', type='application/ld+json')
+            for script in scripts:
+                try:
+                    data = json.loads(script.string)
+                    json_ld_data.append(data)
+                except:
+                    continue
+        except Exception as e:
+            logger.warning(f"Failed to parse JSON-LD: {e}")
+        return json_ld_data
+
+    def _extract_metrics_from_json_ld(self, json_ld_list: List[Dict]) -> Dict[str, Any]:
+        """Extract stock metrics from JSON-LD data."""
+        metrics = {}
+
+        for data in json_ld_list:
+            if isinstance(data, dict):
+                # Look for Dataset with metrics
+                if data.get("@type") == "Dataset":
+                    for item in data.get("mainEntity", []):
+                        if isinstance(item, dict):
+                            name = item.get("name", "")
+                            value = item.get("value", "")
+                            if name and value:
+                                metrics[name] = value
+
+                # Look for FinancialProduct
+                if data.get("@type") == "FinancialProduct":
+                    if "offers" in data:
+                        offers = data["offers"]
+                        if isinstance(offers, dict):
+                            metrics["current_price"] = offers.get("price", 0)
+
+        return metrics
+
+    def _parse_float(self, value) -> float:
+        """Parse float from various formats."""
+        if value is None:
+            return 0.0
+        try:
+            if isinstance(value, (int, float)):
+                return float(value)
+            # Remove commas, currency symbols, etc.
+            cleaned = re.sub(r'[^\d.-]', '', str(value))
+            return float(cleaned) if cleaned else 0.0
+        except:
+            return 0.0
+
+    def fetch_stock_data(self, symbol: str, exchange: str = "NSE") -> Optional[Dict[str, Any]]:
+        """Fetch stock data from Tickertape."""
+        slug = self._get_tickertape_slug(symbol)
+        if not slug:
+            logger.warning(f"Tickertape: Could not find slug for {symbol}")
+            return None
+
+        try:
+            url = f"{self.BASE_URL}/stocks/{slug}"
+            response = self.session.get(url, timeout=15)
+
+            if response.status_code == 429:
+                self.mark_rate_limited(30)
+                return None
+
+            if response.status_code != 200:
+                logger.warning(f"Tickertape returned status {response.status_code} for {symbol}")
+                return None
+
+            html = response.text
+
+            # Check if we got a valid page (not a block page)
+            if "Stock Price" not in html and "Share Price" not in html:
+                logger.warning(f"Tickertape returned unexpected content for {symbol}")
+                return None
+
+            # Parse JSON-LD data
+            json_ld_data = self._parse_json_ld(html)
+            metrics = self._extract_metrics_from_json_ld(json_ld_data)
+
+            # Also try to extract from HTML directly using regex
+            soup = BeautifulSoup(html, 'html.parser')
+
+            # Extract company name from title
+            title = soup.find('title')
+            company_name = symbol
+            if title:
+                title_text = title.get_text()
+                if "Share Price" in title_text:
+                    company_name = title_text.split(" Share Price")[0].strip()
+                elif "Stock Price" in title_text:
+                    company_name = title_text.split(" Stock Price")[0].strip()
+
+            # Try to extract key metrics from page
+            def extract_metric(pattern: str, text: str) -> Optional[str]:
+                match = re.search(pattern, text)
+                return match.group(1) if match else None
+
+            # Extract various metrics
+            pe_match = re.search(r'"pe"[:\s]*([0-9.]+)', html) or re.search(r'P/E[:\s]*([0-9.]+)', html)
+            pb_match = re.search(r'"pb"[:\s]*([0-9.]+)', html) or re.search(r'P/B[:\s]*([0-9.]+)', html)
+            market_cap_match = re.search(r'"marketCap"[:\s]*([0-9.]+)', html)
+            price_match = re.search(r'"price"[:\s]*([0-9.]+)', html) or re.search(r'"lastPrice"[:\s]*([0-9.]+)', html)
+
+            # Extract sector/industry
+            sector_match = re.search(r'"sector"[:\s]*"([^"]+)"', html)
+            industry_match = re.search(r'"industry"[:\s]*"([^"]+)"', html)
+
+            stock_data = {
+                "basic_info": {
+                    "company_name": company_name,
+                    "ticker": symbol.upper(),
+                    "exchange": exchange,
+                    "sector": sector_match.group(1) if sector_match else metrics.get("Sector", "N/A"),
+                    "industry": industry_match.group(1) if industry_match else metrics.get("Industry", "N/A"),
+                    "website": "",
+                    "description": "",
+                    "employees": 0,
+                    "country": "India",
+                },
+                "price_info": {
+                    "current_price": self._parse_float(price_match.group(1) if price_match else metrics.get("current_price", 0)),
+                    "previous_close": 0,
+                    "open": 0,
+                    "day_high": 0,
+                    "day_low": 0,
+                    "fifty_two_week_high": 0,
+                    "fifty_two_week_low": 0,
+                    "volume": 0,
+                },
+                "valuation": {
+                    "market_cap": self._parse_float(market_cap_match.group(1) if market_cap_match else 0),
+                    "pe_ratio": self._parse_float(pe_match.group(1) if pe_match else metrics.get("PE Ratio", 0)),
+                    "pb_ratio": self._parse_float(pb_match.group(1) if pb_match else metrics.get("PB Ratio", 0)),
+                    "dividend_yield": self._parse_float(metrics.get("Dividend Yield", 0)),
+                    "eps": 0,
+                    "book_value": 0,
+                },
+                "financials": {
+                    "revenue": 0,
+                    "profit_margin": 0,
+                    "operating_margin": 0,
+                    "roe": self._parse_float(metrics.get("ROE", 0)),
+                    "roa": 0,
+                    "debt_to_equity": self._parse_float(metrics.get("Debt to Equity", 0)),
+                    "current_ratio": 0,
+                },
+                "provider": self.name,
+            }
+
+            # Only return if we got at least some meaningful data
+            if stock_data["price_info"]["current_price"] > 0 or stock_data["valuation"]["pe_ratio"] > 0:
+                return stock_data
+
+            logger.warning(f"Tickertape: No meaningful data extracted for {symbol}")
+            return None
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Tickertape request failed for {symbol}: {e}")
+            if "429" in str(e):
+                self.mark_rate_limited(30)
+            return None
+        except Exception as e:
+            logger.error(f"Tickertape error for {symbol}: {e}")
+            return None
+
+    def search_stocks(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Search for stocks on Tickertape."""
+        try:
+            search_url = f"{self.BASE_URL}/search?text={query}"
+            response = self.session.get(search_url, timeout=10)
+
+            if response.status_code != 200:
+                return []
+
+            results = []
+            # Find stock links in search results
+            matches = re.findall(r'/stocks/([a-z0-9-]+)-([A-Z]+)"[^>]*>([^<]+)<', response.text)
+
+            for slug_name, ticker_code, name in matches[:limit]:
+                results.append({
+                    "symbol": ticker_code,
+                    "name": name.strip(),
+                    "exchange": "NSE",
+                })
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Tickertape search failed: {e}")
             return []
 
 
@@ -506,7 +540,7 @@ class AlphaVantageProvider(StockDataProvider):
 
             stock_data = {
                 "basic_info": {
-                    "company_name": symbol,  # Alpha Vantage doesn't return company name in quote
+                    "company_name": symbol,
                     "ticker": symbol.upper(),
                     "exchange": exchange,
                     "sector": "N/A",
@@ -553,7 +587,6 @@ class AlphaVantageProvider(StockDataProvider):
             results = []
 
             for match in data.get("bestMatches", [])[:limit]:
-                # Filter for Indian stocks
                 region = match.get("4. region", "")
                 if "India" in region:
                     results.append({
@@ -575,17 +608,17 @@ class StockDataManager:
     """
 
     def __init__(self, alpha_vantage_key: str = ""):
-        # Yahoo Finance first (more reliable from cloud IPs)
-        # NSE India second (blocks cloud IPs but good when it works)
+        # Yahoo Finance first (comprehensive data, may rate limit)
+        # Tickertape second (good fundamentals, scraping)
         # Alpha Vantage last (limited daily calls)
         self.providers: List[StockDataProvider] = [
             YahooFinanceProvider(),
-            NSEIndiaProvider(),
+            TickertapeProvider(),
         ]
 
         if alpha_vantage_key:
             self.providers.append(AlphaVantageProvider(alpha_vantage_key))
-            logger.info(f"Alpha Vantage provider initialized with API key")
+            logger.info("Alpha Vantage provider initialized with API key")
 
         self.cache = stock_cache
 
@@ -612,7 +645,7 @@ class StockDataManager:
                 logger.warning(f"Skipping {provider.name} (rate limited until {provider.rate_limit_until})")
                 continue
 
-            logger.warning(f"Trying {provider.name} for {symbol}")  # Use warning level to ensure it shows in logs
+            logger.warning(f"Trying {provider.name} for {symbol}")
 
             try:
                 data = provider.fetch_stock_data(symbol, exchange)
@@ -634,7 +667,6 @@ class StockDataManager:
 
     def search_stocks(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Search for stocks across providers."""
-        # Try NSE India first (best for Indian stocks)
         for provider in self.providers:
             if not provider.is_available():
                 continue
@@ -656,6 +688,13 @@ class StockDataManager:
             }
             for p in self.providers
         ]
+
+    def reset_rate_limits(self):
+        """Reset all provider rate limits (admin function)."""
+        for provider in self.providers:
+            provider.is_rate_limited = False
+            provider.rate_limit_until = None
+        logger.info("All provider rate limits reset")
 
 
 # Singleton instance
