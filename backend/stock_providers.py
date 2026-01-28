@@ -103,6 +103,87 @@ class NSEIndiaProvider(StockDataProvider):
         except Exception as e:
             logger.warning(f"Failed to initialize NSE cookies: {e}")
 
+    def _fetch_corporate_info(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Fetch corporate info (quarterly results, shareholding, actions) from NSE."""
+        try:
+            corp_url = f"{self.BASE_URL}/api/top-corp-info?symbol={symbol}&market=equities"
+            response = self.session.get(corp_url, timeout=10)
+
+            if response.status_code != 200:
+                return None
+
+            return response.json()
+        except Exception as e:
+            logger.warning(f"NSE corporate info fetch failed for {symbol}: {e}")
+            return None
+
+    def _parse_quarterly_results(self, financial_data: List[Dict]) -> List[Dict[str, Any]]:
+        """Parse quarterly financial results into standardized format."""
+        results = []
+        for item in financial_data[:8]:  # Last 8 quarters (2 years)
+            try:
+                results.append({
+                    "period_end": item.get("to_date", ""),
+                    "revenue": self._parse_number(item.get("income", 0)),
+                    "profit_before_tax": self._parse_number(item.get("reProLossBefTax", 0)),
+                    "profit_after_tax": self._parse_number(item.get("proLossAftTax", 0)),
+                    "eps": self._parse_float(item.get("reDilEPS", 0)),
+                    "audited": item.get("audited", ""),
+                    "consolidated": item.get("consolidated", ""),
+                })
+            except Exception:
+                continue
+        return results
+
+    def _parse_shareholding(self, shareholding_data: Dict) -> Dict[str, Any]:
+        """Parse shareholding pattern data."""
+        if not shareholding_data:
+            return {}
+
+        # Get the most recent quarter
+        quarters = sorted(shareholding_data.keys(), reverse=True)
+        if not quarters:
+            return {}
+
+        latest = quarters[0]
+        latest_data = shareholding_data[latest]
+
+        result = {"as_of": latest, "breakdown": {}}
+        for item in latest_data:
+            for key, value in item.items():
+                if key != "Total":
+                    result["breakdown"][key] = self._parse_float(value)
+
+        return result
+
+    def _parse_corporate_actions(self, actions_data: List[Dict]) -> List[Dict[str, str]]:
+        """Parse corporate actions (dividends, bonuses, splits)."""
+        actions = []
+        for item in actions_data[:10]:  # Last 10 actions
+            actions.append({
+                "date": item.get("exdate", ""),
+                "action": item.get("purpose", ""),
+            })
+        return actions
+
+    def _parse_number(self, value) -> int:
+        """Parse numeric value, handling None and strings."""
+        if value is None:
+            return 0
+        try:
+            return int(str(value).replace(",", "").strip())
+        except (ValueError, TypeError):
+            return 0
+
+    def _parse_float(self, value) -> float:
+        """Parse float value, handling None and strings."""
+        if value is None:
+            return 0.0
+        try:
+            return float(str(value).replace(",", "").strip())
+        except (ValueError, TypeError):
+            return 0.0
+
     def fetch_stock_data(self, symbol: str, exchange: str = "NSE") -> Optional[Dict[str, Any]]:
         """Fetch stock data from NSE India."""
         if exchange.upper() != "NSE":
@@ -176,6 +257,36 @@ class NSEIndiaProvider(StockDataProvider):
                 },
                 "provider": self.name,
             }
+
+            # Fetch corporate info (quarterly results, shareholding, actions)
+            # This is a secondary call - don't fail if it doesn't work
+            corp_info = self._fetch_corporate_info(symbol)
+            if corp_info:
+                # Quarterly financial results
+                fin_results = corp_info.get("financial_results", {}).get("data", [])
+                if fin_results:
+                    stock_data["quarterly_results"] = self._parse_quarterly_results(fin_results)
+
+                # Shareholding pattern
+                shareholding = corp_info.get("shareholdings_patterns", {}).get("data", {})
+                if shareholding:
+                    stock_data["shareholding"] = self._parse_shareholding(shareholding)
+
+                # Corporate actions (dividends, bonuses)
+                actions = corp_info.get("corporate_actions", {}).get("data", [])
+                if actions:
+                    stock_data["corporate_actions"] = self._parse_corporate_actions(actions)
+
+                # Latest announcements (just the subjects)
+                announcements = corp_info.get("latest_announcements", {}).get("data", [])
+                if announcements:
+                    stock_data["recent_announcements"] = [
+                        {
+                            "date": a.get("broadcastdate", ""),
+                            "subject": a.get("subject", ""),
+                        }
+                        for a in announcements[:5]  # Last 5 announcements
+                    ]
 
             return stock_data
 
