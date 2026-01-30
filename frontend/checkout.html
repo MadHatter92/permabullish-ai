@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Permabullish</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'DM Sans', system-ui, sans-serif;
+            background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
+            min-height: 100vh;
+        }
+        .font-display { font-family: 'DM Serif Display', Georgia, serif; }
+        .card-gradient { background: linear-gradient(to bottom right, #1e3a5f, #243b53); }
+    </style>
+</head>
+<body class="text-white flex items-center justify-center p-6">
+    <div class="max-w-md w-full">
+        <!-- Order Summary -->
+        <div class="card-gradient rounded-2xl border border-[#334e68] p-8 mb-6">
+            <h1 class="text-2xl font-display mb-6 text-center">Complete Your Order</h1>
+
+            <div class="space-y-4 mb-8">
+                <div class="flex justify-between">
+                    <span class="text-[#9fb3c8]">Plan</span>
+                    <span id="planName" class="font-semibold">Pro</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-[#9fb3c8]">Duration</span>
+                    <span id="duration">1 month</span>
+                </div>
+                <div class="border-t border-[#334e68] pt-4 flex justify-between">
+                    <span class="text-lg">Total</span>
+                    <span id="totalAmount" class="text-2xl font-bold text-[#e8913a]">₹799</span>
+                </div>
+            </div>
+
+            <!-- Mock Payment Notice -->
+            <div class="bg-amber-500/20 border border-amber-500/50 rounded-lg p-4 mb-6">
+                <p class="text-amber-200 text-sm text-center">
+                    <strong>Test Mode:</strong> This is a simulated checkout. No actual payment will be processed.
+                </p>
+            </div>
+
+            <!-- Mock Payment Button -->
+            <button onclick="simulatePayment()" id="payBtn"
+                class="w-full py-4 bg-[#e8913a] hover:bg-[#d97316] rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+                <span>Pay Now (Simulated)</span>
+            </button>
+
+            <p class="text-[#9fb3c8] text-xs text-center mt-4">
+                By proceeding, you agree to our Terms of Service and Privacy Policy.
+            </p>
+        </div>
+
+        <!-- Back Link -->
+        <div class="text-center">
+            <a href="pricing.html" class="text-[#9fb3c8] hover:text-white transition-colors">
+                ← Back to Pricing
+            </a>
+        </div>
+
+        <!-- Processing Modal -->
+        <div id="processingModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div class="card-gradient rounded-2xl border border-[#334e68] p-8 text-center max-w-sm mx-4">
+                <div id="modalContent">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-[#e8913a] mx-auto mb-4"></div>
+                    <p class="text-lg">Processing payment...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        const token = localStorage.getItem('token');
+        let orderData = {};
+
+        // Parse URL params
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            orderData = {
+                orderId: params.get('order_id'),
+                tier: params.get('tier'),
+                period: parseInt(params.get('period')) || 1,
+                amount: parseInt(params.get('amount')) || 0
+            };
+
+            // Update display
+            const tierNames = { basic: 'Basic', pro: 'Pro' };
+            document.getElementById('planName').textContent = tierNames[orderData.tier] || orderData.tier;
+            document.getElementById('duration').textContent =
+                orderData.period === 1 ? '1 month' :
+                orderData.period === 6 ? '6 months' : '12 months';
+            document.getElementById('totalAmount').textContent = '₹' + orderData.amount.toLocaleString('en-IN');
+
+            if (!token) {
+                alert('Please sign in first.');
+                window.location.href = 'index.html';
+            }
+        });
+
+        async function simulatePayment() {
+            const btn = document.getElementById('payBtn');
+            const modal = document.getElementById('processingModal');
+            const modalContent = document.getElementById('modalContent');
+
+            btn.disabled = true;
+            modal.classList.remove('hidden');
+
+            // Simulate payment processing
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            try {
+                // Activate subscription
+                const response = await fetch(
+                    `${API_BASE}/subscription/activate?tier=${orderData.tier}&period=${orderData.period}&payment_id=mock_${Date.now()}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Activation failed');
+                }
+
+                const result = await response.json();
+
+                // Show success
+                modalContent.innerHTML = `
+                    <svg class="w-16 h-16 text-green-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="text-xl font-semibold mb-2">Payment Successful!</h3>
+                    <p class="text-[#9fb3c8] mb-4">Your ${result.tier} subscription is now active.</p>
+                    <a href="dashboard.html" class="inline-block bg-[#e8913a] hover:bg-[#d97316] px-6 py-2 rounded-lg transition-colors">
+                        Go to Dashboard
+                    </a>
+                `;
+
+            } catch (error) {
+                console.error('Payment error:', error);
+                modalContent.innerHTML = `
+                    <svg class="w-16 h-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="text-xl font-semibold mb-2">Payment Failed</h3>
+                    <p class="text-[#9fb3c8] mb-4">Something went wrong. Please try again.</p>
+                    <button onclick="location.reload()" class="inline-block bg-[#e8913a] hover:bg-[#d97316] px-6 py-2 rounded-lg transition-colors">
+                        Try Again
+                    </button>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

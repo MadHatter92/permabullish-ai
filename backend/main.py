@@ -23,7 +23,8 @@ from yahoo_finance import fetch_stock_data, search_stocks
 from report_generator import generate_ai_analysis, generate_report_html
 from config import (
     SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
-    GOOGLE_REDIRECT_URI, FRONTEND_URL, CORS_ORIGINS, ENVIRONMENT
+    GOOGLE_REDIRECT_URI, FRONTEND_URL, CORS_ORIGINS, ENVIRONMENT,
+    SUBSCRIPTION_TIERS
 )
 
 # Initialize FastAPI app
@@ -604,6 +605,157 @@ async def check_watchlist(
     """Check if a stock is in user's watchlist."""
     is_watched = db.is_in_watchlist(current_user["id"], ticker, exchange)
     return {"in_watchlist": is_watched}
+
+
+# ============================================
+# Usage & Subscription Routes
+# ============================================
+
+@app.get("/api/usage")
+async def get_usage(current_user: dict = Depends(auth.get_current_user)):
+    """Get user's current usage stats based on their subscription tier."""
+    usage = db.get_usage(current_user["id"])
+    return usage
+
+
+@app.get("/api/subscription/status")
+async def get_subscription_status(current_user: dict = Depends(auth.get_current_user)):
+    """Get detailed subscription status for the current user."""
+    status = db.get_subscription_status(current_user["id"])
+    return status
+
+
+@app.get("/api/subscription/plans")
+async def get_subscription_plans():
+    """Get available subscription plans with pricing."""
+    plans = []
+    for tier_key, tier_data in SUBSCRIPTION_TIERS.items():
+        plans.append({
+            "id": tier_key,
+            "name": tier_data.get("name", tier_key.title()),
+            "description": tier_data.get("description", ""),
+            "reports_limit": tier_data.get("reports_limit"),
+            "is_lifetime": tier_data.get("is_lifetime", False),
+            "pricing": {
+                "monthly": tier_data.get("price_monthly"),
+                "6_months": tier_data.get("price_6months"),
+                "yearly": tier_data.get("price_yearly"),
+            },
+            "features": tier_data.get("features", {}),
+        })
+    return {"plans": plans}
+
+
+@app.post("/api/subscription/checkout")
+async def initiate_checkout(
+    tier: str,
+    period: int = 1,  # 1, 6, or 12 months
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """
+    Initiate subscription checkout (placeholder for Cashfree integration).
+    In production, this will create a Cashfree payment session.
+    For now, returns a mock checkout URL.
+    """
+    if tier not in SUBSCRIPTION_TIERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid tier: {tier}"
+        )
+
+    tier_config = SUBSCRIPTION_TIERS[tier]
+
+    if tier == "free":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot purchase free tier"
+        )
+
+    if tier == "enterprise":
+        return {
+            "type": "contact",
+            "message": "Please contact us for Enterprise pricing",
+            "email": "enterprise@permabullish.com"
+        }
+
+    # Determine price based on period
+    if period == 1:
+        amount = tier_config.get("price_monthly", 0)
+    elif period == 6:
+        amount = tier_config.get("price_6months", 0)
+    elif period == 12:
+        amount = tier_config.get("price_yearly", 0)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid period. Must be 1, 6, or 12 months"
+        )
+
+    # Mock checkout response (will be replaced with Cashfree in Phase 3)
+    order_id = f"order_{current_user['id']}_{tier}_{period}m_{int(datetime.now().timestamp())}"
+
+    return {
+        "type": "checkout",
+        "order_id": order_id,
+        "tier": tier,
+        "tier_name": tier_config.get("name"),
+        "period_months": period,
+        "amount": amount,
+        "currency": "INR",
+        # Mock checkout URL - will be replaced with actual Cashfree URL
+        "checkout_url": f"{FRONTEND_URL}/checkout.html?order_id={order_id}&tier={tier}&period={period}&amount={amount}",
+        "message": "Redirect user to checkout_url to complete payment"
+    }
+
+
+@app.post("/api/subscription/activate")
+async def activate_subscription(
+    tier: str,
+    period: int,
+    payment_id: str = "mock_payment",
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """
+    Activate subscription after successful payment (mock for testing).
+    In production, this will be called by the Cashfree webhook.
+    """
+    if tier not in SUBSCRIPTION_TIERS or tier in ["free", "enterprise"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid tier: {tier}"
+        )
+
+    tier_config = SUBSCRIPTION_TIERS[tier]
+
+    # Determine amount
+    if period == 1:
+        amount = tier_config.get("price_monthly", 0)
+    elif period == 6:
+        amount = tier_config.get("price_6months", 0)
+    elif period == 12:
+        amount = tier_config.get("price_yearly", 0)
+    else:
+        amount = 0
+
+    # Create subscription record
+    subscription_id = db.create_subscription_record(
+        user_id=current_user["id"],
+        tier=tier,
+        period_months=period,
+        amount_paid=amount,
+        payment_id=payment_id
+    )
+
+    return {
+        "message": f"Subscription activated: {tier_config.get('name')}",
+        "subscription_id": subscription_id,
+        "tier": tier,
+        "period_months": period
+    }
+
+
+# Import datetime for order_id generation
+from datetime import datetime
 
 
 # Future: Cashfree webhook endpoint (placeholder for Phase 3)

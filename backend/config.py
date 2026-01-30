@@ -85,40 +85,63 @@ CASHFREE_ENV = os.getenv("CASHFREE_ENV", "sandbox")  # sandbox or production
 # Report freshness threshold (days)
 REPORT_FRESHNESS_DAYS = 15
 
-# Subscription Tiers
+# Subscription Tiers with Pricing (prices in INR)
 SUBSCRIPTION_TIERS = {
     "free": {
+        "name": "Free",
         "reports_limit": 3,
         "is_lifetime": True,  # Free tier is lifetime limit, not monthly
+        "price_monthly": 0,
+        "price_6months": 0,
+        "price_yearly": 0,
         "features": {
             "stock_research": True,
             "watchlist": True,
-        }
+        },
+        "description": "Try out AI stock research"
     },
     "basic": {
+        "name": "Basic",
         "reports_limit": 10,
         "is_lifetime": False,  # Monthly limit
+        "price_monthly": 299,
+        "price_6months": 1499,  # ~17% off
+        "price_yearly": 2499,   # ~30% off
         "features": {
             "stock_research": True,
             "watchlist": True,
-        }
+        },
+        "description": "For casual investors"
     },
     "pro": {
+        "name": "Pro",
         "reports_limit": 50,
         "is_lifetime": False,
+        "price_monthly": 799,
+        "price_6months": 3999,  # ~17% off
+        "price_yearly": 6999,   # ~27% off
         "features": {
             "stock_research": True,
             "watchlist": True,
-        }
+            "priority_generation": True,
+        },
+        "description": "For active traders"
     },
     "enterprise": {
+        "name": "Enterprise",
         "reports_limit": 10000,  # Effectively unlimited
         "is_lifetime": False,
+        "price_monthly": None,  # Contact us
+        "price_6months": None,
+        "price_yearly": None,
         "features": {
             "stock_research": True,
             "watchlist": True,
+            "priority_generation": True,
             "api_access": True,
-        }
+            "dedicated_support": True,
+        },
+        "description": "For institutions & advisors"
     }
 }
 

@@ -10,7 +10,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 from contextlib import contextmanager
 
-from config import MONTHLY_REPORT_LIMIT, ANONYMOUS_REPORT_LIMIT
+from config import MONTHLY_REPORT_LIMIT, ANONYMOUS_REPORT_LIMIT, SUBSCRIPTION_TIERS
 
 # Determine database type from environment
 DATABASE_URL = os.getenv("DATABASE_URL", "")
@@ -141,6 +141,7 @@ def init_database():
                     auth_provider TEXT DEFAULT 'local',
                     avatar_url TEXT,
                     subscription_tier TEXT DEFAULT 'free',
+                    subscription_expires_at TIMESTAMP,
                     stripe_customer_id TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT TRUE
@@ -250,6 +251,30 @@ def init_database():
                 )
             """)
 
+            # Subscriptions - payment history
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS subscriptions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    tier VARCHAR(50) NOT NULL,
+                    period_months INTEGER NOT NULL,
+                    amount_paid DECIMAL(10,2),
+                    currency VARCHAR(3) DEFAULT 'INR',
+                    payment_id VARCHAR(255),
+                    starts_at TIMESTAMP NOT NULL,
+                    expires_at TIMESTAMP NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Add subscription_expires_at column if not exists (migration)
+            try:
+                cursor.execute("""
+                    ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP
+                """)
+            except:
+                pass  # Column already exists
+
         else:
             # SQLite schema (for local development)
             cursor.execute("""
@@ -262,6 +287,7 @@ def init_database():
                     auth_provider TEXT DEFAULT 'local',
                     avatar_url TEXT,
                     subscription_tier TEXT DEFAULT 'free',
+                    subscription_expires_at TIMESTAMP,
                     stripe_customer_id TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT 1
@@ -361,6 +387,23 @@ def init_database():
                     added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id),
                     UNIQUE(user_id, ticker, exchange)
+                )
+            """)
+
+            # Subscriptions - payment history
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS subscriptions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    tier TEXT NOT NULL,
+                    period_months INTEGER NOT NULL,
+                    amount_paid REAL,
+                    currency TEXT DEFAULT 'INR',
+                    payment_id TEXT,
+                    starts_at TIMESTAMP NOT NULL,
+                    expires_at TIMESTAMP NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             """)
 
@@ -569,32 +612,59 @@ def get_current_month_year() -> str:
     return datetime.now().strftime("%Y-%m")
 
 
+def get_user_subscription_tier(user_id: int) -> str:
+    """Get user's subscription tier."""
+    user = get_user_by_id(user_id)
+    return user.get("subscription_tier", "free") if user else "free"
+
+
 def get_usage(user_id: int) -> dict:
-    """Get user's usage for current month."""
-    month_year = get_current_month_year()
+    """Get user's usage based on their subscription tier."""
+    user = get_user_by_id(user_id)
+    tier = user.get("subscription_tier", "free") if user else "free"
+    tier_config = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free"])
+
+    is_lifetime = tier_config.get("is_lifetime", False)
+    reports_limit = tier_config.get("reports_limit", 3)
+
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
         p = placeholder()
-        cursor.execute(
-            f"SELECT reports_generated FROM usage WHERE user_id = {p} AND month_year = {p}",
-            (user_id, month_year)
-        )
-        row = cursor.fetchone()
 
-    reports_used = row["reports_generated"] if row else 0
+        if is_lifetime:
+            # For free tier: count total reports ever generated
+            cursor.execute(
+                f"SELECT COALESCE(SUM(reports_generated), 0) as total FROM usage WHERE user_id = {p}",
+                (user_id,)
+            )
+            row = cursor.fetchone()
+            reports_used = row["total"] if row and row["total"] else 0
+            reset_date = None
+        else:
+            # For paid tiers: count current month only
+            month_year = get_current_month_year()
+            cursor.execute(
+                f"SELECT reports_generated FROM usage WHERE user_id = {p} AND month_year = {p}",
+                (user_id, month_year)
+            )
+            row = cursor.fetchone()
+            reports_used = row["reports_generated"] if row else 0
 
-    # Calculate reset date (1st of next month)
-    now = datetime.now()
-    if now.month == 12:
-        reset_date = datetime(now.year + 1, 1, 1)
-    else:
-        reset_date = datetime(now.year, now.month + 1, 1)
+            # Calculate reset date (1st of next month)
+            now = datetime.now()
+            if now.month == 12:
+                reset_date = datetime(now.year + 1, 1, 1).strftime("%B %d, %Y")
+            else:
+                reset_date = datetime(now.year, now.month + 1, 1).strftime("%B %d, %Y")
 
     return {
+        "tier": tier,
+        "tier_name": tier_config.get("name", tier.title()),
         "reports_used": reports_used,
-        "reports_limit": MONTHLY_REPORT_LIMIT,
-        "reports_remaining": max(0, MONTHLY_REPORT_LIMIT - reports_used),
-        "reset_date": reset_date.strftime("%B %d, %Y")
+        "reports_limit": reports_limit,
+        "reports_remaining": max(0, reports_limit - reports_used),
+        "is_lifetime": is_lifetime,
+        "reset_date": reset_date
     }
 
 
@@ -644,6 +714,100 @@ def reset_user_usage(user_id: int) -> bool:
         )
         conn.commit()
         return True
+
+
+# ============================================
+# Subscription Operations
+# ============================================
+
+def update_user_subscription(user_id: int, tier: str, expires_at: datetime = None) -> bool:
+    """Update user's subscription tier."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        if expires_at:
+            cursor.execute(
+                f"UPDATE users SET subscription_tier = {p}, subscription_expires_at = {p} WHERE id = {p}",
+                (tier, expires_at, user_id)
+            )
+        else:
+            cursor.execute(
+                f"UPDATE users SET subscription_tier = {p} WHERE id = {p}",
+                (tier, user_id)
+            )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def get_subscription_status(user_id: int) -> dict:
+    """Get detailed subscription status for a user."""
+    user = get_user_by_id(user_id)
+    if not user:
+        return None
+
+    tier = user.get("subscription_tier", "free")
+    tier_config = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free"])
+    usage = get_usage(user_id)
+
+    # Check if subscription has expired
+    expires_at = user.get("subscription_expires_at")
+    is_expired = False
+    if expires_at and tier != "free":
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00').replace(' ', 'T'))
+        is_expired = datetime.now() > expires_at.replace(tzinfo=None)
+
+    return {
+        "tier": tier,
+        "tier_name": tier_config.get("name", tier.title()),
+        "description": tier_config.get("description", ""),
+        "reports_limit": tier_config.get("reports_limit", 3),
+        "reports_used": usage["reports_used"],
+        "reports_remaining": usage["reports_remaining"],
+        "is_lifetime": tier_config.get("is_lifetime", False),
+        "reset_date": usage.get("reset_date"),
+        "expires_at": expires_at.isoformat() if expires_at else None,
+        "is_expired": is_expired,
+        "features": tier_config.get("features", {}),
+        "can_generate": usage["reports_remaining"] > 0 and not is_expired
+    }
+
+
+def create_subscription_record(
+    user_id: int,
+    tier: str,
+    period_months: int,
+    amount_paid: float,
+    payment_id: str = None
+) -> Optional[int]:
+    """Create a subscription record after successful payment."""
+    from datetime import timedelta
+
+    starts_at = datetime.now()
+    expires_at = starts_at + timedelta(days=period_months * 30)
+
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        if USE_POSTGRES:
+            cursor.execute("""
+                INSERT INTO subscriptions (user_id, tier, period_months, amount_paid, payment_id, starts_at, expires_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (user_id, tier, period_months, amount_paid, payment_id, starts_at, expires_at))
+            result = cursor.fetchone()
+            subscription_id = result['id'] if result else None
+        else:
+            cursor.execute("""
+                INSERT INTO subscriptions (user_id, tier, period_months, amount_paid, payment_id, starts_at, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (user_id, tier, period_months, amount_paid, payment_id, starts_at, expires_at))
+            subscription_id = cursor.lastrowid
+
+        # Update user's subscription tier
+        update_user_subscription(user_id, tier, expires_at)
+
+        conn.commit()
+        return subscription_id
 
 
 # Anonymous Usage Operations
