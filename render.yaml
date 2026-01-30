@@ -1,10 +1,6 @@
 # Permabullish Render Blueprint
+# AI Stock Researcher - Single Product Deployment
 # Deploy with: render blueprint sync
-#
-# Architecture:
-# - Production API (Starter plan) + DB (Basic plan)
-# - Staging API (Free tier) + DB (Free tier)
-# - Static frontend sites (Free tier)
 
 services:
   # ============================================
@@ -40,55 +36,19 @@ services:
       - key: GOOGLE_REDIRECT_URI
         value: https://permabullish-api.onrender.com/api/auth/google/callback
       - key: FRONTEND_URL
-        value: https://permabullish-web.onrender.com
-      - key: MONTHLY_REPORT_LIMIT
-        value: "20"
-      - key: ANONYMOUS_REPORT_LIMIT
-        value: "3"
-      - key: ALPHA_VANTAGE_API_KEY
-        sync: false  # Set manually - backup stock data provider
+        value: https://permabullish.com
+      - key: CASHFREE_APP_ID
+        sync: false  # Set manually - payment gateway
+      - key: CASHFREE_SECRET_KEY
+        sync: false  # Set manually - payment gateway
 
-  # Main Landing Page (React SPA)
-  - type: web
-    name: permabullish-landing
-    runtime: static
-    branch: main
-    rootDir: landing
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=3600
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-
-  # Stock Research App Frontend (Static)
+  # Stock Research Frontend (Static)
   - type: web
     name: permabullish-web
     runtime: static
     branch: main
     rootDir: frontend
     staticPublishPath: .
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=3600
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-
-  # MF Analytics Frontend (React SPA)
-  - type: web
-    name: permabullish-mf
-    runtime: static
-    branch: main
-    rootDir: mf-frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
     headers:
       - path: /*
         name: Cache-Control
@@ -106,7 +66,7 @@ services:
   - type: web
     name: permabullish-api-staging
     runtime: python
-    plan: starter  # Using starter for staging too (free tier limited)
+    plan: starter
     region: oregon
     branch: staging
     rootDir: backend
@@ -123,7 +83,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ANTHROPIC_API_KEY
-        sync: false  # Set manually (can use same as prod or separate)
+        sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
@@ -132,12 +92,10 @@ services:
         value: https://permabullish-api-staging.onrender.com/api/auth/google/callback
       - key: FRONTEND_URL
         value: https://permabullish-web-staging.onrender.com
-      - key: MONTHLY_REPORT_LIMIT
-        value: "20"
-      - key: ANONYMOUS_REPORT_LIMIT
-        value: "3"
-      - key: ALPHA_VANTAGE_API_KEY
-        sync: false  # Set manually - backup stock data provider
+      - key: CASHFREE_APP_ID
+        sync: false
+      - key: CASHFREE_SECRET_KEY
+        sync: false
 
   # Staging Frontend (Static)
   - type: web
@@ -155,7 +113,7 @@ services:
   # CRON JOBS
   # ============================================
 
-  # Daily User Report (runs at 9:00 AM UTC daily)
+  # Daily Usage Report (runs at 9:00 AM UTC daily)
   - type: cron
     name: permabullish-daily-report
     runtime: python
@@ -173,9 +131,9 @@ services:
       - key: REPORT_EMAIL_TO
         value: mail@mayaskara.com
       - key: RESEND_API_KEY
-        sync: false  # Set in Render dashboard
+        sync: false
 
-  # Weekly User Report (runs Monday at 9:00 AM UTC)
+  # Weekly Usage Report (runs Monday at 9:00 AM UTC)
   - type: cron
     name: permabullish-weekly-report
     runtime: python
@@ -193,45 +151,52 @@ services:
       - key: REPORT_EMAIL_TO
         value: mail@mayaskara.com
       - key: RESEND_API_KEY
-        sync: false  # Set in Render dashboard
+        sync: false
+
+  # Monthly Screener Data Scrape (runs 1st of month at 2:00 AM UTC)
+  - type: cron
+    name: permabullish-screener-scrape
+    runtime: python
+    schedule: "0 2 1 * *"
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/scrape_screener.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: permabullish-db
+          property: connectionString
 
 databases:
   # Production Database
   - name: permabullish-db
-    plan: basic-256mb  # Smallest paid plan
+    plan: starter  # $7/month
     region: oregon
     postgresMajorVersion: 15
 
   # Staging Database
   - name: permabullish-db-staging
-    plan: free  # Free tier
+    plan: free
     region: oregon
     postgresMajorVersion: 15
 
 # Notes:
 #
-# Deployment Workflow:
-# 1. Development: Work locally with SQLite
-# 2. Test: Push to 'staging' branch -> auto-deploys to staging
-# 3. Review: Test on staging.permabullish.com
-# 4. Deploy: Merge staging -> main -> auto-deploys to production
-#
 # Environment Variables to set manually in Render Dashboard:
-# - ANTHROPIC_API_KEY: Your Claude API key
+# - ANTHROPIC_API_KEY: Claude API key for AI report generation
 # - GOOGLE_CLIENT_ID: Google OAuth client ID
 # - GOOGLE_CLIENT_SECRET: Google OAuth client secret
-# - RESEND_API_KEY: Resend API key (for cron job email reports)
-# - ALPHA_VANTAGE_API_KEY: Alpha Vantage API key (backup stock data provider)
-#
-# Custom Domain Setup (after initial deploy):
-# 1. Add custom domain in Render dashboard
-# 2. Update GOOGLE_REDIRECT_URI and FRONTEND_URL
-# 3. Update CORS_ORIGINS in config.py if needed
+# - CASHFREE_APP_ID: Cashfree payment gateway app ID
+# - CASHFREE_SECRET_KEY: Cashfree payment gateway secret
+# - RESEND_API_KEY: Resend API key for email reports
 #
 # Cost Estimate:
 # - Production API (Starter): $7/month
-# - Production DB (basic-256mb): ~$7/month
+# - Production DB (Starter): $7/month
 # - Staging API (Starter): $7/month
 # - Staging DB (Free): $0/month
 # - Static Sites: $0/month
+# - Cron Jobs: Included
 # - Total: ~$21/month + Claude API usage
