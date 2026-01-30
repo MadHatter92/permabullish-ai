@@ -162,31 +162,37 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ### 6.1 Tier Structure
 
-| Tier | Reports | Price (TBD) | Features |
-|------|---------|-------------|----------|
-| **Free** | 3 total (lifetime) | Free | Basic access, Google sign-in |
-| **Basic** | 10/month | TBD | Full reports, watchlist, history |
-| **Pro** | 50/month | TBD | All Basic features + priority generation |
-| **Enterprise** | Unlimited | Contact us | All features + dedicated support |
+| Tier | Reports | Features |
+|------|---------|----------|
+| **Guest** | 1 (lifetime) | Basic access, no account required |
+| **Free** | 5 (lifetime) | Full reports, watchlist, history |
+| **Basic** | 50/month | All Free features |
+| **Pro** | 100/month | All Basic + priority generation |
+| **Enterprise** | Unlimited | All features + API access + dedicated support |
 
-**Note:** Pricing will be calculated based on token consumption analysis (see Roadmap Phase 5).
+### 6.2 Pricing (INR)
 
-### 6.2 Payment Options
+| Tier | Monthly | 6 Months | Yearly | Per Report |
+|------|---------|----------|--------|------------|
+| **Guest** | Free | - | - | - |
+| **Free** | Free | - | - | - |
+| **Basic** | ₹999 | ~~₹6,000~~ ₹3,999 | ~~₹12,000~~ ₹7,499 | ₹12.50-₹20 |
+| **Pro** | ₹1,499 | ~~₹9,000~~ ₹5,999 | ~~₹18,000~~ ₹9,999 | ₹8.33-₹15 |
+| **Enterprise** | Contact us | - | - | - |
 
-| Period | Discount | Billing |
-|--------|----------|---------|
-| 1 Month | None | Monthly |
-| 6 Months | TBD% | Upfront |
-| 12 Months | TBD% | Upfront |
+**Savings:**
+- 6 Months: 33% off monthly price
+- Yearly: 38% off (Basic) / 44% off (Pro)
 
 **Payment Gateway:** Cashfree
-- Initial implementation: Upfront payments only
-- Future: Recurring subscription handling
+- Accepts UPI, credit/debit cards, net banking
+- Upfront payments (no recurring subscriptions yet)
 
 ### 6.3 Quota Management
 
 - Usage resets on the 1st of each month (for paid tiers)
-- Free tier: Lifetime limit of 3 reports
+- Guest tier: Lifetime limit of 1 report
+- Free tier: Lifetime limit of 5 reports
 - Unused reports do NOT roll over
 - Regenerating a cached report counts against quota
 

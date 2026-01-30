@@ -46,19 +46,25 @@
         },
 
         // Subscription tiers (informational, actual limits enforced server-side)
+        // Guest (anonymous) users: 1 report
         tiers: {
+            guest: {
+                limit: 1,
+                isLifetime: true,
+                label: 'Guest'
+            },
             free: {
-                limit: 3,
+                limit: 5,
                 isLifetime: true,  // Lifetime limit for free tier
                 label: 'Free'
             },
             basic: {
-                limit: 10,
+                limit: 50,
                 isLifetime: false,  // Monthly limit
                 label: 'Basic'
             },
             pro: {
-                limit: 50,
+                limit: 100,
                 isLifetime: false,  // Monthly limit
                 label: 'Pro'
             },

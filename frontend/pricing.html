@@ -75,11 +75,11 @@
             </button>
             <button id="6monthsBtn" onclick="setBillingPeriod('6months')"
                 class="px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all billing-btn whitespace-nowrap">
-                6 Months <span class="text-green-400 text-xs ml-1">-17%</span>
+                6 Months <span class="text-green-400 text-xs ml-1">-33%</span>
             </button>
             <button id="yearlyBtn" onclick="setBillingPeriod('yearly')"
                 class="px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all billing-btn relative whitespace-nowrap">
-                Yearly <span class="bg-green-500 text-white text-xs px-1.5 sm:px-2 py-0.5 rounded-full ml-1 font-bold">-30%</span>
+                Yearly <span class="bg-green-500 text-white text-xs px-1.5 sm:px-2 py-0.5 rounded-full ml-1 font-bold">-38%</span>
             </button>
             <!-- Best Value badge -->
             <div class="absolute -top-3 right-0 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold shadow-lg hidden sm:block">
@@ -104,7 +104,7 @@
                         <svg class="w-4 h-4 sm:w-5 sm:h-5 text-green-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
-                        <span><strong>3 reports</strong> (lifetime)</span>
+                        <span><strong>5 reports</strong> (lifetime)</span>
                     </li>
                     <li class="flex items-center text-xs sm:text-sm">
                         <svg class="w-4 h-4 sm:w-5 sm:h-5 text-green-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +127,7 @@
             <!-- Basic -->
             <div class="card-gradient rounded-xl sm:rounded-2xl border border-[#334e68] p-4 sm:p-6 flex flex-col">
                 <h3 class="text-lg sm:text-xl font-semibold mb-1 sm:mb-2">Basic</h3>
-                <p class="text-[#9fb3c8] text-xs sm:text-sm mb-3 sm:mb-4">For casual investors</p>
+                <p class="text-[#9fb3c8] text-xs sm:text-sm mb-3 sm:mb-4">For regular investors</p>
                 <div class="mb-4 sm:mb-6">
                     <span class="text-2xl sm:text-4xl font-bold" id="basicPrice">₹2,499</span>
                     <span class="text-[#9fb3c8] text-sm" id="basicPeriod">/year</span>
@@ -138,7 +138,7 @@
                         <svg class="w-4 h-4 sm:w-5 sm:h-5 text-green-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
-                        <span><strong>10 reports</strong>/month</span>
+                        <span><strong>50 reports</strong>/month</span>
                     </li>
                     <li class="flex items-center text-xs sm:text-sm">
                         <svg class="w-4 h-4 sm:w-5 sm:h-5 text-green-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,7 +175,7 @@
                         <svg class="w-4 h-4 sm:w-5 sm:h-5 text-green-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
-                        <span><strong>50 reports</strong>/month</span>
+                        <span><strong>100 reports</strong>/month</span>
                     </li>
                     <li class="flex items-center text-xs sm:text-sm">
                         <svg class="w-4 h-4 sm:w-5 sm:h-5 text-green-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -257,14 +257,20 @@
     <script src="config.js"></script>
     <script>
         const pricing = {
-            basic: { monthly: 299, '6months': 1499, yearly: 2499 },
-            pro: { monthly: 799, '6months': 3999, yearly: 6999 }
+            basic: { monthly: 999, '6months': 3999, yearly: 7499 },
+            pro: { monthly: 1499, '6months': 5999, yearly: 9999 }
+        };
+
+        // Struck prices for display
+        const struckPrices = {
+            basic: { '6months': 6000, yearly: 12000 },
+            pro: { '6months': 9000, yearly: 18000 }
         };
 
         // Monthly equivalents (pre-calculated)
         const monthlyEquiv = {
-            basic: { '6months': 250, yearly: 208 },
-            pro: { '6months': 667, yearly: 583 }
+            basic: { '6months': 667, yearly: 625 },
+            pro: { '6months': 1000, yearly: 833 }
         };
 
         let currentPeriod = 'yearly';  // Default to yearly (best value)
@@ -286,9 +292,17 @@
             const periodLabel = period === 'monthly' ? '/month' :
                                period === '6months' ? '/6 months' : '/year';
 
-            document.getElementById('basicPrice').textContent = '₹' + pricing.basic[period].toLocaleString('en-IN');
+            // Show struck price + actual price for 6months and yearly
+            if (period === 'monthly') {
+                document.getElementById('basicPrice').innerHTML = '₹' + pricing.basic[period].toLocaleString('en-IN');
+                document.getElementById('proPrice').innerHTML = '₹' + pricing.pro[period].toLocaleString('en-IN');
+            } else {
+                document.getElementById('basicPrice').innerHTML =
+                    `<span class="text-[#9fb3c8] line-through text-lg sm:text-2xl mr-2">₹${struckPrices.basic[period].toLocaleString('en-IN')}</span>₹${pricing.basic[period].toLocaleString('en-IN')}`;
+                document.getElementById('proPrice').innerHTML =
+                    `<span class="text-[#9fb3c8] line-through text-lg sm:text-2xl mr-2">₹${struckPrices.pro[period].toLocaleString('en-IN')}</span>₹${pricing.pro[period].toLocaleString('en-IN')}`;
+            }
             document.getElementById('basicPeriod').textContent = periodLabel;
-            document.getElementById('proPrice').textContent = '₹' + pricing.pro[period].toLocaleString('en-IN');
             document.getElementById('proPeriod').textContent = periodLabel;
 
             // Update monthly equivalents
@@ -299,7 +313,7 @@
                 basicEquivEl.style.display = 'none';
                 proEquivEl.style.display = 'none';
             } else {
-                const savings = period === 'yearly' ? '30%' : '17%';
+                const savings = period === 'yearly' ? '38%' : '33%';
                 basicEquivEl.style.display = 'block';
                 basicEquivEl.innerHTML = `Just ₹${monthlyEquiv.basic[period]}/month <span class="text-xs opacity-75">(save ${savings})</span>`;
                 proEquivEl.style.display = 'block';

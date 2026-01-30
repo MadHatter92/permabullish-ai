@@ -197,12 +197,13 @@ def init_database():
             """)
 
             # Insert default tiers if not exists
+            # Note: free=5 (logged-in), basic=50/mo, pro=100/mo
             cursor.execute("""
                 INSERT INTO usage_limits (tier, monthly_reports, features)
                 VALUES
-                    ('free', 3, '{"stock_research": true}'),
-                    ('basic', 10, '{"stock_research": true}'),
-                    ('pro', 50, '{"stock_research": true}'),
+                    ('free', 5, '{"stock_research": true}'),
+                    ('basic', 50, '{"stock_research": true}'),
+                    ('pro', 100, '{"stock_research": true}'),
                     ('enterprise', 10000, '{"stock_research": true, "api_access": true}')
                 ON CONFLICT (tier) DO NOTHING
             """)

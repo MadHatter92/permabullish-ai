@@ -7,7 +7,7 @@ AI-powered equity research reports for Indian stocks. Get institutional-quality 
 - **AI-Powered Reports**: Claude AI generates professional research reports with investment recommendations
 - **Indian Stock Coverage**: NSE/BSE stocks with real-time pricing
 - **Report Caching**: Shared reports across users for efficiency
-- **Subscription Tiers**: Free (3 reports), Basic (10/mo), Pro (50/mo), Enterprise (unlimited)
+- **Subscription Tiers**: Guest (1 report), Free (5 reports), Basic (50/mo), Pro (100/mo)
 - **Google Sign-In**: Simple authentication with Google OAuth
 - **Watchlist**: Track stocks and generate reports on demand
 - **Multi-Language**: English now, Hindi & Gujarati coming soon
@@ -84,11 +84,12 @@ permabullish-ai/
 
 ## Subscription Tiers
 
-| Tier | Reports | Features |
-|------|---------|----------|
-| Free | 3 (lifetime) | Basic access |
-| Basic | 10/month | Full reports, watchlist |
-| Pro | 50/month | All features |
+| Tier | Reports | Price |
+|------|---------|-------|
+| Guest | 1 (lifetime) | Free |
+| Free | 5 (lifetime) | Free |
+| Basic | 50/month | ₹999/mo or ₹7,499/yr |
+| Pro | 100/month | ₹1,499/mo or ₹9,999/yr |
 | Enterprise | Unlimited | Contact: mail@mayaskara.com |
 
 ## Documentation

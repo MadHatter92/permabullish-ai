@@ -28,8 +28,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 # Usage Limits
-MONTHLY_REPORT_LIMIT = int(os.getenv("MONTHLY_REPORT_LIMIT", "20"))
-ANONYMOUS_REPORT_LIMIT = int(os.getenv("ANONYMOUS_REPORT_LIMIT", "3"))
+MONTHLY_REPORT_LIMIT = int(os.getenv("MONTHLY_REPORT_LIMIT", "50"))
+ANONYMOUS_REPORT_LIMIT = int(os.getenv("ANONYMOUS_REPORT_LIMIT", "1"))  # Guest users get 1 report
 
 # Google OAuth Settings
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
@@ -86,10 +86,11 @@ CASHFREE_ENV = os.getenv("CASHFREE_ENV", "sandbox")  # sandbox or production
 REPORT_FRESHNESS_DAYS = 15
 
 # Subscription Tiers with Pricing (prices in INR)
+# Note: Guest (anonymous) users get 1 report (ANONYMOUS_REPORT_LIMIT above)
 SUBSCRIPTION_TIERS = {
     "free": {
         "name": "Free",
-        "reports_limit": 3,
+        "reports_limit": 5,  # Logged-in free users get 5 reports lifetime
         "is_lifetime": True,  # Free tier is lifetime limit, not monthly
         "price_monthly": 0,
         "price_6months": 0,
@@ -102,24 +103,28 @@ SUBSCRIPTION_TIERS = {
     },
     "basic": {
         "name": "Basic",
-        "reports_limit": 10,
+        "reports_limit": 50,
         "is_lifetime": False,  # Monthly limit
-        "price_monthly": 299,
-        "price_6months": 1499,  # ~17% off
-        "price_yearly": 2499,   # ~30% off
+        "price_monthly": 999,
+        "price_6months": 3999,   # 33% off (₹667/month)
+        "price_yearly": 7499,    # 38% off (₹625/month)
+        "struck_6months": 6000,  # Display struck price
+        "struck_yearly": 12000,
         "features": {
             "stock_research": True,
             "watchlist": True,
         },
-        "description": "For casual investors"
+        "description": "For regular investors"
     },
     "pro": {
         "name": "Pro",
-        "reports_limit": 50,
+        "reports_limit": 100,
         "is_lifetime": False,
-        "price_monthly": 799,
-        "price_6months": 3999,  # ~17% off
-        "price_yearly": 6999,   # ~27% off
+        "price_monthly": 1499,
+        "price_6months": 5999,   # 33% off (₹1,000/month)
+        "price_yearly": 9999,    # 44% off (₹833/month)
+        "struck_6months": 9000,  # Display struck price
+        "struck_yearly": 18000,
         "features": {
             "stock_research": True,
             "watchlist": True,
