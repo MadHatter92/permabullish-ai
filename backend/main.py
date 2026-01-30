@@ -65,7 +65,7 @@ if FRONTEND_DIR.exists():
 @app.on_event("startup")
 async def startup_event():
     """Initialize database tables on application startup."""
-    db.init_db()
+    db.init_database()
 
 
 # Request/Response Models
