@@ -61,6 +61,13 @@ if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on application startup."""
+    db.init_db()
+
+
 # Request/Response Models
 class UserRegister(BaseModel):
     email: str
