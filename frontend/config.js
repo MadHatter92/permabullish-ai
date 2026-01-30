@@ -39,20 +39,38 @@
         API_BASE: API_BASE,
         ENVIRONMENT: ENVIRONMENT,
 
-        // Feature flags (can be expanded based on user subscription)
+        // Feature flags
         features: {
             stockResearch: true,
-            mfAnalytics: false,  // Phase 3
-            pmsTracker: false,   // Phase 2
+            watchlist: true,
         },
 
-        // Report limits (informational, actual limits enforced server-side)
-        limits: {
-            anonymous: 3,
-            free: 20,
-            pro: 100,
-            enterprise: 1000,
-        }
+        // Subscription tiers (informational, actual limits enforced server-side)
+        tiers: {
+            free: {
+                limit: 3,
+                isLifetime: true,  // Lifetime limit for free tier
+                label: 'Free'
+            },
+            basic: {
+                limit: 10,
+                isLifetime: false,  // Monthly limit
+                label: 'Basic'
+            },
+            pro: {
+                limit: 50,
+                isLifetime: false,  // Monthly limit
+                label: 'Pro'
+            },
+            enterprise: {
+                limit: 10000,
+                isLifetime: false,
+                label: 'Enterprise'
+            }
+        },
+
+        // Report freshness threshold (days)
+        reportFreshnessDays: 15
     };
 
     // Log configuration in development

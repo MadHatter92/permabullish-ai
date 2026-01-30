@@ -463,9 +463,12 @@ async def get_report(
             detail="Report not found"
         )
 
-    # If authenticated, link user to report (tracks viewing)
+    # If authenticated, link user to report (tracks viewing) and get user's target price
     if current_user:
         db.link_user_to_report(current_user["id"], report_cache_id)
+        user_target = db.get_user_target_price(current_user["id"], report_cache_id)
+        if user_target:
+            report["user_target_price"] = user_target
 
     return report
 

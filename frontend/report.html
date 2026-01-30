@@ -14,8 +14,11 @@
         }
         #reportFrame {
             width: 100%;
-            height: calc(100vh - 64px);
+            height: calc(100vh - 124px); /* 64px nav + 60px info bar */
             border: none;
+        }
+        #reportFrame.no-info-bar {
+            height: calc(100vh - 64px);
         }
         @media print {
             nav { display: none !important; }
@@ -57,6 +60,12 @@
                         </svg>
                         <span class="hidden sm:inline">Download</span>
                     </button>
+                    <button id="regenerateBtn" onclick="regenerateReport()" class="hidden flex items-center space-x-2 bg-amber-500 hover:bg-amber-600 px-3 sm:px-4 py-2 rounded-lg transition-all" title="Regenerate Report">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span class="hidden sm:inline">Regenerate</span>
+                    </button>
                     <a href="generate.html" class="flex items-center space-x-2 bg-[#e8913a] hover:bg-[#d97316] px-3 sm:px-4 py-2 rounded-lg transition-all" title="New Report">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -67,6 +76,54 @@
             </div>
         </div>
     </nav>
+
+    <!-- Report Info Bar (hidden until report loads) -->
+    <div id="reportInfoBar" class="hidden fixed top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-sm z-40">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <!-- Left: Report Date & Status -->
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <span id="reportDate" class="text-sm text-gray-600">Generated: --</span>
+                    </div>
+                    <span id="outdatedBadge" class="hidden px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
+                        Report outdated
+                    </span>
+                </div>
+
+                <!-- Center: Target Prices -->
+                <div class="flex items-center space-x-6">
+                    <div class="text-center">
+                        <div class="text-xs text-gray-500 uppercase tracking-wide">AI Target</div>
+                        <div id="aiTargetPrice" class="text-lg font-semibold text-[#102a43]">--</div>
+                    </div>
+                    <div class="text-center" id="userTargetContainer">
+                        <div class="text-xs text-gray-500 uppercase tracking-wide">Your Target</div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-gray-400">₹</span>
+                            <input type="number" id="userTargetInput" placeholder="--"
+                                class="w-20 text-lg font-semibold text-[#102a43] border-b border-gray-300 focus:border-[#e8913a] focus:outline-none text-center bg-transparent"
+                                onchange="saveUserTargetPrice()">
+                            <button id="saveTargetBtn" onclick="saveUserTargetPrice()" class="hidden text-[#e8913a] hover:text-[#d97316]" title="Save">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Outdated message -->
+                <div id="outdatedMessage" class="hidden text-sm text-amber-600">
+                    <span class="hidden sm:inline">This report is older than 15 days. </span>
+                    <button onclick="regenerateReport()" class="underline hover:text-amber-700 font-medium">Regenerate now</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Loading State -->
     <div id="loadingState" class="flex items-center justify-center min-h-screen pt-16">
@@ -92,7 +149,9 @@
 
     <!-- Report Container -->
     <div id="reportContainer" class="hidden pt-16">
-        <iframe id="reportFrame" sandbox="allow-scripts allow-same-origin"></iframe>
+        <div id="reportFrameWrapper" class="pt-[60px]">
+            <iframe id="reportFrame" sandbox="allow-scripts allow-same-origin"></iframe>
+        </div>
     </div>
 
     <script src="config.js"></script>
@@ -100,8 +159,10 @@
         // API_BASE is now loaded from config.js
         let currentReport = null;
         let reportHtmlContent = null; // Store HTML for printing
+        let userTargetPrice = null;
         const token = localStorage.getItem('token');
         const isLoggedIn = !!token;
+        const FRESHNESS_DAYS = 15;
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', () => {
@@ -109,6 +170,9 @@
             if (isLoggedIn) {
                 document.getElementById('backLink').href = 'dashboard.html';
                 document.getElementById('backText').textContent = 'Dashboard';
+            } else {
+                // Hide user target price for non-logged-in users
+                document.getElementById('userTargetContainer').classList.add('hidden');
             }
 
             const urlParams = new URLSearchParams(window.location.search);
@@ -130,9 +194,25 @@
             return headers;
         }
 
+        function calculateDaysOld(dateString) {
+            const reportDate = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - reportDate);
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
         async function loadReport(reportId) {
             try {
-                // First get report metadata
+                // Get cached report metadata
                 const metaResponse = await fetch(`${API_BASE}/reports/${reportId}`, {
                     headers: getHeaders()
                 });
@@ -143,6 +223,9 @@
 
                 currentReport = await metaResponse.json();
                 document.getElementById('reportTitle').textContent = `${currentReport.company_name} (${currentReport.ticker})`;
+
+                // Update info bar
+                updateInfoBar();
 
                 // Then get HTML content
                 const htmlResponse = await fetch(`${API_BASE}/reports/${reportId}/html`, {
@@ -161,9 +244,16 @@
                 const blob = new Blob([html], { type: 'text/html' });
                 iframe.src = URL.createObjectURL(blob);
 
-                // Show report
+                // Show report and info bar
                 document.getElementById('loadingState').classList.add('hidden');
                 document.getElementById('reportContainer').classList.remove('hidden');
+                document.getElementById('reportInfoBar').classList.remove('hidden');
+
+                // Load user's target price if logged in
+                if (isLoggedIn && currentReport.user_target_price) {
+                    userTargetPrice = currentReport.user_target_price;
+                    document.getElementById('userTargetInput').value = userTargetPrice;
+                }
 
             } catch (error) {
                 console.error('Failed to load report:', error);
@@ -171,9 +261,84 @@
             }
         }
 
+        function updateInfoBar() {
+            if (!currentReport) return;
+
+            // Set report date
+            const generatedDate = currentReport.generated_at || currentReport.created_at;
+            const daysOld = calculateDaysOld(generatedDate);
+            const isOutdated = daysOld > FRESHNESS_DAYS;
+
+            document.getElementById('reportDate').textContent = `Generated: ${formatDate(generatedDate)} (${daysOld} day${daysOld !== 1 ? 's' : ''} ago)`;
+
+            // Set AI target price
+            if (currentReport.ai_target_price) {
+                document.getElementById('aiTargetPrice').textContent = `₹${parseFloat(currentReport.ai_target_price).toLocaleString('en-IN')}`;
+            }
+
+            // Show outdated indicators
+            if (isOutdated) {
+                document.getElementById('outdatedBadge').classList.remove('hidden');
+                document.getElementById('outdatedMessage').classList.remove('hidden');
+                document.getElementById('regenerateBtn').classList.remove('hidden');
+            }
+        }
+
         function showError() {
             document.getElementById('loadingState').classList.add('hidden');
             document.getElementById('errorState').classList.remove('hidden');
+        }
+
+        function regenerateReport() {
+            if (!currentReport) return;
+
+            const exchange = currentReport.exchange || 'NSE';
+            window.location.href = `generate.html?ticker=${encodeURIComponent(currentReport.ticker)}&exchange=${exchange}&regenerate=true`;
+        }
+
+        async function saveUserTargetPrice() {
+            if (!isLoggedIn) {
+                alert('Please log in to save your target price.');
+                return;
+            }
+
+            const input = document.getElementById('userTargetInput');
+            const newPrice = parseFloat(input.value);
+
+            if (isNaN(newPrice) || newPrice <= 0) {
+                alert('Please enter a valid target price.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/user/target-price`, {
+                    method: 'PUT',
+                    headers: {
+                        ...getHeaders(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        report_cache_id: currentReport.id,
+                        target_price: newPrice
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save target price');
+                }
+
+                userTargetPrice = newPrice;
+
+                // Show brief success feedback
+                input.classList.add('border-green-500');
+                setTimeout(() => {
+                    input.classList.remove('border-green-500');
+                }, 1500);
+
+            } catch (error) {
+                console.error('Failed to save target price:', error);
+                alert('Failed to save target price. Please try again.');
+            }
         }
 
         function printReport() {

@@ -134,13 +134,30 @@
                 </div>
             </div>
 
-            <button id="generateBtn" onclick="generateReport()"
-                class="w-full py-3 px-4 bg-[#e8913a] hover:bg-[#d97316] text-white font-medium rounded-lg transition-all focus:ring-4 focus:ring-[#fdecd4] flex items-center justify-center space-x-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                </svg>
-                <span>Generate AI Research Report</span>
-            </button>
+            <div class="flex space-x-3">
+                <button id="generateBtn" onclick="generateReport()"
+                    class="flex-1 py-3 px-4 bg-[#e8913a] hover:bg-[#d97316] text-white font-medium rounded-lg transition-all focus:ring-4 focus:ring-[#fdecd4] flex items-center justify-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    <span id="generateBtnText">Generate AI Research Report</span>
+                </button>
+                <button id="watchlistBtn" onclick="toggleWatchlist()" title="Add to Watchlist"
+                    class="hidden py-3 px-4 border-2 border-gray-200 hover:border-[#e8913a] text-gray-600 hover:text-[#e8913a] font-medium rounded-lg transition-all">
+                    <svg id="watchlistIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Cached report notice -->
+            <div id="cachedNotice" class="hidden mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p class="text-sm text-blue-800">
+                    <span class="font-medium">Cached report available!</span>
+                    A report for this stock was generated <span id="cachedDate">recently</span>.
+                    <span id="cachedAction"></span>
+                </p>
+            </div>
         </div>
 
         <!-- Generation Progress -->
@@ -192,6 +209,9 @@
         // API_BASE is now loaded from config.js
         let selectedStock = null;
         let searchTimeout = null;
+        let cachedReport = null;
+        let isInWatchlist = false;
+        let forceRegenerate = false;
 
         // Auth state
         const token = localStorage.getItem('token');
@@ -210,6 +230,17 @@
                     results.classList.remove('hidden');
                 }
             });
+
+            // Check URL params for pre-selected stock
+            const urlParams = new URLSearchParams(window.location.search);
+            const ticker = urlParams.get('ticker');
+            const exchange = urlParams.get('exchange') || 'NSE';
+            forceRegenerate = urlParams.get('regenerate') === 'true';
+
+            if (ticker) {
+                // Pre-select stock from URL
+                selectStock(ticker, ticker, '', exchange);
+            }
         });
 
         function updateAuthUI() {
@@ -371,44 +402,145 @@
             }, 300);
         }
 
-        async function selectStock(symbol, name, sector) {
+        async function selectStock(symbol, name, sector, exchange = 'NSE') {
             document.getElementById('searchResults').classList.add('hidden');
-            document.getElementById('searchInput').value = name;
+            document.getElementById('searchInput').value = name || symbol;
 
             // Show loading state
             const preview = document.getElementById('stockPreview');
             preview.classList.remove('hidden');
             document.getElementById('previewTicker').textContent = symbol;
-            document.getElementById('previewName').textContent = name;
-            document.getElementById('previewSector').textContent = sector;
+            document.getElementById('previewName').textContent = name || symbol;
+            document.getElementById('previewSector').textContent = sector || 'Loading...';
             document.getElementById('previewPrice').textContent = 'Loading...';
             document.getElementById('previewMarketCap').textContent = 'Loading...';
             document.getElementById('previewPE').textContent = 'Loading...';
 
+            // Reset cached report state
+            cachedReport = null;
+            document.getElementById('cachedNotice').classList.add('hidden');
+
             try {
-                const response = await apiCall(`/stocks/${symbol}?exchange=NSE`);
+                const response = await apiCall(`/stocks/${symbol}?exchange=${exchange}`);
                 const data = await response.json();
 
                 selectedStock = {
                     symbol: data.symbol || symbol,
-                    name: data.company_name || name,
-                    sector: data.sector || sector
+                    name: data.company_name || name || symbol,
+                    sector: data.sector || sector,
+                    exchange: exchange
                 };
 
                 document.getElementById('previewTicker').textContent = data.symbol || symbol;
-                document.getElementById('previewName').textContent = data.company_name || name;
-                document.getElementById('previewSector').textContent = data.sector || sector;
+                document.getElementById('previewName').textContent = data.company_name || name || symbol;
+                document.getElementById('previewSector').textContent = data.sector || sector || '-';
                 document.getElementById('previewPrice').textContent = `₹${data.current_price?.toLocaleString('en-IN', {maximumFractionDigits: 2}) || '0'}`;
                 document.getElementById('previewMarketCap').textContent = formatMarketCap(data.market_cap);
                 document.getElementById('previewPE').textContent = `${data.pe_ratio?.toFixed(1) || '0'}x`;
 
+                // Check for cached report
+                await checkCachedReport(symbol, exchange);
+
+                // Check watchlist status (only for logged in users)
+                if (isLoggedIn) {
+                    await checkWatchlistStatus(symbol, exchange);
+                }
+
             } catch (error) {
                 console.error('Failed to fetch stock info:', error);
                 // Use basic info
-                selectedStock = { symbol, name, sector };
+                selectedStock = { symbol, name: name || symbol, sector, exchange };
                 document.getElementById('previewPrice').textContent = 'N/A';
                 document.getElementById('previewMarketCap').textContent = 'N/A';
                 document.getElementById('previewPE').textContent = 'N/A';
+            }
+        }
+
+        async function checkCachedReport(ticker, exchange) {
+            try {
+                const response = await apiCall(`/reports/cached/${ticker}?exchange=${exchange}`);
+                if (response.ok) {
+                    cachedReport = await response.json();
+                    const notice = document.getElementById('cachedNotice');
+                    const dateSpan = document.getElementById('cachedDate');
+                    const actionSpan = document.getElementById('cachedAction');
+                    const btnText = document.getElementById('generateBtnText');
+
+                    const generatedDate = new Date(cachedReport.generated_at);
+                    const daysAgo = Math.floor((Date.now() - generatedDate) / (1000 * 60 * 60 * 24));
+
+                    dateSpan.textContent = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`;
+
+                    if (cachedReport.is_outdated || forceRegenerate) {
+                        actionSpan.textContent = 'Click "Regenerate" to get a fresh report (uses 1 credit).';
+                        btnText.textContent = 'Regenerate Report';
+                    } else {
+                        actionSpan.innerHTML = `<a href="report.html?id=${cachedReport.id}" class="underline font-medium">View cached report</a> or generate a fresh one.`;
+                        btnText.textContent = 'Generate Fresh Report';
+                    }
+
+                    notice.classList.remove('hidden');
+                }
+            } catch (e) {
+                // No cached report, that's fine
+                document.getElementById('generateBtnText').textContent = 'Generate AI Research Report';
+            }
+        }
+
+        async function checkWatchlistStatus(ticker, exchange) {
+            const watchlistBtn = document.getElementById('watchlistBtn');
+            watchlistBtn.classList.remove('hidden');
+
+            try {
+                const response = await apiCall(`/watchlist/check/${ticker}?exchange=${exchange}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    isInWatchlist = data.in_watchlist;
+                    updateWatchlistButton();
+                }
+            } catch (e) {
+                console.error('Failed to check watchlist:', e);
+            }
+        }
+
+        function updateWatchlistButton() {
+            const btn = document.getElementById('watchlistBtn');
+            const icon = document.getElementById('watchlistIcon');
+
+            if (isInWatchlist) {
+                btn.classList.add('border-[#e8913a]', 'text-[#e8913a]');
+                btn.classList.remove('border-gray-200', 'text-gray-600');
+                icon.setAttribute('fill', 'currentColor');
+                btn.title = 'Remove from Watchlist';
+            } else {
+                btn.classList.remove('border-[#e8913a]', 'text-[#e8913a]');
+                btn.classList.add('border-gray-200', 'text-gray-600');
+                icon.setAttribute('fill', 'none');
+                btn.title = 'Add to Watchlist';
+            }
+        }
+
+        async function toggleWatchlist() {
+            if (!selectedStock || !isLoggedIn) return;
+
+            try {
+                if (isInWatchlist) {
+                    await apiCall(`/watchlist/${selectedStock.symbol}?exchange=${selectedStock.exchange}`, { method: 'DELETE' });
+                    isInWatchlist = false;
+                } else {
+                    await apiCall('/watchlist', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            ticker: selectedStock.symbol,
+                            exchange: selectedStock.exchange,
+                            company_name: selectedStock.name
+                        })
+                    });
+                    isInWatchlist = true;
+                }
+                updateWatchlistButton();
+            } catch (e) {
+                console.error('Failed to update watchlist:', e);
             }
         }
 
@@ -450,7 +582,8 @@
                     method: 'POST',
                     body: JSON.stringify({
                         symbol: selectedStock.symbol,
-                        exchange: 'NSE'
+                        exchange: selectedStock.exchange || 'NSE',
+                        force_regenerate: forceRegenerate || (cachedReport && !cachedReport.is_outdated)
                     })
                 });
 
@@ -463,11 +596,16 @@
 
                 document.getElementById('step3').classList.remove('text-gray-400');
                 document.getElementById('step3').classList.add('text-green-600');
-                document.getElementById('progressText').textContent = 'Report ready!';
+
+                if (result.generated_new) {
+                    document.getElementById('progressText').textContent = 'Fresh report generated!';
+                } else {
+                    document.getElementById('progressText').textContent = 'Using cached report!';
+                }
 
                 // Redirect to report view
                 setTimeout(() => {
-                    window.location.href = `report.html?id=${result.report_id}`;
+                    window.location.href = `report.html?id=${result.report_cache_id}`;
                 }, 1000);
 
             } catch (error) {

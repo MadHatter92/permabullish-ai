@@ -1031,6 +1031,21 @@ def get_user_report_history(user_id: int, limit: int = 50) -> List[dict]:
         return results
 
 
+def get_user_target_price(user_id: int, report_cache_id: int) -> Optional[float]:
+    """Get user's target price for a specific report."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"""
+            SELECT user_target_price FROM user_reports
+            WHERE user_id = {p} AND report_cache_id = {p}
+        """, (user_id, report_cache_id))
+        row = cursor.fetchone()
+        if row and row[0]:
+            return float(row[0])
+        return None
+
+
 def update_user_target_price(user_id: int, report_cache_id: int, target_price: float) -> bool:
     """Update user's target price for a stock."""
     with get_db_connection() as conn:

@@ -18,6 +18,14 @@
         .font-display {
             font-family: 'DM Serif Display', Georgia, serif;
         }
+        .tab-active {
+            border-bottom: 2px solid #e8913a;
+            color: #1e3a5f;
+        }
+        .tab-inactive {
+            border-bottom: 2px solid transparent;
+            color: #6b7280;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -51,7 +59,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-gray-500">Reports Used</p>
-                        <p class="text-3xl font-bold text-[#1e3a5f]"><span id="reportsUsed">0</span> / <span id="reportsLimit">20</span></p>
+                        <p class="text-3xl font-bold text-[#1e3a5f]"><span id="reportsUsed">0</span> / <span id="reportsLimit">3</span></p>
                     </div>
                     <div class="w-12 h-12 bg-[#fdecd4] rounded-full flex items-center justify-center">
                         <svg class="w-6 h-6 text-[#e8913a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,7 +78,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-gray-500">Reports Remaining</p>
-                        <p class="text-3xl font-bold text-green-600" id="reportsRemaining">20</p>
+                        <p class="text-3xl font-bold text-green-600" id="reportsRemaining">3</p>
                     </div>
                     <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                         <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,10 +98,26 @@
             </div>
         </div>
 
-        <!-- Recent Reports -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div class="p-6 border-b border-gray-100">
+        <!-- Tabs -->
+        <div class="border-b border-gray-200 mb-6">
+            <nav class="flex space-x-8">
+                <button onclick="showTab('reports')" id="tab-reports" class="tab-active pb-3 px-1 text-sm font-medium transition-all">
+                    Report History
+                </button>
+                <button onclick="showTab('watchlist')" id="tab-watchlist" class="tab-inactive pb-3 px-1 text-sm font-medium transition-all hover:text-gray-700">
+                    Watchlist
+                </button>
+            </nav>
+        </div>
+
+        <!-- Report History Tab -->
+        <div id="panel-reports" class="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center">
                 <h2 class="text-lg font-semibold text-gray-900">Recent Reports</h2>
+                <div class="flex items-center text-sm text-gray-500">
+                    <span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>
+                    Outdated (&gt;15 days)
+                </div>
             </div>
 
             <div id="reportsLoading" class="p-8 text-center">
@@ -116,40 +140,63 @@
                 <!-- Reports will be inserted here -->
             </div>
         </div>
+
+        <!-- Watchlist Tab -->
+        <div id="panel-watchlist" class="hidden bg-white rounded-xl shadow-sm border border-gray-100">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-900">My Watchlist</h2>
+                <a href="generate.html" class="text-sm text-[#e8913a] hover:underline">+ Add Stock</a>
+            </div>
+
+            <div id="watchlistLoading" class="p-8 text-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#e8913a] mx-auto"></div>
+                <p class="text-gray-500 mt-2">Loading watchlist...</p>
+            </div>
+
+            <div id="watchlistEmpty" class="hidden p-8 text-center">
+                <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                </svg>
+                <h3 class="text-lg font-medium text-gray-900 mb-1">Your watchlist is empty</h3>
+                <p class="text-gray-500 mb-4">Add stocks to track and generate reports</p>
+                <a href="generate.html" class="inline-block bg-[#e8913a] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#d97316] transition-all">
+                    Search Stocks
+                </a>
+            </div>
+
+            <div id="watchlistList" class="hidden divide-y divide-gray-100">
+                <!-- Watchlist items will be inserted here -->
+            </div>
+        </div>
     </main>
 
     <script src="config.js"></script>
     <script>
-        // API_BASE is now loaded from config.js
         let token = localStorage.getItem('token');
+        let currentTab = 'reports';
 
         // Check for OAuth callback token in URL
         const urlParams = new URLSearchParams(window.location.search);
         const callbackToken = urlParams.get('token');
 
         if (callbackToken) {
-            // Store token from OAuth callback
             token = callbackToken;
             localStorage.setItem('token', callbackToken);
 
-            // Fetch user info and store it
             fetch(`${API_BASE}/auth/me`, {
                 headers: { 'Authorization': `Bearer ${callbackToken}` }
             })
             .then(res => res.json())
             .then(user => {
                 localStorage.setItem('user', JSON.stringify(user));
-                // Remove token from URL and reload
                 window.history.replaceState({}, document.title, 'dashboard.html');
                 location.reload();
             })
             .catch(() => {
-                // Clear URL param anyway
                 window.history.replaceState({}, document.title, 'dashboard.html');
             });
         }
 
-        // Check authentication
         document.addEventListener('DOMContentLoaded', () => {
             if (!token) {
                 window.location.href = 'index.html';
@@ -159,7 +206,6 @@
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             document.getElementById('userName').textContent = user.full_name || user.email || '';
 
-            // Show avatar if available
             if (user.avatar_url) {
                 const avatarEl = document.getElementById('userAvatar');
                 avatarEl.src = user.avatar_url;
@@ -174,6 +220,23 @@
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = 'index.html';
+        }
+
+        function showTab(tab) {
+            currentTab = tab;
+
+            // Update tab styles
+            document.getElementById('tab-reports').className = tab === 'reports' ? 'tab-active pb-3 px-1 text-sm font-medium transition-all' : 'tab-inactive pb-3 px-1 text-sm font-medium transition-all hover:text-gray-700';
+            document.getElementById('tab-watchlist').className = tab === 'watchlist' ? 'tab-active pb-3 px-1 text-sm font-medium transition-all' : 'tab-inactive pb-3 px-1 text-sm font-medium transition-all hover:text-gray-700';
+
+            // Show/hide panels
+            document.getElementById('panel-reports').classList.toggle('hidden', tab !== 'reports');
+            document.getElementById('panel-watchlist').classList.toggle('hidden', tab !== 'watchlist');
+
+            // Load data for tab
+            if (tab === 'watchlist') {
+                loadWatchlist();
+            }
         }
 
         async function apiCall(endpoint, options = {}) {
@@ -233,28 +296,114 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-4">
                                 <div class="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white ${getRecommendationColor(report.recommendation)}">
-                                    ${report.recommendation.charAt(0)}
+                                    ${report.recommendation?.charAt(0) || 'H'}
                                 </div>
                                 <div>
-                                    <h3 class="font-medium text-gray-900">${report.company_name}</h3>
-                                    <p class="text-sm text-gray-500">${report.ticker} | ${formatDate(report.created_at)}</p>
+                                    <div class="flex items-center space-x-2">
+                                        <h3 class="font-medium text-gray-900">${report.company_name}</h3>
+                                        ${report.is_outdated ? '<span class="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">Outdated</span>' : ''}
+                                    </div>
+                                    <p class="text-sm text-gray-500">${report.ticker} | Generated ${formatDate(report.generated_at)}${report.days_old ? ` (${report.days_old} days ago)` : ''}</p>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-4">
-                                <div class="text-right">
-                                    <p class="font-medium text-gray-900">₹${report.target_price?.toFixed(0) || '-'}</p>
-                                    <p class="text-sm text-gray-500">Target</p>
+                                <div class="text-right hidden sm:block">
+                                    <p class="font-medium text-gray-900">₹${report.ai_target_price?.toFixed(0) || '-'}</p>
+                                    <p class="text-sm text-gray-500">AI Target</p>
                                 </div>
+                                ${report.user_target_price ? `
+                                <div class="text-right hidden sm:block">
+                                    <p class="font-medium text-[#e8913a]">₹${report.user_target_price?.toFixed(0)}</p>
+                                    <p class="text-sm text-gray-500">Your Target</p>
+                                </div>
+                                ` : ''}
                                 <div class="flex space-x-2">
-                                    <a href="report.html?id=${report.id}" class="p-2 text-[#e8913a] hover:bg-[#fdecd4] rounded-lg transition-all" title="View Report">
+                                    <a href="report.html?id=${report.report_cache_id}" class="p-2 text-[#e8913a] hover:bg-[#fdecd4] rounded-lg transition-all" title="View Report">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                         </svg>
                                     </a>
-                                    <button onclick="deleteReport(${report.id})" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete Report">
+                                    ${report.is_outdated ? `
+                                    <a href="generate.html?ticker=${report.ticker}&exchange=${report.exchange}&regenerate=true" class="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all" title="Regenerate Report">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                        </svg>
+                                    </a>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                listEl.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Failed to load reports:', error);
+                loadingEl.innerHTML = '<p class="text-red-500 p-4">Failed to load reports</p>';
+            }
+        }
+
+        async function loadWatchlist() {
+            const loadingEl = document.getElementById('watchlistLoading');
+            const emptyEl = document.getElementById('watchlistEmpty');
+            const listEl = document.getElementById('watchlistList');
+
+            loadingEl.classList.remove('hidden');
+            emptyEl.classList.add('hidden');
+            listEl.classList.add('hidden');
+
+            try {
+                const response = await apiCall('/watchlist');
+                const watchlist = await response.json();
+
+                loadingEl.classList.add('hidden');
+
+                if (watchlist.length === 0) {
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                listEl.innerHTML = watchlist.map(item => `
+                    <div class="p-4 hover:bg-gray-50 transition-all">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 rounded-lg flex items-center justify-center font-bold ${item.has_report ? getRecommendationColor(item.recommendation) + ' text-white' : 'bg-gray-200 text-gray-500'}">
+                                    ${item.has_report ? (item.recommendation?.charAt(0) || '?') : item.ticker?.charAt(0) || '?'}
+                                </div>
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <h3 class="font-medium text-gray-900">${item.company_name || item.ticker}</h3>
+                                        ${!item.has_report ? '<span class="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">No report</span>' : ''}
+                                        ${item.has_report && item.is_outdated ? '<span class="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">Outdated</span>' : ''}
+                                    </div>
+                                    <p class="text-sm text-gray-500">${item.ticker} · ${item.exchange} | Added ${formatDate(item.added_at)}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                ${item.has_report ? `
+                                <div class="text-right hidden sm:block">
+                                    <p class="font-medium text-gray-900">₹${item.ai_target_price?.toFixed(0) || '-'}</p>
+                                    <p class="text-sm text-gray-500">AI Target</p>
+                                </div>
+                                ` : ''}
+                                <div class="flex space-x-2">
+                                    ${item.has_report ? `
+                                    <a href="report.html?id=${item.report_cache_id}" class="p-2 text-[#e8913a] hover:bg-[#fdecd4] rounded-lg transition-all" title="View Report">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    </a>
+                                    ` : `
+                                    <a href="generate.html?ticker=${item.ticker}&exchange=${item.exchange}" class="px-3 py-1.5 text-sm bg-[#e8913a] text-white rounded-lg hover:bg-[#d97316] transition-all" title="Generate Report">
+                                        Generate
+                                    </a>
+                                    `}
+                                    <button onclick="removeFromWatchlist('${item.ticker}', '${item.exchange}')" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Remove from Watchlist">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                         </svg>
                                     </button>
                                 </div>
@@ -266,22 +415,22 @@
                 listEl.classList.remove('hidden');
 
             } catch (error) {
-                console.error('Failed to load reports:', error);
-                loadingEl.innerHTML = '<p class="text-red-500">Failed to load reports</p>';
+                console.error('Failed to load watchlist:', error);
+                loadingEl.innerHTML = '<p class="text-red-500 p-4">Failed to load watchlist</p>';
             }
         }
 
-        async function deleteReport(reportId) {
-            if (!confirm('Are you sure you want to delete this report?')) {
+        async function removeFromWatchlist(ticker, exchange) {
+            if (!confirm(`Remove ${ticker} from watchlist?`)) {
                 return;
             }
 
             try {
-                await apiCall(`/reports/${reportId}`, { method: 'DELETE' });
-                loadReports();
+                await apiCall(`/watchlist/${ticker}?exchange=${exchange}`, { method: 'DELETE' });
+                loadWatchlist();
             } catch (error) {
-                console.error('Failed to delete report:', error);
-                alert('Failed to delete report');
+                console.error('Failed to remove from watchlist:', error);
+                alert('Failed to remove from watchlist');
             }
         }
 
@@ -297,6 +446,7 @@
         }
 
         function formatDate(dateStr) {
+            if (!dateStr) return '-';
             const date = new Date(dateStr);
             return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
         }
