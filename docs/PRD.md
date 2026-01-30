@@ -1,9 +1,9 @@
 # Permabullish - AI Stock Researcher
 ## Product Requirements Document (PRD)
 
-**Version:** 2.0
-**Date:** January 30, 2025
-**Status:** Active Development
+**Version:** 2.1
+**Date:** January 30, 2026
+**Status:** Phase 1 Complete
 
 ---
 
@@ -15,7 +15,63 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ---
 
-## 2. Product Vision
+## 2. Implementation Status
+
+### Phase 0: Repository Cleanup ✅ (Completed Jan 30, 2026)
+- Archived MF Analytics, PMS Tracker, and Landing page code
+- Updated render.yaml to remove obsolete services
+- Focused repository on single product: AI Stock Researcher
+
+### Phase 1: Core Product Enhancement ✅ (Completed Jan 30, 2026)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Report Caching System | ✅ Done | Shared cache across all users |
+| 15-day Freshness Logic | ✅ Done | Auto-regenerate for first-time viewers |
+| Regenerate Button | ✅ Done | For outdated reports (>15 days) |
+| Watchlist Feature | ✅ Done | Add/remove stocks, CRUD API |
+| User Target Price | ✅ Done | Editable per-report target |
+| Dashboard Tabs | ✅ Done | Reports & Watchlist views |
+| Report Info Bar | ✅ Done | Shows date, AI target, user target |
+| Database Init on Startup | ✅ Done | Auto-creates tables |
+| PostgreSQL Compatibility | ✅ Done | Fixed row access patterns |
+| CORS Configuration | ✅ Done | Production URLs always included |
+| Admin Reset Endpoint | ✅ Done | For testing: `/api/admin/reset-usage` |
+
+**Backend Changes:**
+- `database.py`: Added `report_cache`, `user_reports`, `watchlist` tables
+- `database.py`: Added caching functions, watchlist CRUD, user target price
+- `main.py`: Updated report generation to use caching
+- `main.py`: Added watchlist endpoints, user target price endpoint
+- `config.py`: Updated subscription tiers, CORS origins
+
+**Frontend Changes:**
+- `dashboard.html`: Tabs for Reports/Watchlist, freshness indicators
+- `generate.html`: Watchlist toggle, cached report notice, URL params
+- `report.html`: Info bar with date, targets, regenerate button
+- `config.js`: Updated tier limits, added freshness config
+
+### Phase 2: Subscription System (Pending)
+- Enforce tier limits in UI
+- Subscription management page
+- Upgrade prompts and flows
+
+### Phase 3: Payment Integration (Pending)
+- Cashfree integration
+- Payment webhooks
+- Subscription activation
+
+### Phase 4: Data Pipeline (Pending)
+- Screener.in scraper
+- Monthly data refresh cron
+
+### Phase 5: Pricing Analysis (Pending)
+- Token consumption tracking
+- Pricing model finalization
+
+---
+
+## 3. Product Vision
 
 **Mission:** Democratize professional equity research for Indian retail investors.
 
@@ -23,7 +79,7 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ---
 
-## 3. Target Users
+## 4. Target Users
 
 - **Primary:** Indian retail investors researching NSE/BSE stocks
 - **Secondary:** Financial advisors, wealth managers, and investment enthusiasts
@@ -31,9 +87,9 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ---
 
-## 4. Core Features
+## 5. Core Features
 
-### 4.1 Stock Research Reports
+### 5.1 Stock Research Reports
 
 **Report Contents:**
 - Investment recommendation (STRONG BUY / BUY / HOLD / SELL / STRONG SELL)
@@ -59,7 +115,7 @@ The product operates on a subscription model with tiered access, allowing users 
 - Phase 1: English only
 - Phase 2: Hindi, Gujarati (dropdown selection)
 
-### 4.2 User Dashboard
+### 5.2 User Dashboard
 
 **Key Elements:**
 | Element | Description |
@@ -71,14 +127,14 @@ The product operates on a subscription model with tiered access, allowing users 
 | Watchlist | Stocks being tracked |
 | Report History | Previously generated/viewed reports |
 
-### 4.3 Watchlist
+### 5.3 Watchlist
 
 - Users can save stocks to track
 - Visual indicator for stocks without reports
 - One-click report generation from watchlist
 - Sorted by date added (newest first)
 
-### 4.4 Report History
+### 5.4 Report History
 
 - List of all reports generated/viewed by user
 - Shows: Stock name, ticker, generation date, recommendation
@@ -87,9 +143,9 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ---
 
-## 5. Subscription Tiers
+## 6. Subscription Tiers
 
-### 5.1 Tier Structure
+### 6.1 Tier Structure
 
 | Tier | Reports | Price (TBD) | Features |
 |------|---------|-------------|----------|
@@ -100,7 +156,7 @@ The product operates on a subscription model with tiered access, allowing users 
 
 **Note:** Pricing will be calculated based on token consumption analysis (see Roadmap Phase 5).
 
-### 5.2 Payment Options
+### 6.2 Payment Options
 
 | Period | Discount | Billing |
 |--------|----------|---------|
@@ -112,7 +168,7 @@ The product operates on a subscription model with tiered access, allowing users 
 - Initial implementation: Upfront payments only
 - Future: Recurring subscription handling
 
-### 5.3 Quota Management
+### 6.3 Quota Management
 
 - Usage resets on the 1st of each month (for paid tiers)
 - Free tier: Lifetime limit of 3 reports
@@ -121,9 +177,9 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ---
 
-## 6. Data Sources
+## 7. Data Sources
 
-### 6.1 Stock Data
+### 7.1 Stock Data
 
 | Source | Data Type | Frequency |
 |--------|-----------|-----------|
@@ -131,7 +187,7 @@ The product operates on a subscription model with tiered access, allowing users 
 | **Yahoo Finance** | Real-time prices, basic metrics | On-demand |
 | **NSE/BSE** | Corporate actions, announcements | As needed |
 
-### 6.2 AI Analysis
+### 7.2 AI Analysis
 
 - **Model:** Claude (Anthropic API)
 - **Purpose:** Generate opinionated investment analysis
@@ -140,15 +196,15 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ---
 
-## 7. Authentication & Security
+## 8. Authentication & Security
 
-### 7.1 Authentication
+### 8.1 Authentication
 
 - **Primary:** Google OAuth 2.0
 - **Session:** JWT tokens (7-day expiry)
 - **No email/password:** Google sign-in only for simplicity
 
-### 7.2 Security Considerations
+### 8.2 Security Considerations
 
 - All API endpoints require authentication (except health check)
 - Rate limiting on report generation
@@ -157,9 +213,9 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ---
 
-## 8. Technical Architecture
+## 9. Technical Architecture
 
-### 8.1 Stack
+### 9.1 Stack
 
 | Layer | Technology |
 |-------|------------|
@@ -171,7 +227,7 @@ The product operates on a subscription model with tiered access, allowing users 
 | **Payments** | Cashfree |
 | **Hosting** | Render |
 
-### 8.2 API Endpoints
+### 9.2 API Endpoints
 
 **Authentication:**
 - `GET /api/auth/google/login` - Initiate Google OAuth
@@ -210,7 +266,7 @@ The product operates on a subscription model with tiered access, allowing users 
 **Health:**
 - `GET /api/health` - Service health check
 
-### 8.3 Database Schema
+### 9.3 Database Schema
 
 ```sql
 -- Users
@@ -297,9 +353,9 @@ CREATE TABLE screener_data (
 
 ---
 
-## 9. Design System
+## 10. Design System
 
-### 9.1 Brand Colors
+### 10.1 Brand Colors
 
 **Primary Palette:**
 | Name | Hex | Usage |
@@ -317,7 +373,7 @@ CREATE TABLE screener_data (
 | Navy 300 | `#9fb3c8` | Secondary text |
 | Navy 400 | `#829ab1` | Muted text |
 
-### 9.2 Typography
+### 10.2 Typography
 
 | Style | Font | Weight | Size |
 |-------|------|--------|------|
@@ -326,7 +382,7 @@ CREATE TABLE screener_data (
 | Body | DM Sans / Inter | Regular | 14-16px |
 | Caption | Inter | Regular | 12px |
 
-### 9.3 Component Patterns
+### 10.3 Component Patterns
 
 **Cards:**
 ```css
@@ -354,7 +410,7 @@ hover: background #334e68;
 
 ---
 
-## 10. Future Considerations (Not in Initial Scope)
+## 11. Future Considerations (Not in Initial Scope)
 
 - **Chat with AI:** Ask follow-up questions about a stock
 - **Portfolio tracking:** Track holdings and performance
@@ -365,7 +421,7 @@ hover: background #334e68;
 
 ---
 
-## 11. Success Metrics
+## 12. Success Metrics
 
 | Metric | Target |
 |--------|--------|
@@ -377,7 +433,7 @@ hover: background #334e68;
 
 ---
 
-## 12. Contact
+## 13. Contact
 
 **Product:** Permabullish
 **Enterprise inquiries:** mail@mayaskara.com

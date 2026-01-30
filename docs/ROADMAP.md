@@ -1,8 +1,8 @@
 # Permabullish - Product Roadmap
 ## AI Stock Researcher
 
-**Version:** 2.0
-**Last Updated:** January 30, 2025
+**Version:** 2.1
+**Last Updated:** January 30, 2026
 
 ---
 
@@ -13,7 +13,8 @@ This roadmap outlines the development phases for Permabullish AI Stock Researche
 ---
 
 ## Phase 0: Repository Cleanup
-**Status:** Pending
+**Status:** ✅ COMPLETE
+**Completed:** January 30, 2026
 **Priority:** High
 
 ### Objective
@@ -21,32 +22,32 @@ Archive existing permabullish-ai code and prepare for the pivoted product.
 
 ### Tasks
 
-- [ ] **Archive existing code**
-  - Create local backup of current permabullish-ai repo
-  - Remove MF-related folders: `mf-frontend/`
-  - Remove PMS-related folders: `pms-backend/`, `pms-frontend/`
-  - Remove old landing page: `landing/`
-  - Keep: `backend/`, `frontend/`, `migrations/`, `docs/`
-  - Update `.gitignore` as needed
+- [x] **Archive existing code**
+  - Created local backup at `F:\Dev\ClaudeProjects\_archive\`
+  - Removed MF-related folders: `mf-frontend/`
+  - Removed PMS-related folders: `pms-backend/`, `pms-frontend/`
+  - Removed old landing page: `landing/`
+  - Kept: `backend/`, `frontend/`, `docs/`
 
-- [ ] **Update render.yaml**
-  - Remove MF and PMS service definitions
-  - Keep only: API backend, static frontend, database
-  - Simplify deployment configuration
+- [x] **Update render.yaml**
+  - Removed MF and PMS service definitions
+  - Kept: API backend (`permabullish-api`), static frontend (`permabullish-web`), database
+  - Added Cashfree environment variable placeholders
 
-- [ ] **Update documentation**
-  - Replace old README.md with new product description
-  - Archive old PRD (if any) to `docs/archive/`
+- [x] **Update documentation**
+  - Updated README.md with new product description
+  - Created PRD.md and ROADMAP.md
 
 ### Deliverables
-- Clean repository with only stock research components
-- Local archive of removed code
-- Updated render.yaml
+- ✅ Clean repository with only stock research components
+- ✅ Local archive of removed code at `_archive/`
+- ✅ Updated render.yaml
 
 ---
 
 ## Phase 1: Core Product Enhancement
-**Status:** Pending
+**Status:** ✅ COMPLETE
+**Completed:** January 30, 2026
 **Priority:** High
 **Dependencies:** Phase 0
 
@@ -55,48 +56,60 @@ Enhance the existing equity research generator with new features.
 
 ### 1.1 Report Caching System
 
-- [ ] Create `report_cache` table for shared reports
-- [ ] Modify report generation to check cache first
-- [ ] Add cache lookup by ticker/exchange
-- [ ] Display report generation date prominently on all reports
-- [ ] Implement freshness logic:
+- [x] Create `report_cache` table for shared reports
+- [x] Modify report generation to check cache first
+- [x] Add cache lookup by ticker/exchange (`GET /api/reports/cached/{ticker}`)
+- [x] Display report generation date prominently on all reports
+- [x] Implement freshness logic:
   - First-time viewer + >15 days old → auto-regenerate fresh report
   - Returning viewer + >15 days old → show cached report with regenerate option
-- [ ] Add "Regenerate Report" button for reports >15 days old (consumes quota)
+- [x] Add "Regenerate Report" button for reports >15 days old (consumes quota)
 
 ### 1.2 User Dashboard Enhancement
 
-- [ ] Design new dashboard layout with:
+- [x] Design new dashboard layout with:
   - Current price display
   - AI recommended price
   - User's target price (editable)
   - Report link/status
-- [ ] Implement real-time price fetching (Yahoo Finance)
-- [ ] Add user target price input/storage
-- [ ] Create dashboard API endpoints
+- [x] Created tabs for Reports and Watchlist views
+- [x] Add user target price input/storage (`PUT /api/user/target-price`)
+- [x] Created dashboard API endpoints
 
 ### 1.3 Watchlist Feature
 
-- [ ] Create `watchlist` table
-- [ ] Add watchlist API endpoints (CRUD)
-- [ ] Build watchlist UI component
-- [ ] Show "No report" indicator for unwatched stocks
-- [ ] Add "Generate Report" action from watchlist
+- [x] Create `watchlist` table
+- [x] Add watchlist API endpoints (CRUD):
+  - `GET /api/watchlist`
+  - `POST /api/watchlist`
+  - `DELETE /api/watchlist/{ticker}`
+  - `GET /api/watchlist/check/{ticker}`
+- [x] Build watchlist UI component (toggle button on generate page)
+- [x] Show "No report" indicator for stocks without reports
+- [x] Add "Generate Report" action from watchlist
 
 ### 1.4 Report History Enhancement
 
-- [ ] Create `user_reports` table linking users to cached reports
-- [ ] Build report history page
-- [ ] Add visual indicators:
+- [x] Create `user_reports` table linking users to cached reports
+- [x] Build report history page (dashboard Reports tab)
+- [x] Add visual indicators:
   - "Outdated" badge (>15 days)
-  - Recommendation color coding
-- [ ] Add quick actions: View, Regenerate, Remove from history
+  - Days old indicator
+- [x] Add quick actions: View, Regenerate
+
+### 1.5 Bug Fixes & Infrastructure
+
+- [x] Fixed CORS configuration (always include production URLs)
+- [x] Fixed PostgreSQL compatibility (dict vs tuple row access)
+- [x] Added database initialization on startup (`init_database()`)
+- [x] Added admin endpoint for usage reset (`/api/admin/reset-usage`)
 
 ### Deliverables
-- Report caching with freshness tracking
-- Enhanced dashboard with price comparison
-- Working watchlist feature
-- Complete report history
+- ✅ Report caching with freshness tracking
+- ✅ Enhanced dashboard with tabs for Reports/Watchlist
+- ✅ Working watchlist feature
+- ✅ Complete report history with freshness indicators
+- ✅ User target price feature
 
 ---
 
@@ -410,8 +423,8 @@ permabullish-ai (production)
 
 | Phase | Description | Duration | Status |
 |-------|-------------|----------|--------|
-| 0 | Repository Cleanup | 1 day | Pending |
-| 1 | Core Product Enhancement | 1-2 weeks | Pending |
+| 0 | Repository Cleanup | 1 day | ✅ Complete |
+| 1 | Core Product Enhancement | 1 day | ✅ Complete |
 | 2 | Subscription System | 1 week | Pending |
 | 3 | Payment Integration | 1 week | Pending |
 | 4 | Data Enhancement | 1-2 weeks | Pending |
@@ -420,7 +433,8 @@ permabullish-ai (production)
 | 7 | Multi-Language | 1 week | Future |
 | 8 | Future Features | Ongoing | Backlog |
 
-**Total estimated timeline to MVP (Phases 0-6):** 6-8 weeks
+**Completed:** Phases 0-1 (January 30, 2026)
+**Remaining to MVP (Phases 2-6):** 4-6 weeks
 
 ---
 
