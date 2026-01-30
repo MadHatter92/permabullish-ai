@@ -373,7 +373,10 @@
             }
         }
 
-        // Check subscription status and hide Free tier for logged-in users
+        // Store user subscription status
+        let userSubscription = null;
+
+        // Check subscription status and update UI accordingly
         async function checkUserStatus() {
             if (!token) return;
 
@@ -395,17 +398,33 @@
                 });
 
                 if (response.ok) {
-                    const status = await response.json();
-                    const tier = status.tier || 'free';
+                    userSubscription = await response.json();
+                    const tier = userSubscription.tier || 'free';
+                    const isExpired = userSubscription.is_expired;
 
-                    // Update button text for current plan (for paying users)
-                    if (tier !== 'free') {
+                    // For active paid subscriptions
+                    if (tier !== 'free' && !isExpired) {
+                        // Mark current plan
                         const currentTierBtn = document.querySelector(`[onclick="selectPlan('${tier}')"]`);
                         if (currentTierBtn) {
                             currentTierBtn.textContent = 'Current Plan';
                             currentTierBtn.classList.remove('bg-[#243b53]', 'bg-[#e8913a]');
                             currentTierBtn.classList.add('bg-green-600', 'cursor-default');
                             currentTierBtn.onclick = null;
+                        }
+
+                        // Disable downgrade options (Pro users can't buy Basic)
+                        if (tier === 'pro') {
+                            const basicBtn = document.querySelector(`[onclick="selectPlan('basic')"]`);
+                            if (basicBtn) {
+                                basicBtn.textContent = 'Downgrade N/A';
+                                basicBtn.classList.remove('bg-[#243b53]', 'hover:bg-[#334e68]');
+                                basicBtn.classList.add('bg-gray-500', 'cursor-not-allowed', 'opacity-50');
+                                basicBtn.onclick = (e) => {
+                                    e.preventDefault();
+                                    alert('Downgrades are not allowed while you have an active Pro subscription.');
+                                };
+                            }
                         }
                     }
                 }

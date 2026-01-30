@@ -720,6 +720,40 @@ async def initiate_checkout(
             "email": "mail@mayaskara.com"
         }
 
+    # Check for downgrade attempts (not allowed for active subscriptions)
+    current_status = db.get_subscription_status(current_user["id"])
+    if current_status and not current_status.get("is_expired", True):
+        current_tier = current_status.get("tier", "free")
+
+        # Tier hierarchy: free=0, basic=1, pro=2
+        tier_rank = {"free": 0, "basic": 1, "pro": 2, "enterprise": 3}
+        current_rank = tier_rank.get(current_tier, 0)
+        target_rank = tier_rank.get(tier, 0)
+
+        # Block tier downgrade
+        if target_rank < current_rank:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Downgrades are not allowed. You currently have {current_status.get('tier_name', current_tier)} plan."
+            )
+
+        # Block period downgrade for same tier (if significant time remaining)
+        if target_rank == current_rank and current_tier != "free":
+            # Check remaining months
+            expires_at = current_status.get("expires_at")
+            if expires_at:
+                from datetime import datetime
+                if isinstance(expires_at, str):
+                    expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00').replace(' ', 'T'))
+                months_remaining = (expires_at.replace(tzinfo=None) - datetime.now()).days / 30
+
+                # Block if buying shorter period than remaining time
+                if period < months_remaining:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"You have {int(months_remaining)} months remaining on your {current_status.get('tier_name')} plan. You can renew or upgrade when closer to expiry."
+                    )
+
     # Determine price based on period
     if period == 1:
         amount = tier_config.get("price_monthly", 0)
