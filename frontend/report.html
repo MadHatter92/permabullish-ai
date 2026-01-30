@@ -73,19 +73,50 @@
 
     <!-- Report Info Bar (hidden until report loads) -->
     <div id="reportInfoBar" class="hidden fixed top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-sm z-40">
-        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="max-w-full mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
+            <!-- Mobile Layout: 2 rows -->
+            <div class="flex flex-col gap-2 sm:hidden">
+                <!-- Row 1: Date + Targets -->
+                <div class="flex items-center justify-between">
+                    <span id="reportDateMobile" class="text-xs text-gray-500">--</span>
+                    <div class="flex items-center gap-4">
+                        <div class="text-center">
+                            <div class="text-[10px] text-gray-400 uppercase">AI Target</div>
+                            <div id="aiTargetPriceMobile" class="text-sm font-semibold text-[#102a43]">--</div>
+                        </div>
+                        <div class="text-center" id="userTargetContainerMobile">
+                            <div class="text-[10px] text-gray-400 uppercase">Your Target</div>
+                            <input type="number" id="userTargetInputMobile" placeholder="--"
+                                class="w-14 text-sm font-semibold text-[#102a43] border-b border-gray-300 focus:border-[#e8913a] focus:outline-none text-center bg-transparent"
+                                onchange="saveUserTargetPrice()">
+                        </div>
+                    </div>
+                </div>
+                <!-- Row 2: Badges + Actions -->
+                <div class="flex items-center justify-between">
+                    <span id="outdatedBadgeMobile" class="hidden px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">Outdated</span>
+                    <div class="flex items-center gap-2 ml-auto">
+                        <button id="watchlistBtnMobile" onclick="toggleWatchlist()" class="hidden p-1.5 rounded-lg border border-gray-300 transition-all">
+                            <svg id="watchlistIconMobile" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                            </svg>
+                        </button>
+                        <button id="outdatedBtnMobile" onclick="regenerateReport()" class="hidden text-xs text-amber-600 underline">Regenerate</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Layout -->
+            <div class="hidden sm:flex items-center justify-between gap-4">
                 <!-- Left: Report Date & Status -->
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-3">
                     <div class="flex items-center space-x-2">
                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                         </svg>
                         <span id="reportDate" class="text-sm text-gray-600">Generated: --</span>
                     </div>
-                    <span id="outdatedBadge" class="hidden px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
-                        Report outdated
-                    </span>
+                    <span id="outdatedBadge" class="hidden px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">Report outdated</span>
                 </div>
 
                 <!-- Center: Target Prices -->
@@ -101,29 +132,21 @@
                             <input type="number" id="userTargetInput" placeholder="--"
                                 class="w-20 text-lg font-semibold text-[#102a43] border-b border-gray-300 focus:border-[#e8913a] focus:outline-none text-center bg-transparent"
                                 onchange="saveUserTargetPrice()">
-                            <button id="saveTargetBtn" onclick="saveUserTargetPrice()" class="hidden text-[#e8913a] hover:text-[#d97316]" title="Save">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Right: Watchlist & Outdated -->
                 <div class="flex items-center space-x-4">
-                    <!-- Watchlist Button -->
                     <button id="watchlistBtn" onclick="toggleWatchlist()" class="hidden flex items-center space-x-1 px-3 py-1.5 rounded-lg border transition-all text-sm" title="Add to Watchlist">
                         <svg id="watchlistIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                         </svg>
-                        <span id="watchlistText" class="hidden sm:inline">Watchlist</span>
+                        <span id="watchlistText">Watchlist</span>
                     </button>
-
-                    <!-- Outdated message -->
                     <div id="outdatedMessage" class="hidden text-sm text-amber-600">
-                        <span class="hidden sm:inline">This report is older than 15 days. </span>
-                        <button onclick="regenerateReport()" class="underline hover:text-amber-700 font-medium">Regenerate now</button>
+                        <span>Report is outdated. </span>
+                        <button onclick="regenerateReport()" class="underline hover:text-amber-700 font-medium">Regenerate</button>
                     </div>
                 </div>
             </div>
@@ -294,6 +317,7 @@
                 if (isLoggedIn && currentReport.user_target_price) {
                     userTargetPrice = currentReport.user_target_price;
                     document.getElementById('userTargetInput').value = userTargetPrice;
+                    document.getElementById('userTargetInputMobile').value = userTargetPrice;
                 }
 
                 // Check watchlist status if logged in
@@ -315,18 +339,31 @@
             const daysOld = calculateDaysOld(generatedDate);
             const isOutdated = daysOld > FRESHNESS_DAYS;
 
+            // Desktop
             document.getElementById('reportDate').textContent = `Generated: ${formatDate(generatedDate)} (${daysOld} day${daysOld !== 1 ? 's' : ''} ago)`;
+            // Mobile
+            document.getElementById('reportDateMobile').textContent = `${formatDate(generatedDate)} (${daysOld}d ago)`;
 
             // Set AI target price
             if (currentReport.ai_target_price) {
-                document.getElementById('aiTargetPrice').textContent = `₹${parseFloat(currentReport.ai_target_price).toLocaleString('en-IN')}`;
+                const priceText = `₹${parseFloat(currentReport.ai_target_price).toLocaleString('en-IN')}`;
+                document.getElementById('aiTargetPrice').textContent = priceText;
+                document.getElementById('aiTargetPriceMobile').textContent = priceText;
             }
 
             // Show outdated indicators
             if (isOutdated) {
                 document.getElementById('outdatedBadge').classList.remove('hidden');
                 document.getElementById('outdatedMessage').classList.remove('hidden');
+                document.getElementById('outdatedBadgeMobile').classList.remove('hidden');
+                document.getElementById('outdatedBtnMobile').classList.remove('hidden');
                 document.getElementById('regenerateBtn').classList.remove('hidden');
+            }
+
+            // Hide user target on mobile if not logged in
+            if (!isLoggedIn) {
+                const mobileUserTarget = document.getElementById('userTargetContainerMobile');
+                if (mobileUserTarget) mobileUserTarget.classList.add('hidden');
             }
         }
 
@@ -409,22 +446,35 @@
         }
 
         function updateWatchlistButton() {
+            // Desktop
             const btn = document.getElementById('watchlistBtn');
             const icon = document.getElementById('watchlistIcon');
             const text = document.getElementById('watchlistText');
+            // Mobile
+            const btnMobile = document.getElementById('watchlistBtnMobile');
+            const iconMobile = document.getElementById('watchlistIconMobile');
 
             btn.classList.remove('hidden');
+            btnMobile.classList.remove('hidden');
 
             if (isInWatchlist) {
                 btn.classList.remove('border-gray-300', 'text-gray-600', 'hover:border-[#e8913a]', 'hover:text-[#e8913a]');
                 btn.classList.add('border-[#e8913a]', 'bg-[#fdecd4]', 'text-[#e8913a]');
                 icon.setAttribute('fill', 'currentColor');
                 text.textContent = 'Saved';
+                // Mobile
+                btnMobile.classList.remove('border-gray-300', 'text-gray-600');
+                btnMobile.classList.add('border-[#e8913a]', 'bg-[#fdecd4]', 'text-[#e8913a]');
+                iconMobile.setAttribute('fill', 'currentColor');
             } else {
                 btn.classList.remove('border-[#e8913a]', 'bg-[#fdecd4]', 'text-[#e8913a]');
                 btn.classList.add('border-gray-300', 'text-gray-600', 'hover:border-[#e8913a]', 'hover:text-[#e8913a]');
                 icon.setAttribute('fill', 'none');
                 text.textContent = 'Watchlist';
+                // Mobile
+                btnMobile.classList.remove('border-[#e8913a]', 'bg-[#fdecd4]', 'text-[#e8913a]');
+                btnMobile.classList.add('border-gray-300', 'text-gray-600');
+                iconMobile.setAttribute('fill', 'none');
             }
         }
 
