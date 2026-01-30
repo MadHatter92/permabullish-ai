@@ -800,45 +800,89 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any]) -
 
         @media (max-width: 768px) {{
             .nav-links {{ display: none; }}
-            .header-top {{ flex-direction: column; }}
-            .recommendation-box {{ width: 100%; }}
-            .metrics-strip {{
-                grid-template-columns: repeat(3, 1fr);
-                gap: 0.5rem;
-                margin-top: 1rem;
-                padding-top: 1rem;
-            }}
-            .metric-item {{
-                padding: 0.5rem 0.25rem;
-            }}
-            .metric-label {{
-                font-size: 0.6rem;
-                margin-bottom: 0.125rem;
-            }}
-            .metric-value {{
-                font-size: 0.85rem;
-            }}
-            .main {{
-                padding: 1rem;
-            }}
-            .section-header {{
-                padding: 1rem;
-            }}
-            .section-content {{
-                padding: 1rem !important;
-            }}
             .header {{
-                padding: 1rem;
+                padding: 0.75rem;
             }}
             .header h1 {{
-                font-size: 1.25rem;
+                font-size: 1.1rem;
+                margin-bottom: 0.25rem;
             }}
             .company-meta {{
-                font-size: 0.7rem;
+                font-size: 0.65rem;
+                gap: 0.5rem;
                 flex-wrap: wrap;
+                opacity: 0.8;
+            }}
+            .company-meta span:nth-child(2),
+            .company-meta span:nth-child(4) {{
+                display: none;
+            }}
+            .header-top {{
+                flex-direction: column;
+                gap: 0.75rem;
+            }}
+            .recommendation-box {{
+                width: 100%;
+                padding: 0.75rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.5rem;
+                text-align: left;
+            }}
+            .recommendation {{
+                font-size: 1rem;
+                margin-bottom: 0;
+            }}
+            .conviction-badge {{
+                padding: 0.15rem 0.5rem;
+                font-size: 0.55rem;
+                margin-top: 0.25rem;
+            }}
+            .price-info {{
+                text-align: right;
+                font-size: 0.75rem;
             }}
             .price-current {{
-                font-size: 1.1rem;
+                font-size: 1rem;
+            }}
+            .metrics-strip {{
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.35rem;
+                margin-top: 0.75rem;
+                padding-top: 0.75rem;
+            }}
+            .metric-item {{
+                padding: 0.4rem 0.2rem;
+                border-radius: 6px;
+            }}
+            .metric-label {{
+                font-size: 0.5rem;
+                margin-bottom: 0.1rem;
+                letter-spacing: 0;
+            }}
+            .metric-value {{
+                font-size: 0.7rem;
+            }}
+            .main {{
+                padding: 0.75rem;
+            }}
+            .section {{
+                margin-bottom: 0.75rem;
+            }}
+            .section-header {{
+                padding: 0.75rem;
+            }}
+            .section-content {{
+                padding: 0.75rem !important;
+            }}
+            .section-title {{
+                font-size: 0.9rem;
+            }}
+            .section-icon {{
+                width: 1.25rem;
+                height: 1.25rem;
+                font-size: 0.65rem;
             }}
         }}
 
