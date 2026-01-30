@@ -461,30 +461,32 @@
                 }
 
                 listEl.innerHTML = watchlist.map(item => `
-                    <div class="p-3 sm:p-4 hover:bg-gray-50 transition-all">
-                        <div class="flex flex-col gap-2 sm:gap-0 sm:flex-row sm:items-center sm:justify-between">
-                            <div class="flex items-center space-x-3 min-w-0 flex-1">
-                                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-bold text-sm sm:text-base flex-shrink-0 ${item.has_report ? getRecommendationColor(item.recommendation) + ' text-white' : 'bg-gray-200 text-gray-500'}">
+                    <div class="px-3 py-2 sm:p-4 hover:bg-gray-50 transition-all">
+                        <div class="flex items-center justify-between gap-2">
+                            <!-- Left: Ticker info -->
+                            <div class="flex items-center gap-2 min-w-0 flex-1">
+                                <div class="w-6 h-6 sm:w-10 sm:h-10 rounded flex items-center justify-center font-bold text-xs sm:text-base flex-shrink-0 ${item.has_report ? getRecommendationColor(item.recommendation) + ' text-white' : 'bg-gray-200 text-gray-500'}">
                                     ${item.has_report ? (item.recommendation?.charAt(0) || '?') : item.ticker?.charAt(0) || '?'}
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <h3 class="font-medium text-gray-900 text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">${item.company_name || item.ticker}</h3>
-                                        ${!item.has_report ? '<span class="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full whitespace-nowrap">No report</span>' : ''}
-                                        ${item.has_report && item.is_outdated ? '<span class="px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full whitespace-nowrap">Outdated</span>' : ''}
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="font-semibold text-gray-900 text-sm">${item.ticker}</span>
+                                        ${item.has_report && item.is_outdated ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 sm:hidden" title="Outdated"></span>' : ''}
+                                        ${!item.has_report ? '<span class="w-1.5 h-1.5 rounded-full bg-gray-300 sm:hidden" title="No report"></span>' : ''}
+                                        <span class="hidden sm:inline text-xs text-gray-400">${item.exchange}</span>
+                                        ${!item.has_report ? '<span class="hidden sm:inline px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">No report</span>' : ''}
+                                        ${item.has_report && item.is_outdated ? '<span class="hidden sm:inline px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">Outdated</span>' : ''}
                                     </div>
-                                    <p class="text-xs sm:text-sm text-gray-500">${item.ticker} · ${item.exchange} | Added ${formatDate(item.added_at)}</p>
+                                    <p class="text-xs text-gray-500 truncate max-w-[120px] sm:max-w-none">${item.company_name || item.ticker}</p>
                                 </div>
                             </div>
-                            <div class="flex items-center justify-between pl-11 sm:pl-0">
-                                <div class="flex items-center gap-3 sm:gap-4">
-                                    ${item.has_report ? '<div class="sm:hidden text-xs text-gray-500">AI: <span class="font-medium text-gray-900">₹' + (item.ai_target_price?.toFixed(0) || '-') + '</span></div>' : ''}
-                                    ${item.has_report ? '<div class="text-right hidden sm:block"><p class="font-medium text-gray-900">₹' + (item.ai_target_price?.toFixed(0) || '-') + '</p><p class="text-sm text-gray-500">AI Target</p></div>' : ''}
-                                </div>
-                                <div class="flex space-x-1 flex-shrink-0">
-                                    ${item.has_report ? '<a href="report.html?id=' + item.report_cache_id + '" class="p-2 text-[#e8913a] hover:bg-[#fdecd4] rounded-lg transition-all" title="View Report"><svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></a>' : '<a href="generate.html?ticker=' + item.ticker + '&exchange=' + item.exchange + '" class="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-[#e8913a] text-white rounded-lg hover:bg-[#d97316] transition-all" title="Generate Report">Generate</a>'}
-                                    <button onclick="removeFromWatchlist('${item.ticker}', '${item.exchange}')" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Remove from Watchlist">
-                                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <!-- Right: Price + Actions -->
+                            <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+                                ${item.has_report ? '<span class="text-xs sm:text-sm font-medium text-gray-900">₹' + (item.ai_target_price?.toFixed(0) || '-') + '</span>' : ''}
+                                <div class="flex items-center">
+                                    ${item.has_report ? '<a href="report.html?id=' + item.report_cache_id + '" class="p-1.5 sm:p-2 text-[#e8913a] hover:bg-[#fdecd4] rounded-lg transition-all" title="View"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></a>' : '<a href="generate.html?ticker=' + item.ticker + '&exchange=' + item.exchange + '" class="px-2 py-1 text-xs bg-[#e8913a] text-white rounded hover:bg-[#d97316] transition-all">New</a>'}
+                                    <button onclick="removeFromWatchlist('${item.ticker}', '${item.exchange}')" class="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Remove">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                         </svg>
                                     </button>
