@@ -171,6 +171,86 @@ async def get_provider_status(secret: str = ""):
     return {"providers": stock_manager.get_provider_status()}
 
 
+class AdminSubscriptionRequest(BaseModel):
+    email: str
+    tier: str  # basic, pro, enterprise
+    period_months: int = 12  # Duration in months
+    amount_paid: float = 0  # For record keeping (0 for comped/enterprise)
+    note: str = ""  # Optional note (e.g., "Enterprise client - Company XYZ")
+
+
+@app.post("/api/admin/set-subscription")
+async def admin_set_subscription(request_data: AdminSubscriptionRequest, secret: str = ""):
+    """
+    Manually set a user's subscription. For enterprise clients or manual adjustments.
+    Requires admin secret.
+    """
+    admin_secret = os.getenv("ADMIN_SECRET", "permabullish-test-2024")
+    if secret != admin_secret:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+
+    # Validate tier
+    valid_tiers = ["free", "basic", "pro", "enterprise"]
+    if request_data.tier not in valid_tiers:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid tier. Must be one of: {valid_tiers}"
+        )
+
+    # Find user by email
+    user = db.get_user_by_email(request_data.email)
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User not found: {request_data.email}")
+
+    # Create subscription record
+    subscription_id = db.create_subscription_record(
+        user_id=user["id"],
+        tier=request_data.tier,
+        period_months=request_data.period_months,
+        amount_paid=request_data.amount_paid,
+        payment_id=f"admin_{request_data.note}" if request_data.note else "admin_manual"
+    )
+
+    # Get updated subscription status
+    status = db.get_subscription_status(user["id"])
+
+    return {
+        "success": True,
+        "message": f"Subscription set for {request_data.email}",
+        "user_id": user["id"],
+        "subscription_id": subscription_id,
+        "tier": request_data.tier,
+        "period_months": request_data.period_months,
+        "expires_at": status.get("expires_at") if status else None
+    }
+
+
+@app.get("/api/admin/user-info/{email}")
+async def admin_get_user_info(email: str, secret: str = ""):
+    """Get user info and subscription status. Requires admin secret."""
+    admin_secret = os.getenv("ADMIN_SECRET", "permabullish-test-2024")
+    if secret != admin_secret:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+
+    user = db.get_user_by_email(email)
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User not found: {email}")
+
+    subscription = db.get_subscription_status(user["id"])
+    usage = db.get_user_usage(user["id"])
+
+    return {
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "name": user.get("name"),
+            "created_at": user.get("created_at")
+        },
+        "subscription": subscription,
+        "usage": usage
+    }
+
+
 # Auth Routes
 @app.post("/api/auth/register", response_model=TokenResponse)
 async def register(user_data: UserRegister):
