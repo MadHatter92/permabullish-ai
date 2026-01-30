@@ -578,17 +578,21 @@
             }, 3000);
 
             try {
+                const requestBody = {
+                    symbol: selectedStock.symbol,
+                    exchange: selectedStock.exchange || 'NSE',
+                    force_regenerate: forceRegenerate
+                };
+                console.log('Generating report with:', requestBody);
+
                 const response = await apiCall('/reports/generate', {
                     method: 'POST',
-                    body: JSON.stringify({
-                        symbol: selectedStock.symbol,
-                        exchange: selectedStock.exchange || 'NSE',
-                        force_regenerate: forceRegenerate
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (!response.ok) {
                     const error = await response.json();
+                    console.error('API Error:', response.status, error);
                     // Handle FastAPI validation errors (detail is array) or regular errors (detail is string)
                     let errorMessage = 'Failed to generate report';
                     if (typeof error.detail === 'string') {
