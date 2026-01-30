@@ -532,9 +532,9 @@
                 if (response.ok) {
                     cachedReport = await response.json();
 
-                    // For guests: silently redirect to view the cached report
-                    if (!isLoggedIn && cachedReport && !cachedReport.is_outdated) {
-                        window.location.href = `report.html?id=${cachedReport.id}`;
+                    // For guests: don't show notice, just store the cached report
+                    // They'll be redirected when they click Generate
+                    if (!isLoggedIn) {
                         return;
                     }
 
@@ -631,6 +631,12 @@
 
         async function generateReport() {
             if (!selectedStock) return;
+
+            // For guests: if there's a fresh cached report, redirect to it
+            if (!isLoggedIn && cachedReport && !cachedReport.is_outdated) {
+                window.location.href = `report.html?id=${cachedReport.id}`;
+                return;
+            }
 
             const btn = document.getElementById('generateBtn');
             const preview = document.getElementById('stockPreview');
