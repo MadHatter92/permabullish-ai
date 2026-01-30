@@ -12,10 +12,17 @@
         .gradient-header {
             background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
         }
+        /* Mobile: nav 64px + info bar ~88px = 152px */
         #reportFrame {
             width: 100%;
-            height: calc(100vh - 124px); /* 64px nav + 60px info bar */
+            height: calc(100vh - 152px);
             border: none;
+        }
+        /* Desktop: nav 64px + info bar 60px = 124px */
+        @media (min-width: 640px) {
+            #reportFrame {
+                height: calc(100vh - 124px);
+            }
         }
         #reportFrame.no-info-bar {
             height: calc(100vh - 64px);
@@ -154,7 +161,7 @@
     </div>
 
     <!-- Guest Nudge Banner (shown for non-logged-in users) -->
-    <div id="guestNudge" class="hidden fixed top-[124px] left-0 right-0 bg-gradient-to-r from-[#102a43] to-[#1e3a5f] text-white z-30">
+    <div id="guestNudge" class="hidden fixed top-[152px] sm:top-[124px] left-0 right-0 bg-gradient-to-r from-[#102a43] to-[#1e3a5f] text-white z-30">
         <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
                 <div class="flex items-center space-x-3">
@@ -209,7 +216,7 @@
 
     <!-- Report Container -->
     <div id="reportContainer" class="hidden pt-16">
-        <div id="reportFrameWrapper" class="pt-[60px]">
+        <div id="reportFrameWrapper" class="pt-[88px] sm:pt-[60px]">
             <iframe id="reportFrame" sandbox="allow-scripts allow-same-origin"></iframe>
         </div>
     </div>
@@ -235,8 +242,9 @@
                 // Show guest nudge for non-logged-in users (after a short delay)
                 setTimeout(() => {
                     document.getElementById('guestNudge').classList.remove('hidden');
-                    // Adjust report frame position when nudge is shown
-                    document.getElementById('reportFrameWrapper').style.paddingTop = '108px';
+                    // Adjust report frame position when nudge is shown (48px nudge height)
+                    const isMobile = window.innerWidth < 640;
+                    document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '136px' : '108px';
                 }, 1500);
             }
 
@@ -564,7 +572,8 @@
 
         function dismissGuestNudge() {
             document.getElementById('guestNudge').classList.add('hidden');
-            document.getElementById('reportFrameWrapper').style.paddingTop = '60px';
+            const isMobile = window.innerWidth < 640;
+            document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '88px' : '60px';
         }
     </script>
 </body>
