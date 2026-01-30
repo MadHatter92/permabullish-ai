@@ -847,22 +847,22 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any]) -
                 font-size: 1rem;
             }}
             .metrics-strip {{
-                grid-template-columns: repeat(3, 1fr);
-                gap: 0.35rem;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
                 margin-top: 0.75rem;
                 padding-top: 0.75rem;
             }}
             .metric-item {{
-                padding: 0.4rem 0.2rem;
+                padding: 0.5rem 0.3rem;
                 border-radius: 6px;
             }}
             .metric-label {{
-                font-size: 0.5rem;
+                font-size: 0.55rem;
                 margin-bottom: 0.1rem;
                 letter-spacing: 0;
             }}
             .metric-value {{
-                font-size: 0.7rem;
+                font-size: 0.75rem;
             }}
             .main {{
                 padding: 0.75rem;
@@ -951,16 +951,8 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any]) -
                     <div class="metric-value">{pb_ratio:.1f}x</div>
                 </div>
                 <div class="metric-item">
-                    <div class="metric-label">Dividend Yield</div>
-                    <div class="metric-value">{dividend_yield:.1f}%</div>
-                </div>
-                <div class="metric-item">
                     <div class="metric-label">52W Range</div>
                     <div class="metric-value">₹{fifty_two_week_low:,.0f} - ₹{fifty_two_week_high:,.0f}</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-label">ROE</div>
-                    <div class="metric-value">{roe:.1f}%</div>
                 </div>
             </div>
         </div>

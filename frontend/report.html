@@ -12,10 +12,10 @@
         .gradient-header {
             background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
         }
-        /* Mobile: nav 64px + info bar ~44px = 108px */
+        /* Mobile: nav 48px + info bar ~44px = 92px */
         #reportFrame {
             width: 100%;
-            height: calc(100vh - 108px);
+            height: calc(100vh - 92px);
             border: none;
         }
         /* Desktop: nav 64px + info bar 60px = 124px */
@@ -25,7 +25,12 @@
             }
         }
         #reportFrame.no-info-bar {
-            height: calc(100vh - 64px);
+            height: calc(100vh - 48px);
+        }
+        @media (min-width: 640px) {
+            #reportFrame.no-info-bar {
+                height: calc(100vh - 64px);
+            }
         }
         @media print {
             nav { display: none !important; }
@@ -42,36 +47,31 @@
 <body class="bg-gray-100 min-h-screen">
     <!-- Navigation -->
     <nav class="gradient-header text-white shadow-lg fixed top-0 left-0 right-0 z-50">
-        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
-                    <a id="backLink" href="index.html" class="flex items-center space-x-1 text-white hover:text-[#e8913a] transition-all flex-shrink-0">
+        <div class="max-w-full mx-auto px-3 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-12 sm:h-16">
+                <div class="flex items-center space-x-1.5 sm:space-x-4 min-w-0 flex-1">
+                    <a id="backLink" href="index.html" class="flex items-center text-white hover:text-[#e8913a] transition-all flex-shrink-0">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                         </svg>
-                        <span class="text-sm font-display"><span class="hidden sm:inline">Perma</span><span class="text-[#e8913a]">bullish</span></span>
                     </a>
-                    <span class="text-[#334e68]">|</span>
-                    <h1 id="reportTitle" class="text-sm sm:text-lg font-medium truncate">Loading...</h1>
+                    <h1 id="reportTitle" class="text-xs sm:text-lg font-medium truncate">Loading...</h1>
                 </div>
-                <div class="flex items-center space-x-2 sm:space-x-3">
-                    <button onclick="shareReport()" class="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 sm:px-4 py-2 rounded-lg transition-all" title="Share">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex items-center space-x-1 sm:space-x-3">
+                    <button onclick="shareReport()" class="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all" title="Share">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
                         </svg>
-                        <span class="hidden sm:inline">Share</span>
                     </button>
-                    <button id="regenerateBtn" onclick="regenerateReport()" class="hidden flex items-center space-x-2 bg-amber-500 hover:bg-amber-600 px-3 sm:px-4 py-2 rounded-lg transition-all" title="Regenerate Report">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="regenerateBtn" onclick="regenerateReport()" class="hidden p-1.5 sm:p-2 bg-amber-500 hover:bg-amber-600 rounded-lg transition-all" title="Regenerate">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                         </svg>
-                        <span class="hidden sm:inline">Regenerate</span>
                     </button>
-                    <a href="generate.html" class="flex items-center space-x-2 bg-[#e8913a] hover:bg-[#d97316] px-3 sm:px-4 py-2 rounded-lg transition-all" title="New Report">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <a href="generate.html" class="p-1.5 sm:p-2 bg-[#e8913a] hover:bg-[#d97316] rounded-lg transition-all" title="New">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                         </svg>
-                        <span class="hidden sm:inline">New Report</span>
                     </a>
                 </div>
             </div>
@@ -79,7 +79,7 @@
     </nav>
 
     <!-- Report Info Bar (hidden until report loads) -->
-    <div id="reportInfoBar" class="hidden fixed top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-sm z-40">
+    <div id="reportInfoBar" class="hidden fixed top-12 sm:top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-sm z-40">
         <div class="max-w-full mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
             <!-- Mobile Layout: Single compact row -->
             <div class="flex items-center justify-between gap-2 sm:hidden">
@@ -167,7 +167,7 @@
     </div>
 
     <!-- Guest Nudge Banner (shown for non-logged-in users) -->
-    <div id="guestNudge" class="hidden fixed top-[108px] sm:top-[124px] left-0 right-0 bg-gradient-to-r from-[#102a43] to-[#1e3a5f] text-white z-40 shadow-lg">
+    <div id="guestNudge" class="hidden fixed top-[92px] sm:top-[124px] left-0 right-0 bg-gradient-to-r from-[#102a43] to-[#1e3a5f] text-white z-40 shadow-lg">
         <div class="max-w-full mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
             <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-2 min-w-0">
@@ -199,7 +199,7 @@
     </div>
 
     <!-- Loading State -->
-    <div id="loadingState" class="flex items-center justify-center min-h-screen pt-16">
+    <div id="loadingState" class="flex items-center justify-center min-h-screen pt-12 sm:pt-16">
         <div class="text-center">
             <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-[#e8913a] mx-auto mb-4"></div>
             <p class="text-gray-600">Loading report...</p>
@@ -207,7 +207,7 @@
     </div>
 
     <!-- Error State -->
-    <div id="errorState" class="hidden flex items-center justify-center min-h-screen pt-16">
+    <div id="errorState" class="hidden flex items-center justify-center min-h-screen pt-12 sm:pt-16">
         <div class="text-center max-w-md mx-auto p-6">
             <svg class="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -221,7 +221,7 @@
     </div>
 
     <!-- Report Container -->
-    <div id="reportContainer" class="hidden pt-16">
+    <div id="reportContainer" class="hidden pt-12 sm:pt-16">
         <div id="reportFrameWrapper" class="pt-[44px] sm:pt-[60px]">
             <iframe id="reportFrame" sandbox="allow-scripts allow-same-origin"></iframe>
         </div>
@@ -251,9 +251,9 @@
                     const isMobile = window.innerWidth < 640;
                     const nudgeHeight = 36;
                     document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '80px' : '100px';
-                    // Also adjust iframe height
+                    // Also adjust iframe height (mobile: 92 + 36, desktop: 124 + 36)
                     document.getElementById('reportFrame').style.height = isMobile
-                        ? `calc(100vh - ${108 + nudgeHeight}px)`
+                        ? `calc(100vh - ${92 + nudgeHeight}px)`
                         : `calc(100vh - ${124 + nudgeHeight}px)`;
                 }, 1500);
             }
@@ -607,9 +607,9 @@
             document.getElementById('guestNudge').classList.add('hidden');
             const isMobile = window.innerWidth < 640;
             document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '44px' : '60px';
-            // Restore iframe height
+            // Restore iframe height (mobile: 92px, desktop: 124px)
             document.getElementById('reportFrame').style.height = isMobile
-                ? 'calc(100vh - 108px)'
+                ? 'calc(100vh - 92px)'
                 : 'calc(100vh - 124px)';
         }
     </script>
