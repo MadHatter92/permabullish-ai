@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Status - Permabullish</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'DM Sans', system-ui, sans-serif;
+            background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
+            min-height: 100vh;
+        }
+        .font-display { font-family: 'DM Serif Display', Georgia, serif; }
+        .card-gradient { background: linear-gradient(to bottom right, #1e3a5f, #243b53); }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes checkmark {
+            0% { stroke-dashoffset: 100; }
+            100% { stroke-dashoffset: 0; }
+        }
+        .checkmark-path {
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: checkmark 0.5s ease-out 0.2s forwards;
+        }
+    </style>
+</head>
+<body class="text-white flex items-center justify-center p-6">
+    <div class="max-w-md w-full">
+        <div class="card-gradient rounded-2xl border border-[#334e68] p-8 text-center">
+            <!-- Loading State -->
+            <div id="loadingState">
+                <div class="spinner rounded-full h-16 w-16 border-b-4 border-[#e8913a] mx-auto mb-6"></div>
+                <h1 class="text-xl font-display mb-2">Verifying Payment</h1>
+                <p class="text-[#9fb3c8]">Please wait while we confirm your payment...</p>
+            </div>
+
+            <!-- Success State -->
+            <div id="successState" class="hidden fade-in">
+                <div class="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path class="checkmark-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-display mb-2 text-green-400">Payment Successful!</h1>
+                <p class="text-[#9fb3c8] mb-2" id="successMessage">Your subscription has been activated.</p>
+                <div class="bg-[#243b53] rounded-lg p-4 my-6">
+                    <p class="text-sm text-[#9fb3c8]">Plan: <span class="text-white font-semibold" id="planDetails">-</span></p>
+                </div>
+                <a href="dashboard.html" class="inline-block w-full py-3 bg-[#e8913a] hover:bg-[#d97316] rounded-lg font-semibold transition-colors">
+                    Go to Dashboard
+                </a>
+            </div>
+
+            <!-- Failed State -->
+            <div id="failedState" class="hidden fade-in">
+                <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-display mb-2 text-red-400">Payment Failed</h1>
+                <p class="text-[#9fb3c8] mb-6" id="failedMessage">Your payment could not be processed.</p>
+                <div class="space-y-3">
+                    <a href="pricing.html" class="inline-block w-full py-3 bg-[#e8913a] hover:bg-[#d97316] rounded-lg font-semibold transition-colors">
+                        Try Again
+                    </a>
+                    <a href="dashboard.html" class="inline-block w-full py-3 border border-[#334e68] hover:bg-[#334e68] rounded-lg transition-colors">
+                        Go to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <!-- Pending State -->
+            <div id="pendingState" class="hidden fade-in">
+                <div class="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-12 h-12 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-display mb-2 text-amber-400">Payment Pending</h1>
+                <p class="text-[#9fb3c8] mb-6">Your payment is being processed. This may take a few minutes.</p>
+                <div class="space-y-3">
+                    <button onclick="verifyPayment()" class="w-full py-3 bg-[#e8913a] hover:bg-[#d97316] rounded-lg font-semibold transition-colors">
+                        Check Status
+                    </button>
+                    <a href="dashboard.html" class="inline-block w-full py-3 border border-[#334e68] hover:bg-[#334e68] rounded-lg transition-colors">
+                        Go to Dashboard
+                    </a>
+                </div>
+                <p class="text-xs text-[#9fb3c8] mt-4">
+                    If your payment was successful, your subscription will be activated automatically.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        const token = localStorage.getItem('token');
+        let orderId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            orderId = params.get('order_id');
+
+            if (!orderId) {
+                showFailed('No order information found. Please contact support if you completed a payment.');
+                return;
+            }
+
+            if (!token) {
+                showFailed('You are not signed in. Please sign in and check your dashboard.');
+                return;
+            }
+
+            // Verify payment status
+            verifyPayment();
+        });
+
+        async function verifyPayment() {
+            showLoading();
+
+            try {
+                const response = await fetch(`${API_BASE}/subscription/verify/${orderId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Verification failed');
+                }
+
+                if (data.success && data.status === 'PAID') {
+                    showSuccess(data);
+                } else if (data.status === 'ACTIVE' || data.status === 'PENDING') {
+                    showPending();
+                } else {
+                    showFailed(data.message || 'Payment was not completed.');
+                }
+
+            } catch (error) {
+                console.error('Verification error:', error);
+                showFailed('Unable to verify payment status. Please check your dashboard or contact support.');
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('successState').classList.add('hidden');
+            document.getElementById('failedState').classList.add('hidden');
+            document.getElementById('pendingState').classList.add('hidden');
+        }
+
+        function showSuccess(data) {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('successState').classList.remove('hidden');
+            document.getElementById('failedState').classList.add('hidden');
+            document.getElementById('pendingState').classList.add('hidden');
+
+            // Update success message
+            if (data.tier_name && data.period_months) {
+                const periodText = data.period_months === 1 ? '1 month' :
+                                  data.period_months === 6 ? '6 months' : '12 months';
+                document.getElementById('planDetails').textContent = `${data.tier_name} (${periodText})`;
+                document.getElementById('successMessage').textContent =
+                    `Your ${data.tier_name} subscription is now active. Enjoy unlimited research!`;
+            }
+        }
+
+        function showFailed(message) {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('successState').classList.add('hidden');
+            document.getElementById('failedState').classList.remove('hidden');
+            document.getElementById('pendingState').classList.add('hidden');
+
+            if (message) {
+                document.getElementById('failedMessage').textContent = message;
+            }
+        }
+
+        function showPending() {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('successState').classList.add('hidden');
+            document.getElementById('failedState').classList.add('hidden');
+            document.getElementById('pendingState').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

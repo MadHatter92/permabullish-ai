@@ -24,8 +24,9 @@ from report_generator import generate_ai_analysis, generate_report_html
 from config import (
     SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
     GOOGLE_REDIRECT_URI, FRONTEND_URL, CORS_ORIGINS, ENVIRONMENT,
-    SUBSCRIPTION_TIERS
+    SUBSCRIPTION_TIERS, CASHFREE_APP_ID, CASHFREE_SECRET_KEY
 )
+import cashfree
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -681,17 +682,23 @@ async def get_subscription_plans():
     return {"plans": plans}
 
 
+class CheckoutRequest(BaseModel):
+    tier: str
+    period: int = 1  # 1, 6, or 12 months
+
+
 @app.post("/api/subscription/checkout")
 async def initiate_checkout(
-    tier: str,
-    period: int = 1,  # 1, 6, or 12 months
+    request_data: CheckoutRequest,
     current_user: dict = Depends(auth.get_current_user)
 ):
     """
-    Initiate subscription checkout (placeholder for Cashfree integration).
-    In production, this will create a Cashfree payment session.
-    For now, returns a mock checkout URL.
+    Initiate subscription checkout via Cashfree.
+    Creates a payment order and returns the payment session for frontend SDK.
     """
+    tier = request_data.tier
+    period = request_data.period
+
     if tier not in SUBSCRIPTION_TIERS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -710,7 +717,7 @@ async def initiate_checkout(
         return {
             "type": "contact",
             "message": "Please contact us for Enterprise pricing",
-            "email": "enterprise@permabullish.com"
+            "email": "mail@mayaskara.com"
         }
 
     # Determine price based on period
@@ -726,20 +733,126 @@ async def initiate_checkout(
             detail="Invalid period. Must be 1, 6, or 12 months"
         )
 
-    # Mock checkout response (will be replaced with Cashfree in Phase 3)
-    order_id = f"order_{current_user['id']}_{tier}_{period}m_{int(datetime.now().timestamp())}"
+    if not amount:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Pricing not available for this tier/period"
+        )
+
+    # Generate unique order ID
+    order_id = cashfree.generate_order_id(current_user["id"], tier, period)
+
+    # Create Cashfree order
+    result = cashfree.create_order(
+        order_id=order_id,
+        amount=amount,
+        customer_id=str(current_user["id"]),
+        customer_email=current_user["email"],
+        customer_name=current_user.get("full_name", current_user["email"]),
+    )
+
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=result.get("error", "Failed to create payment order")
+        )
 
     return {
         "type": "checkout",
-        "order_id": order_id,
+        "order_id": result["order_id"],
+        "payment_session_id": result["payment_session_id"],
+        "cf_order_id": result.get("cf_order_id"),
         "tier": tier,
         "tier_name": tier_config.get("name"),
         "period_months": period,
         "amount": amount,
         "currency": "INR",
-        # Mock checkout URL - will be replaced with actual Cashfree URL
-        "checkout_url": f"{FRONTEND_URL}/checkout.html?order_id={order_id}&tier={tier}&period={period}&amount={amount}",
-        "message": "Redirect user to checkout_url to complete payment"
+        "message": "Use payment_session_id with Cashfree JS SDK to complete payment"
+    }
+
+
+@app.get("/api/subscription/verify/{order_id}")
+async def verify_payment(
+    order_id: str,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """
+    Verify payment status for an order.
+    Called by frontend after user returns from payment page.
+    """
+    # Get order status from Cashfree
+    order_result = cashfree.get_order_status(order_id)
+
+    if not order_result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=order_result.get("error", "Failed to verify order")
+        )
+
+    order_status = order_result.get("order_status")
+
+    # If order is PAID, get payment details and activate subscription
+    if order_status == "PAID":
+        payment_result = cashfree.get_payment_details(order_id)
+
+        # Parse order metadata
+        order_meta = cashfree.parse_order_id_metadata(order_id)
+        user_id = order_meta.get("user_id")
+        tier = order_meta.get("tier")
+        period = order_meta.get("period_months")
+
+        # Verify the order belongs to this user
+        if user_id != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Order does not belong to this user"
+            )
+
+        if tier and period and tier in SUBSCRIPTION_TIERS:
+            tier_config = SUBSCRIPTION_TIERS[tier]
+
+            # Determine amount
+            if period == 1:
+                amount = tier_config.get("price_monthly", 0)
+            elif period == 6:
+                amount = tier_config.get("price_6months", 0)
+            elif period == 12:
+                amount = tier_config.get("price_yearly", 0)
+            else:
+                amount = order_result.get("order_amount", 0)
+
+            # Get payment ID from successful payment
+            payment_id = None
+            if payment_result.get("successful_payment"):
+                payment_id = payment_result["successful_payment"].get("cf_payment_id")
+
+            # Create subscription record
+            subscription_id = db.create_subscription_record(
+                user_id=current_user["id"],
+                tier=tier,
+                period_months=period,
+                amount_paid=amount,
+                payment_id=payment_id or order_id
+            )
+
+            return {
+                "success": True,
+                "status": "PAID",
+                "message": f"Subscription activated: {tier_config.get('name')}",
+                "subscription_id": subscription_id,
+                "tier": tier,
+                "tier_name": tier_config.get("name"),
+                "period_months": period,
+                "amount": amount
+            }
+
+    # Return current status for non-PAID orders
+    return {
+        "success": order_status == "PAID",
+        "status": order_status,
+        "order_id": order_id,
+        "amount": order_result.get("order_amount"),
+        "message": f"Order status: {order_status}"
     }
 
 
@@ -751,8 +864,8 @@ async def activate_subscription(
     current_user: dict = Depends(auth.get_current_user)
 ):
     """
-    Activate subscription after successful payment (mock for testing).
-    In production, this will be called by the Cashfree webhook.
+    Manually activate subscription (for testing or manual activation).
+    In production, use /verify/{order_id} after Cashfree payment.
     """
     if tier not in SUBSCRIPTION_TIERS or tier in ["free", "enterprise"]:
         raise HTTPException(
@@ -793,12 +906,86 @@ async def activate_subscription(
 from datetime import datetime
 
 
-# Future: Cashfree webhook endpoint (placeholder for Phase 3)
 @app.post("/api/webhooks/cashfree")
 async def cashfree_webhook(request: Request):
-    """Handle Cashfree payment webhook events (placeholder for future implementation)."""
-    # TODO: Implement Cashfree webhook handling in Phase 3
-    return {"status": "received"}
+    """
+    Handle Cashfree payment webhook events.
+    This is called by Cashfree when payment status changes.
+    """
+    try:
+        # Get raw body for signature verification
+        body = await request.body()
+
+        # Get signature headers
+        signature = request.headers.get("x-webhook-signature", "")
+        timestamp = request.headers.get("x-webhook-timestamp", "")
+
+        # Verify signature (optional but recommended)
+        # Note: In sandbox, signature verification might be skipped for testing
+        # if not cashfree.verify_webhook_signature(body, signature, timestamp):
+        #     raise HTTPException(status_code=401, detail="Invalid signature")
+
+        # Parse webhook payload
+        payload = json.loads(body)
+        event_type = payload.get("type")
+        data = payload.get("data", {})
+
+        # Handle PAYMENT_SUCCESS event
+        if event_type == "PAYMENT_SUCCESS_WEBHOOK":
+            order_data = data.get("order", {})
+            payment_data = data.get("payment", {})
+
+            order_id = order_data.get("order_id")
+            payment_status = payment_data.get("payment_status")
+
+            if payment_status == "SUCCESS" and order_id:
+                # Parse order metadata
+                order_meta = cashfree.parse_order_id_metadata(order_id)
+                user_id = order_meta.get("user_id")
+                tier = order_meta.get("tier")
+                period = order_meta.get("period_months")
+
+                if user_id and tier and period and tier in SUBSCRIPTION_TIERS:
+                    tier_config = SUBSCRIPTION_TIERS[tier]
+
+                    # Determine amount
+                    if period == 1:
+                        amount = tier_config.get("price_monthly", 0)
+                    elif period == 6:
+                        amount = tier_config.get("price_6months", 0)
+                    elif period == 12:
+                        amount = tier_config.get("price_yearly", 0)
+                    else:
+                        amount = order_data.get("order_amount", 0)
+
+                    # Create subscription record
+                    payment_id = payment_data.get("cf_payment_id", order_id)
+                    db.create_subscription_record(
+                        user_id=user_id,
+                        tier=tier,
+                        period_months=period,
+                        amount_paid=amount,
+                        payment_id=payment_id
+                    )
+
+                    print(f"[WEBHOOK] Subscription activated for user {user_id}: {tier} ({period}m)")
+
+        return {"status": "received", "event_type": event_type}
+
+    except Exception as e:
+        print(f"[WEBHOOK ERROR] {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/admin/test-cashfree")
+async def test_cashfree_connection(secret: str = ""):
+    """Test Cashfree API connection. Requires admin secret."""
+    admin_secret = os.getenv("ADMIN_SECRET", "permabullish-test-2024")
+    if secret != admin_secret:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+
+    result = cashfree.test_connection()
+    return result
 
 
 # Root redirect

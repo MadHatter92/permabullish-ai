@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <!-- Cashfree JS SDK -->
+    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
     <style>
         body {
             font-family: 'DM Sans', system-ui, sans-serif;
@@ -16,6 +18,14 @@
         }
         .font-display { font-family: 'DM Serif Display', Georgia, serif; }
         .card-gradient { background: linear-gradient(to bottom right, #1e3a5f, #243b53); }
+
+        /* Loading spinner */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body class="text-white flex items-center justify-center p-6">
@@ -39,24 +49,31 @@
                 </div>
             </div>
 
-            <!-- Mock Payment Notice -->
-            <div class="bg-amber-500/20 border border-amber-500/50 rounded-lg p-4 mb-6">
+            <!-- Environment Notice -->
+            <div id="envNotice" class="hidden bg-amber-500/20 border border-amber-500/50 rounded-lg p-4 mb-6">
                 <p class="text-amber-200 text-sm text-center">
-                    <strong>Test Mode:</strong> This is a simulated checkout. No actual payment will be processed.
+                    <strong>Test Mode:</strong> Use test credentials to complete the payment.
                 </p>
             </div>
 
-            <!-- Mock Payment Button -->
-            <button onclick="simulatePayment()" id="payBtn"
-                class="w-full py-4 bg-[#e8913a] hover:bg-[#d97316] rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2">
+            <!-- Error Message -->
+            <div id="errorMessage" class="hidden bg-red-500/20 border border-red-500/50 rounded-lg p-4 mb-6">
+                <p class="text-red-200 text-sm text-center" id="errorText">
+                    Something went wrong. Please try again.
+                </p>
+            </div>
+
+            <!-- Payment Button -->
+            <button onclick="initiatePayment()" id="payBtn"
+                class="w-full py-4 bg-[#e8913a] hover:bg-[#d97316] rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                 </svg>
-                <span>Pay Now (Simulated)</span>
+                <span id="payBtnText">Pay Now</span>
             </button>
 
             <p class="text-[#9fb3c8] text-xs text-center mt-4">
-                By proceeding, you agree to our Terms of Service and Privacy Policy.
+                Secure payment powered by Cashfree. By proceeding, you agree to our Terms of Service.
             </p>
         </div>
 
@@ -71,8 +88,8 @@
         <div id="processingModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
             <div class="card-gradient rounded-2xl border border-[#334e68] p-8 text-center max-w-sm mx-4">
                 <div id="modalContent">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-[#e8913a] mx-auto mb-4"></div>
-                    <p class="text-lg">Processing payment...</p>
+                    <div class="spinner rounded-full h-12 w-12 border-b-4 border-[#e8913a] mx-auto mb-4"></div>
+                    <p class="text-lg">Initializing payment...</p>
                 </div>
             </div>
         </div>
@@ -82,16 +99,29 @@
     <script>
         const token = localStorage.getItem('token');
         let orderData = {};
+        let cashfree = null;
+
+        // Determine Cashfree environment from API base
+        const isProduction = API_BASE.includes('api.permabullish.com');
+        const cashfreeMode = isProduction ? 'production' : 'sandbox';
 
         // Parse URL params
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const params = new URLSearchParams(window.location.search);
             orderData = {
                 orderId: params.get('order_id'),
+                sessionId: params.get('session_id'),
                 tier: params.get('tier'),
                 period: parseInt(params.get('period')) || 1,
                 amount: parseInt(params.get('amount')) || 0
             };
+
+            // Validate required params
+            if (!orderData.orderId || !orderData.sessionId) {
+                showError('Invalid checkout session. Please try again from the pricing page.');
+                document.getElementById('payBtn').disabled = true;
+                return;
+            }
 
             // Update display
             const tierNames = { basic: 'Basic', pro: 'Pro' };
@@ -101,66 +131,76 @@
                 orderData.period === 6 ? '6 months' : '12 months';
             document.getElementById('totalAmount').textContent = '₹' + orderData.amount.toLocaleString('en-IN');
 
+            // Show test mode notice if in sandbox
+            if (!isProduction) {
+                document.getElementById('envNotice').classList.remove('hidden');
+            }
+
             if (!token) {
-                alert('Please sign in first.');
-                window.location.href = 'index.html';
+                showError('Please sign in first to complete your purchase.');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+                return;
+            }
+
+            // Initialize Cashfree
+            try {
+                cashfree = Cashfree({ mode: cashfreeMode });
+                console.log('Cashfree initialized in', cashfreeMode, 'mode');
+            } catch (e) {
+                console.error('Failed to initialize Cashfree:', e);
+                showError('Payment system initialization failed. Please refresh and try again.');
             }
         });
 
-        async function simulatePayment() {
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            document.getElementById('errorText').textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.add('hidden');
+        }
+
+        async function initiatePayment() {
+            if (!cashfree) {
+                showError('Payment system not ready. Please refresh the page.');
+                return;
+            }
+
+            hideError();
             const btn = document.getElementById('payBtn');
-            const modal = document.getElementById('processingModal');
-            const modalContent = document.getElementById('modalContent');
+            const btnText = document.getElementById('payBtnText');
 
             btn.disabled = true;
-            modal.classList.remove('hidden');
-
-            // Simulate payment processing
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            btnText.textContent = 'Processing...';
 
             try {
-                // Activate subscription
-                const response = await fetch(
-                    `${API_BASE}/subscription/activate?tier=${orderData.tier}&period=${orderData.period}&payment_id=mock_${Date.now()}`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    }
-                );
+                // Launch Cashfree checkout
+                const checkoutOptions = {
+                    paymentSessionId: orderData.sessionId,
+                    redirectTarget: '_self'  // Redirect in same window
+                };
 
-                if (!response.ok) {
-                    throw new Error('Activation failed');
+                const result = await cashfree.checkout(checkoutOptions);
+
+                if (result.error) {
+                    console.error('Cashfree error:', result.error);
+                    showError(result.error.message || 'Payment failed. Please try again.');
+                    btn.disabled = false;
+                    btnText.textContent = 'Pay Now';
                 }
 
-                const result = await response.json();
-
-                // Show success
-                modalContent.innerHTML = `
-                    <svg class="w-16 h-16 text-green-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <h3 class="text-xl font-semibold mb-2">Payment Successful!</h3>
-                    <p class="text-[#9fb3c8] mb-4">Your ${result.tier} subscription is now active.</p>
-                    <a href="dashboard.html" class="inline-block bg-[#e8913a] hover:bg-[#d97316] px-6 py-2 rounded-lg transition-colors">
-                        Go to Dashboard
-                    </a>
-                `;
+                // If payment was successful, Cashfree will redirect to return_url
+                // The return_url is set in the backend when creating the order
 
             } catch (error) {
                 console.error('Payment error:', error);
-                modalContent.innerHTML = `
-                    <svg class="w-16 h-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <h3 class="text-xl font-semibold mb-2">Payment Failed</h3>
-                    <p class="text-[#9fb3c8] mb-4">Something went wrong. Please try again.</p>
-                    <button onclick="location.reload()" class="inline-block bg-[#e8913a] hover:bg-[#d97316] px-6 py-2 rounded-lg transition-colors">
-                        Try Again
-                    </button>
-                `;
+                showError('An error occurred. Please try again.');
+                btn.disabled = false;
+                btnText.textContent = 'Pay Now';
             }
         }
     </script>

@@ -41,6 +41,8 @@ services:
         sync: false
       - key: CASHFREE_SECRET_KEY
         sync: false
+      - key: CASHFREE_ENV
+        value: production
 
   # Stock Research Frontend (Static)
   - type: web
@@ -96,6 +98,8 @@ services:
         sync: false
       - key: CASHFREE_SECRET_KEY
         sync: false
+      - key: CASHFREE_ENV
+        value: sandbox
 
   # Staging Frontend (Static)
   - type: web
@@ -178,9 +182,13 @@ databases:
 # - ANTHROPIC_API_KEY: Claude API key for AI report generation
 # - GOOGLE_CLIENT_ID: Google OAuth client ID
 # - GOOGLE_CLIENT_SECRET: Google OAuth client secret
-# - CASHFREE_APP_ID: Cashfree payment gateway app ID (Phase 3)
-# - CASHFREE_SECRET_KEY: Cashfree payment gateway secret (Phase 3)
+# - CASHFREE_APP_ID: Cashfree payment gateway app ID
+# - CASHFREE_SECRET_KEY: Cashfree payment gateway secret
 # - RESEND_API_KEY: Resend API key for email reports
+#
+# Note: CASHFREE_ENV is pre-set:
+#   - Production: "production"
+#   - Staging: "sandbox" (use test credentials from Cashfree)
 #
 # Cost Estimate:
 # - Production API (Starter): $7/month
