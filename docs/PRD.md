@@ -1,9 +1,9 @@
 # Permabullish - AI Stock Researcher
 ## Product Requirements Document (PRD)
 
-**Version:** 2.1
+**Version:** 2.2
 **Date:** January 30, 2026
-**Status:** Phase 1 Complete
+**Status:** Phase 1 Complete, Phase 2 & 5 Partially Complete
 
 ---
 
@@ -51,23 +51,34 @@ The product operates on a subscription model with tiered access, allowing users 
 - `report.html`: Info bar with date, targets, regenerate button
 - `config.js`: Updated tier limits, added freshness config
 
-### Phase 2: Subscription System (Pending)
-- Enforce tier limits in UI
-- Subscription management page
-- Upgrade prompts and flows
+### Phase 2: Subscription System (Partially Complete)
+- ✅ Enforce tier limits in UI (expired banners)
+- ✅ Upgrade prompts and flows
+- ⏳ Subscription management page (deferred until payments)
 
 ### Phase 3: Payment Integration (Pending)
 - Cashfree integration
 - Payment webhooks
 - Subscription activation
+- Paying vs non-paying user tracking
 
 ### Phase 4: Data Pipeline (Pending)
 - Screener.in scraper
 - Monthly data refresh cron
 
-### Phase 5: Pricing Analysis (Pending)
-- Token consumption tracking
-- Pricing model finalization
+### Phase 5: Pricing Analysis (Partially Complete)
+- ✅ Token consumption tracking (per report)
+- ✅ Cost estimation (~₹3/report baseline)
+- ✅ Enhanced cron reports with cost data
+- ⏳ Final pricing tiers (pending business decision)
+
+### Phase 6: Analytics & User Tracking (Pending)
+- Guest-to-signup attribution (link anonymous usage to new accounts)
+- Session duration tracking (login/activity timestamps)
+- Event logging (searches, report views, feature usage)
+- Cohort analysis support (acquisition source, first actions)
+- Conversion funnel metrics (guest → free → paid)
+- Churn and retention tracking
 
 ---
 
