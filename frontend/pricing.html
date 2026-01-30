@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="scroll-behavior: smooth;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,6 +18,29 @@
         .card-gradient { background: linear-gradient(to bottom right, #1e3a5f, #243b53); }
         .popular-badge {
             background: linear-gradient(135deg, #e8913a 0%, #d97316 100%);
+        }
+
+        /* Polish: Smooth transitions */
+        a, button, [class*="rounded"] {
+            transition: all 0.2s ease-out;
+        }
+
+        /* Polish: Subtle hover elevation for cards */
+        .card-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+        button:active, a:active {
+            transform: translateY(0);
+        }
+
+        /* Polish: Content fade-in */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
         }
     </style>
 </head>
@@ -66,7 +89,7 @@
     </div>
 
     <!-- Pricing Cards -->
-    <section class="py-4 sm:py-8 px-4 sm:px-6">
+    <section class="py-4 sm:py-8 px-4 sm:px-6 fade-in">
         <div class="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <!-- Free -->
             <div id="freeTierCard" class="card-gradient rounded-xl sm:rounded-2xl border border-[#334e68] p-4 sm:p-6 flex flex-col">

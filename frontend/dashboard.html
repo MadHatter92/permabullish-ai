@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="scroll-behavior: smooth;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,6 +25,33 @@
         .tab-inactive {
             border-bottom: 2px solid transparent;
             color: #6b7280;
+        }
+
+        /* Polish: Smooth transitions */
+        a, button, input, [class*="bg-white"], [class*="rounded"] {
+            transition: all 0.2s ease-out;
+        }
+
+        /* Polish: Subtle hover elevation for cards */
+        .bg-white.rounded-xl:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Polish: Content fade-in */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        .fade-in-delay {
+            opacity: 0;
+            animation: fadeIn 0.4s ease-out 0.1s forwards;
         }
     </style>
 </head>
@@ -52,8 +79,26 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Upgrade Banner (hidden by default) -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 fade-in">
+        <!-- Limit Expired Banner (persistent, for users with no reports left) -->
+        <div id="expiredBanner" class="hidden bg-gradient-to-r from-red-600 to-red-500 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white/20 rounded-full p-2 flex-shrink-0">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-white font-semibold text-sm sm:text-base" id="expiredBannerTitle">Your report limit has been reached</p>
+                    <p class="text-white/80 text-xs sm:text-sm" id="expiredBannerText">Upgrade your plan to continue generating AI-powered research reports.</p>
+                </div>
+            </div>
+            <a href="pricing.html" class="bg-white text-red-600 px-5 py-2.5 rounded-lg font-semibold hover:bg-red-50 transition-all text-sm whitespace-nowrap shadow-md">
+                Upgrade Now
+            </a>
+        </div>
+
+        <!-- Upgrade Banner (hidden by default, for low reports warning) -->
         <div id="upgradeBanner" class="hidden bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div class="flex items-center space-x-3">
                 <svg class="w-6 h-6 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -302,45 +347,46 @@
 
         async function loadUsage() {
             try {
-                const response = await apiCall('/usage');
-                const usage = await response.json();
+                // Fetch subscription status (includes usage + expiration info)
+                const response = await apiCall('/subscription/status');
+                const status = await response.json();
 
                 // Update tier name
-                document.getElementById('tierName').textContent = usage.tier_name || 'Free';
+                document.getElementById('tierName').textContent = status.tier_name || 'Free';
 
                 // Hide upgrade link for paid tiers
-                if (usage.tier !== 'free') {
+                if (status.tier !== 'free') {
                     document.getElementById('upgradeLink').textContent = 'Manage';
                 }
 
                 // Update usage numbers
-                document.getElementById('reportsUsed').textContent = usage.reports_used;
-                document.getElementById('reportsLimit').textContent = usage.reports_limit;
-                document.getElementById('reportsRemaining').textContent = usage.reports_remaining;
+                document.getElementById('reportsUsed').textContent = status.reports_used;
+                document.getElementById('reportsLimit').textContent = status.reports_limit;
+                document.getElementById('reportsRemaining').textContent = status.reports_remaining;
 
                 // Update reset info based on lifetime vs monthly
                 const resetInfo = document.getElementById('resetInfo');
-                if (usage.is_lifetime) {
+                if (status.is_lifetime) {
                     resetInfo.innerHTML = '<span class="text-amber-600">Lifetime limit</span>';
-                } else if (usage.reset_date) {
-                    resetInfo.innerHTML = `Resets on <span id="resetDate">${usage.reset_date}</span>`;
+                } else if (status.reset_date) {
+                    resetInfo.innerHTML = `Resets on <span id="resetDate">${status.reset_date}</span>`;
                 }
 
                 // Update usage bar
-                const percentage = (usage.reports_used / usage.reports_limit) * 100;
+                const percentage = (status.reports_used / status.reports_limit) * 100;
                 document.getElementById('usageBar').style.width = `${percentage}%`;
 
                 // Color code remaining reports
                 const remainingEl = document.getElementById('reportsRemaining');
                 const iconEl = document.getElementById('remainingIcon');
-                if (usage.reports_remaining === 0) {
+                if (status.reports_remaining === 0 || status.is_expired) {
                     remainingEl.classList.remove('text-green-600', 'text-amber-600');
                     remainingEl.classList.add('text-red-600');
                     iconEl.classList.remove('bg-green-100');
                     iconEl.classList.add('bg-red-100');
                     iconEl.querySelector('svg').classList.remove('text-green-600');
                     iconEl.querySelector('svg').classList.add('text-red-600');
-                } else if (usage.reports_remaining <= 2) {
+                } else if (status.reports_remaining <= 2) {
                     remainingEl.classList.remove('text-green-600', 'text-red-600');
                     remainingEl.classList.add('text-amber-600');
                     iconEl.classList.remove('bg-green-100');
@@ -351,14 +397,32 @@
                     remainingEl.classList.add('text-green-600');
                 }
 
-                // Show upgrade banner if running low (for free tier)
-                if (usage.tier === 'free' && usage.reports_remaining <= 1) {
-                    const banner = document.getElementById('upgradeBanner');
-                    banner.classList.remove('hidden');
-                    if (usage.reports_remaining === 0) {
-                        document.getElementById('upgradeBannerText').textContent =
-                            "You've used all your free reports! Upgrade to continue generating reports.";
+                // Show expired banner if subscription expired OR no reports left
+                const expiredBanner = document.getElementById('expiredBanner');
+                const upgradeBanner = document.getElementById('upgradeBanner');
+
+                if (status.is_expired) {
+                    // Paid subscription expired
+                    document.getElementById('expiredBannerTitle').textContent = 'Your subscription has expired';
+                    document.getElementById('expiredBannerText').textContent = 'Renew your plan to continue generating AI-powered research reports.';
+                    expiredBanner.classList.remove('hidden');
+                    upgradeBanner.classList.add('hidden');
+                } else if (status.reports_remaining === 0) {
+                    // Free tier exhausted OR monthly limit reached
+                    if (status.tier === 'free') {
+                        document.getElementById('expiredBannerTitle').textContent = "You've used all your free reports";
+                        document.getElementById('expiredBannerText').textContent = 'Upgrade to a paid plan to continue generating AI-powered research reports.';
+                    } else {
+                        document.getElementById('expiredBannerTitle').textContent = 'Monthly report limit reached';
+                        document.getElementById('expiredBannerText').textContent = `Your limit resets on ${status.reset_date}. Upgrade for more reports.`;
                     }
+                    expiredBanner.classList.remove('hidden');
+                    upgradeBanner.classList.add('hidden');
+                } else if (status.tier === 'free' && status.reports_remaining <= 1) {
+                    // Low on reports warning (amber banner)
+                    upgradeBanner.classList.remove('hidden');
+                    document.getElementById('upgradeBannerText').textContent =
+                        `Only ${status.reports_remaining} free report${status.reports_remaining > 1 ? 's' : ''} left! Upgrade for more.`;
                 }
 
             } catch (error) {

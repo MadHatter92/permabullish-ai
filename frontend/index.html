@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="scroll-behavior: smooth;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,10 +22,33 @@
         .font-display {
             font-family: 'DM Serif Display', Georgia, serif;
         }
+
+        /* Polish: Smooth transitions */
+        a, button, input, .glass-card, [class*="rounded"] {
+            transition: all 0.2s ease-out;
+        }
+
+        /* Polish: Subtle hover elevation */
+        button:hover, .glass-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Polish: Content fade-in */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
     </style>
 </head>
 <body class="gradient-bg min-h-screen flex items-center justify-center p-4">
-    <div class="max-w-md w-full">
+    <div class="max-w-md w-full fade-in">
         <!-- Logo and Title -->
         <div class="text-center mb-8">
             <div class="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-4">

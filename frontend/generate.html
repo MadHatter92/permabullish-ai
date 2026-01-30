@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="scroll-behavior: smooth;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,6 +21,29 @@
         }
         .font-display {
             font-family: 'DM Serif Display', Georgia, serif;
+        }
+
+        /* Polish: Smooth transitions */
+        a, button, input, [class*="bg-white"], [class*="rounded"] {
+            transition: all 0.2s ease-out;
+        }
+
+        /* Polish: Subtle hover elevation for cards */
+        .bg-white.rounded-xl:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        button:active, a:active {
+            transform: translateY(0);
+        }
+
+        /* Polish: Content fade-in */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
         }
     </style>
 </head>
@@ -74,7 +97,27 @@
     </div>
 
     <!-- Main Content -->
-    <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 fade-in">
+        <!-- Limit Expired Banner (persistent, for users with no reports left) -->
+        <div id="expiredBanner" class="hidden bg-gradient-to-r from-red-600 to-red-500 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 shadow-lg">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                    <div class="bg-white/20 rounded-full p-1.5 sm:p-2 flex-shrink-0">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-semibold text-white text-xs sm:text-base truncate" id="expiredBannerTitle">Your report limit has been reached</p>
+                        <p class="text-[10px] sm:text-sm text-white/80 truncate" id="expiredBannerText">Upgrade to continue generating reports</p>
+                    </div>
+                </div>
+                <a href="pricing.html" class="bg-white text-red-600 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold hover:bg-red-50 transition-colors text-xs sm:text-sm whitespace-nowrap flex-shrink-0 shadow-md">
+                    Upgrade
+                </a>
+            </div>
+        </div>
+
         <!-- Guest Login Nudge -->
         <div id="guestNudge" class="hidden bg-gradient-to-r from-[#102a43] to-[#1e3a5f] rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 text-white">
             <div class="flex items-center justify-between gap-3">
@@ -297,32 +340,53 @@
             const remainingEl = document.getElementById('reportsRemaining');
             const guestNudge = document.getElementById('guestNudge');
             const upgradeNudge = document.getElementById('upgradeNudge');
+            const expiredBanner = document.getElementById('expiredBanner');
 
             if (isLoggedIn) {
                 guestNudge.classList.add('hidden');
 
-                // Fetch from server for authenticated users
+                // Fetch subscription status for authenticated users
                 try {
-                    const response = await apiCall('/usage');
+                    const response = await apiCall('/subscription/status');
                     if (response.ok) {
-                        const usage = await response.json();
-                        remainingEl.textContent = usage.reports_remaining;
+                        const status = await response.json();
+                        remainingEl.textContent = status.reports_remaining;
 
-                        // Show upgrade nudge if low on reports (<=3 remaining or used >70%)
-                        const usedPercent = usage.reports_limit > 0 ? (usage.reports_used / usage.reports_limit) * 100 : 0;
-                        const tier = usage.tier || 'free';
+                        const tier = status.tier || 'free';
 
-                        if (tier !== 'enterprise' && (usage.reports_remaining <= 3 || usedPercent >= 70)) {
-                            upgradeNudge.classList.remove('hidden');
-                            if (usage.reports_remaining === 0) {
-                                document.getElementById('upgradeNudgeTitle').textContent = 'Out of reports';
-                                document.getElementById('upgradeNudgeText').textContent = 'Upgrade now to continue generating reports';
-                            } else if (usage.reports_remaining <= 3) {
-                                document.getElementById('upgradeNudgeTitle').textContent = `Only ${usage.reports_remaining} report${usage.reports_remaining > 1 ? 's' : ''} left`;
-                                document.getElementById('upgradeNudgeText').textContent = 'Upgrade for more reports - save up to 30% yearly';
-                            }
-                        } else {
+                        // Check for expired subscription or exhausted limits first
+                        if (status.is_expired) {
+                            // Paid subscription expired
+                            document.getElementById('expiredBannerTitle').textContent = 'Your subscription has expired';
+                            document.getElementById('expiredBannerText').textContent = 'Renew to continue generating reports';
+                            expiredBanner.classList.remove('hidden');
                             upgradeNudge.classList.add('hidden');
+                        } else if (status.reports_remaining === 0) {
+                            // No reports left
+                            if (tier === 'free') {
+                                document.getElementById('expiredBannerTitle').textContent = "You've used all free reports";
+                                document.getElementById('expiredBannerText').textContent = 'Upgrade to continue generating reports';
+                            } else {
+                                document.getElementById('expiredBannerTitle').textContent = 'Monthly limit reached';
+                                document.getElementById('expiredBannerText').textContent = `Resets on ${status.reset_date}`;
+                            }
+                            expiredBanner.classList.remove('hidden');
+                            upgradeNudge.classList.add('hidden');
+                        } else {
+                            expiredBanner.classList.add('hidden');
+
+                            // Show upgrade nudge if low on reports (<=3 remaining or used >70%)
+                            const usedPercent = status.reports_limit > 0 ? (status.reports_used / status.reports_limit) * 100 : 0;
+
+                            if (tier !== 'enterprise' && (status.reports_remaining <= 3 || usedPercent >= 70)) {
+                                upgradeNudge.classList.remove('hidden');
+                                if (status.reports_remaining <= 3) {
+                                    document.getElementById('upgradeNudgeTitle').textContent = `Only ${status.reports_remaining} report${status.reports_remaining > 1 ? 's' : ''} left`;
+                                    document.getElementById('upgradeNudgeText').textContent = 'Upgrade for more reports - save up to 30% yearly';
+                                }
+                            } else {
+                                upgradeNudge.classList.add('hidden');
+                            }
                         }
                     }
                 } catch (e) {
@@ -330,6 +394,7 @@
                 }
             } else {
                 upgradeNudge.classList.add('hidden');
+                expiredBanner.classList.add('hidden');
 
                 // Fetch anonymous usage from server
                 try {
