@@ -248,9 +248,14 @@
                 // Show guest nudge for non-logged-in users (after a short delay)
                 setTimeout(() => {
                     document.getElementById('guestNudge').classList.remove('hidden');
-                    // Adjust report frame position when nudge is shown (~36px nudge height)
+                    // Adjust report frame position and height when nudge is shown
                     const isMobile = window.innerWidth < 640;
+                    const nudgeHeight = 36;
                     document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '80px' : '100px';
+                    // Also adjust iframe height
+                    document.getElementById('reportFrame').style.height = isMobile
+                        ? `calc(100vh - ${108 + nudgeHeight}px)`
+                        : `calc(100vh - ${124 + nudgeHeight}px)`;
                 }, 1500);
             }
 
@@ -603,6 +608,10 @@
             document.getElementById('guestNudge').classList.add('hidden');
             const isMobile = window.innerWidth < 640;
             document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '44px' : '60px';
+            // Restore iframe height
+            document.getElementById('reportFrame').style.height = isMobile
+                ? 'calc(100vh - 108px)'
+                : 'calc(100vh - 124px)';
         }
     </script>
 </body>
