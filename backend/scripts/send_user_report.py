@@ -62,17 +62,45 @@ def get_usage_stats(user_id: int) -> dict:
         cursor = get_cursor(conn)
         p = placeholder()
 
-        cursor.execute(f"SELECT COUNT(*) as count FROM reports WHERE user_id = {p}", (user_id,))
+        # Count total reports viewed/generated
+        cursor.execute(f"SELECT COUNT(*) as count FROM user_reports WHERE user_id = {p}", (user_id,))
         row = cursor.fetchone()
-        reports = _dict_from_row(row)["count"] if row else 0
+        total_reports = _dict_from_row(row)["count"] if row else 0
 
-    return {"total_reports": reports}
+        # Get current month usage (reports generated, not just viewed)
+        month_year = datetime.now().strftime("%Y-%m")
+        cursor.execute(
+            f"SELECT reports_generated FROM usage WHERE user_id = {p} AND month_year = {p}",
+            (user_id, month_year)
+        )
+        row = cursor.fetchone()
+        monthly_generated = _dict_from_row(row)["reports_generated"] if row else 0
+
+        # Get list of companies researched (most recent 5)
+        cursor.execute(f"""
+            SELECT rc.ticker, rc.company_name, ur.first_viewed_at
+            FROM user_reports ur
+            JOIN report_cache rc ON ur.report_cache_id = rc.id
+            WHERE ur.user_id = {p}
+            ORDER BY ur.first_viewed_at DESC
+            LIMIT 5
+        """, (user_id,))
+        rows = cursor.fetchall()
+        companies = [f"{_dict_from_row(r)['ticker']}" for r in rows]
+
+    return {
+        "total_reports": total_reports,
+        "monthly_generated": monthly_generated,
+        "companies": companies
+    }
 
 
-def get_total_stats() -> dict:
+def get_total_stats(days: int = 7) -> dict:
     """Get overall platform stats."""
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
+        p = placeholder()
+        cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
 
         if USE_POSTGRES:
             cursor.execute("SELECT COUNT(*) as count FROM users WHERE is_active = TRUE")
@@ -86,13 +114,58 @@ def get_total_stats() -> dict:
             cursor.execute("SELECT COUNT(*) as count FROM users WHERE google_id IS NOT NULL AND is_active = 1")
         google_users = _dict_from_row(cursor.fetchone())["count"]
 
-        cursor.execute("SELECT COUNT(*) as count FROM reports")
-        total_reports = _dict_from_row(cursor.fetchone())["count"]
+        # Total unique reports in cache
+        cursor.execute("SELECT COUNT(*) as count FROM report_cache")
+        total_cached_reports = _dict_from_row(cursor.fetchone())["count"]
+
+        # Reports generated in period
+        cursor.execute(f"SELECT COUNT(*) as count FROM report_cache WHERE generated_at >= {p}", (cutoff,))
+        reports_in_period = _dict_from_row(cursor.fetchone())["count"]
+
+        # Total report views (user-report links)
+        cursor.execute("SELECT COUNT(*) as count FROM user_reports")
+        total_report_views = _dict_from_row(cursor.fetchone())["count"]
+
+        # Most popular stocks (top 5)
+        cursor.execute("""
+            SELECT rc.ticker, rc.company_name, COUNT(ur.id) as view_count
+            FROM report_cache rc
+            LEFT JOIN user_reports ur ON rc.id = ur.report_cache_id
+            GROUP BY rc.id, rc.ticker, rc.company_name
+            ORDER BY view_count DESC
+            LIMIT 5
+        """)
+        rows = cursor.fetchall()
+        popular_stocks = [f"{_dict_from_row(r)['ticker']} ({_dict_from_row(r)['view_count']} views)" for r in rows]
+
+        # Watchlist stats
+        cursor.execute("SELECT COUNT(*) as count FROM watchlist")
+        total_watchlist_items = _dict_from_row(cursor.fetchone())["count"]
+
+        # Token usage stats (total and in period)
+        cursor.execute("SELECT COALESCE(SUM(total_tokens), 0) as total FROM report_cache")
+        row = cursor.fetchone()
+        total_tokens_all_time = _dict_from_row(row)["total"] if row else 0
+
+        cursor.execute(f"SELECT COALESCE(SUM(total_tokens), 0) as total FROM report_cache WHERE generated_at >= {p}", (cutoff,))
+        row = cursor.fetchone()
+        total_tokens_in_period = _dict_from_row(row)["total"] if row else 0
+
+        # Estimate cost (₹3 per report or based on tokens)
+        # Claude Sonnet: $3/1M input, $15/1M output ~ roughly $0.028 per report ~ ₹2.35
+        estimated_cost_period = (total_tokens_in_period / 2850) * 2.35 if total_tokens_in_period > 0 else reports_in_period * 3
 
     return {
         "total_users": total_users,
         "google_users": google_users,
-        "total_reports": total_reports,
+        "total_cached_reports": total_cached_reports,
+        "reports_in_period": reports_in_period,
+        "total_report_views": total_report_views,
+        "popular_stocks": popular_stocks,
+        "total_watchlist_items": total_watchlist_items,
+        "total_tokens_all_time": total_tokens_all_time,
+        "total_tokens_in_period": total_tokens_in_period,
+        "estimated_cost_period": estimated_cost_period,
     }
 
 
@@ -102,15 +175,16 @@ def generate_report(period: str = "daily") -> tuple[str, str]:
     period_label = "Daily" if period == "daily" else "Weekly"
 
     users = get_new_users(days=days)
-    stats = get_total_stats()
+    stats = get_total_stats(days=days)
 
     # Subject
-    subject = f"[Permabullish] {period_label} User Report - {len(users)} new users"
+    reports_in_period = stats.get('reports_in_period', 0)
+    subject = f"[Permabullish] {period_label} Report - {len(users)} new users, {reports_in_period} reports"
 
     # Body
     lines = []
     lines.append(f"{'='*60}")
-    lines.append(f"PERMABULLISH - {period_label.upper()} USER REPORT")
+    lines.append(f"PERMABULLISH - {period_label.upper()} REPORT")
     lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
     lines.append(f"Period: Last {days} day{'s' if days > 1 else ''}")
     lines.append(f"{'='*60}")
@@ -119,10 +193,38 @@ def generate_report(period: str = "daily") -> tuple[str, str]:
     # Platform stats
     lines.append("PLATFORM OVERVIEW")
     lines.append("-" * 40)
-    lines.append(f"Total Users:      {stats['total_users']}")
-    lines.append(f"Google OAuth:     {stats['google_users']}")
-    lines.append(f"Total Reports:    {stats['total_reports']}")
+    lines.append(f"Total Users:         {stats['total_users']}")
+    lines.append(f"Google OAuth Users:  {stats['google_users']}")
+    lines.append(f"Unique Reports:      {stats['total_cached_reports']}")
+    lines.append(f"Total Report Views:  {stats['total_report_views']}")
+    lines.append(f"Watchlist Items:     {stats['total_watchlist_items']}")
     lines.append("")
+
+    # Period activity
+    lines.append(f"ACTIVITY (Last {days} day{'s' if days > 1 else ''})")
+    lines.append("-" * 40)
+    lines.append(f"New Users:           {len(users)}")
+    lines.append(f"Reports Generated:   {stats['reports_in_period']}")
+    lines.append(f"Tokens Used:         {stats['total_tokens_in_period']:,}")
+    lines.append(f"Est. Cost:           ₹{stats['estimated_cost_period']:.2f}")
+    lines.append("")
+
+    # All-time token stats
+    if stats['total_tokens_all_time'] > 0:
+        lines.append("TOKEN USAGE (All Time)")
+        lines.append("-" * 40)
+        lines.append(f"Total Tokens:        {stats['total_tokens_all_time']:,}")
+        all_time_cost = (stats['total_tokens_all_time'] / 2850) * 2.35
+        lines.append(f"Est. Total Cost:     ₹{all_time_cost:.2f}")
+        lines.append("")
+
+    # Popular stocks
+    if stats.get('popular_stocks'):
+        lines.append("TOP STOCKS (by views)")
+        lines.append("-" * 40)
+        for i, stock in enumerate(stats['popular_stocks'], 1):
+            lines.append(f"  {i}. {stock}")
+        lines.append("")
 
     # New users
     lines.append(f"NEW USERS ({len(users)})")
@@ -140,7 +242,10 @@ def generate_report(period: str = "daily") -> tuple[str, str]:
             provider = "Google" if user.get("google_id") else "Email"
             lines.append(f"{i}. {user['email']}")
             lines.append(f"   Name: {user['full_name']} | Provider: {provider}")
-            lines.append(f"   Joined: {user['created_at']} | Reports: {usage['total_reports']}")
+            lines.append(f"   Joined: {user['created_at']}")
+            lines.append(f"   Reports: {usage['total_reports']} total, {usage['monthly_generated']} this month")
+            if usage.get('companies'):
+                lines.append(f"   Stocks: {', '.join(usage['companies'])}")
             lines.append("")
 
     lines.append("-" * 40)

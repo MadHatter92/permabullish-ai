@@ -220,6 +220,9 @@ def init_database():
                     recommendation VARCHAR(50),
                     report_html TEXT,
                     report_data JSONB,
+                    input_tokens INTEGER DEFAULT 0,
+                    output_tokens INTEGER DEFAULT 0,
+                    total_tokens INTEGER DEFAULT 0,
                     generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(ticker, exchange)
                 )
@@ -356,6 +359,9 @@ def init_database():
                     recommendation TEXT,
                     report_html TEXT,
                     report_data TEXT,
+                    input_tokens INTEGER DEFAULT 0,
+                    output_tokens INTEGER DEFAULT 0,
+                    total_tokens INTEGER DEFAULT 0,
                     generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(ticker, exchange)
                 )
@@ -1074,7 +1080,10 @@ def save_cached_report(
     ai_target_price: float,
     recommendation: str,
     report_html: str,
-    report_data: str = None
+    report_data: str = None,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    total_tokens: int = 0
 ) -> int:
     """Save or update a cached report. Returns the report cache ID."""
     with get_db_connection() as conn:
@@ -1082,8 +1091,8 @@ def save_cached_report(
         if USE_POSTGRES:
             cursor.execute("""
                 INSERT INTO report_cache
-                (ticker, exchange, company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, generated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                (ticker, exchange, company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens, generated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ON CONFLICT (ticker, exchange)
                 DO UPDATE SET
                     company_name = EXCLUDED.company_name,
@@ -1093,9 +1102,12 @@ def save_cached_report(
                     recommendation = EXCLUDED.recommendation,
                     report_html = EXCLUDED.report_html,
                     report_data = EXCLUDED.report_data,
+                    input_tokens = EXCLUDED.input_tokens,
+                    output_tokens = EXCLUDED.output_tokens,
+                    total_tokens = EXCLUDED.total_tokens,
                     generated_at = CURRENT_TIMESTAMP
                 RETURNING id
-            """, (ticker.upper(), exchange.upper(), company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data))
+            """, (ticker.upper(), exchange.upper(), company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens))
             result = cursor.fetchone()
             conn.commit()
             return result['id']
@@ -1103,8 +1115,8 @@ def save_cached_report(
             # SQLite: try insert, if conflict, update and get id
             cursor.execute("""
                 INSERT INTO report_cache
-                (ticker, exchange, company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, generated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                (ticker, exchange, company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens, generated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT (ticker, exchange)
                 DO UPDATE SET
                     company_name = excluded.company_name,
@@ -1114,8 +1126,11 @@ def save_cached_report(
                     recommendation = excluded.recommendation,
                     report_html = excluded.report_html,
                     report_data = excluded.report_data,
+                    input_tokens = excluded.input_tokens,
+                    output_tokens = excluded.output_tokens,
+                    total_tokens = excluded.total_tokens,
                     generated_at = CURRENT_TIMESTAMP
-            """, (ticker.upper(), exchange.upper(), company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data))
+            """, (ticker.upper(), exchange.upper(), company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens))
             conn.commit()
             # Get the id
             cursor.execute("SELECT id FROM report_cache WHERE ticker = ? AND exchange = ?", (ticker.upper(), exchange.upper()))

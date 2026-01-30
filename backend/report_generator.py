@@ -107,6 +107,14 @@ Return ONLY valid JSON, no other text."""
             ]
         )
 
+        # Capture token usage for cost analysis
+        input_tokens = response.usage.input_tokens
+        output_tokens = response.usage.output_tokens
+        total_tokens = input_tokens + output_tokens
+
+        # Log token usage
+        print(f"[TOKEN USAGE] Input: {input_tokens}, Output: {output_tokens}, Total: {total_tokens}")
+
         # Extract JSON from response
         response_text = response.content[0].text.strip()
 
@@ -118,6 +126,15 @@ Return ONLY valid JSON, no other text."""
             response_text = response_text.split("```")[1].split("```")[0]
 
         analysis = json.loads(response_text)
+
+        # Add token usage to analysis for tracking
+        analysis["_token_usage"] = {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens,
+            "model": "claude-sonnet-4-20250514"
+        }
+
         return analysis
 
     except Exception as e:

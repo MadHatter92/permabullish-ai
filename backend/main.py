@@ -435,6 +435,9 @@ async def generate_report(
         basic = stock_data.get("basic_info", {})
         price = stock_data.get("price_info", {})
 
+        # Extract token usage if available
+        token_usage = analysis.get("_token_usage", {})
+
         # Save to cache (shared across all users)
         report_cache_id = db.save_cached_report(
             ticker=ticker,
@@ -445,7 +448,10 @@ async def generate_report(
             ai_target_price=analysis.get("target_price", 0),
             recommendation=analysis.get("recommendation", "HOLD"),
             report_html=report_html,
-            report_data=json.dumps({"stock_data": stock_data, "analysis": analysis})
+            report_data=json.dumps({"stock_data": stock_data, "analysis": analysis}),
+            input_tokens=token_usage.get("input_tokens", 0),
+            output_tokens=token_usage.get("output_tokens", 0),
+            total_tokens=token_usage.get("total_tokens", 0)
         )
 
         # Increment usage

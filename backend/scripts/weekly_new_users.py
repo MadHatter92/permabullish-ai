@@ -57,8 +57,8 @@ def get_usage_stats(user_id: int) -> dict:
         cursor = get_cursor(conn)
         p = placeholder()
 
-        # Get total reports
-        cursor.execute(f"SELECT COUNT(*) as count FROM reports WHERE user_id = {p}", (user_id,))
+        # Get total reports from user_reports (new cached report system)
+        cursor.execute(f"SELECT COUNT(*) as count FROM user_reports WHERE user_id = {p}", (user_id,))
         row = cursor.fetchone()
         reports = _dict_from_row(row)["count"] if row else 0
 
