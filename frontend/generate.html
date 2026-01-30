@@ -583,13 +583,20 @@
                     body: JSON.stringify({
                         symbol: selectedStock.symbol,
                         exchange: selectedStock.exchange || 'NSE',
-                        force_regenerate: forceRegenerate || (cachedReport && !cachedReport.is_outdated)
+                        force_regenerate: forceRegenerate
                     })
                 });
 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.detail || 'Failed to generate report');
+                    // Handle FastAPI validation errors (detail is array) or regular errors (detail is string)
+                    let errorMessage = 'Failed to generate report';
+                    if (typeof error.detail === 'string') {
+                        errorMessage = error.detail;
+                    } else if (Array.isArray(error.detail)) {
+                        errorMessage = error.detail.map(e => e.msg || e.message).join(', ');
+                    }
+                    throw new Error(errorMessage);
                 }
 
                 const result = await response.json();
