@@ -1,6 +1,6 @@
 """
-Permabullish API - Unified backend for Stock Research, MF Analytics, and PMS Tracker.
-Phase 1: Stock Research Generator
+Permabullish API - AI Stock Researcher
+Generate institutional-quality equity research reports for Indian stocks.
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status, Request
@@ -28,8 +28,8 @@ from config import (
 # Initialize FastAPI app
 app = FastAPI(
     title="Permabullish API",
-    description="AI-powered equity research, MF analytics, and PMS tracking for Indian markets",
-    version="1.0.0"
+    description="AI-powered equity research reports for Indian stocks",
+    version="2.0.0"
 )
 
 # CORS middleware for frontend
@@ -76,6 +76,18 @@ class UserLogin(BaseModel):
 class GenerateReportRequest(BaseModel):
     symbol: str
     exchange: str = "NSE"
+    force_regenerate: bool = False  # Force regeneration even if cached
+
+
+class WatchlistAddRequest(BaseModel):
+    ticker: str
+    exchange: str = "NSE"
+    company_name: Optional[str] = None
+
+
+class UserTargetPriceRequest(BaseModel):
+    report_cache_id: int
+    target_price: float
 
 
 class TokenResponse(BaseModel):
@@ -304,82 +316,109 @@ async def generate_report(
     report_request: GenerateReportRequest,
     current_user: Optional[dict] = Depends(auth.get_optional_current_user)
 ):
-    """Generate a new equity research report."""
-    # Check usage limits
+    """Generate or retrieve a cached equity research report."""
+    ticker = report_request.symbol.upper()
+    exchange = report_request.exchange.upper()
+
+    # Check for cached report first
+    cached_report = db.get_cached_report(ticker, exchange)
+    user_id = current_user["id"] if current_user else None
+    is_anonymous = current_user is None
+
+    # Determine if we need to generate a new report
+    need_generation = False
+
+    if cached_report is None:
+        # No cached report exists
+        need_generation = True
+    elif report_request.force_regenerate:
+        # User explicitly requested regeneration
+        need_generation = True
+    elif cached_report.get('is_outdated', False):
+        # Report is older than 15 days
+        if current_user:
+            # Check if user has viewed this report before
+            if not db.has_user_viewed_report(user_id, ticker, exchange):
+                # First-time viewer + outdated = auto-regenerate
+                need_generation = True
+            # else: returning viewer + outdated = show cached (they can manually regenerate)
+
+    # If we need to generate, check usage limits first
+    if need_generation:
+        if current_user:
+            if not db.can_generate_report(user_id):
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Monthly report limit reached. Limit resets on the 1st of next month."
+                )
+        else:
+            identifier = get_client_identifier(request)
+            if not db.can_anonymous_generate(identifier):
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Free report limit reached (3 reports). Please sign in for more reports."
+                )
+
+        # Fetch stock data and generate report
+        stock_data = fetch_stock_data(ticker, exchange)
+
+        if not stock_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Stock {ticker} not found on {exchange}"
+            )
+
+        # Generate AI analysis
+        analysis = generate_ai_analysis(stock_data)
+
+        # Generate HTML report
+        report_html = generate_report_html(stock_data, analysis)
+
+        # Extract key info for storage
+        basic = stock_data.get("basic_info", {})
+        price = stock_data.get("price_info", {})
+
+        # Save to cache (shared across all users)
+        report_cache_id = db.save_cached_report(
+            ticker=ticker,
+            exchange=exchange,
+            company_name=basic.get("company_name", ticker),
+            sector=basic.get("sector", ""),
+            current_price=price.get("current_price", 0),
+            ai_target_price=analysis.get("target_price", 0),
+            recommendation=analysis.get("recommendation", "HOLD"),
+            report_html=report_html,
+            report_data=json.dumps({"stock_data": stock_data, "analysis": analysis})
+        )
+
+        # Increment usage
+        if is_anonymous:
+            db.increment_anonymous_usage(get_client_identifier(request))
+        else:
+            db.increment_usage(user_id)
+
+        # Get the updated cached report
+        cached_report = db.get_cached_report_by_id(report_cache_id)
+        generated_new = True
+    else:
+        report_cache_id = cached_report['id']
+        generated_new = False
+
+    # Link user to report (for authenticated users)
     if current_user:
-        if not db.can_generate_report(current_user["id"]):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Monthly report limit reached. Limit resets on the 1st of next month."
-            )
-        user_id = current_user["id"]
-        is_anonymous = False
-    else:
-        identifier = get_client_identifier(request)
-        if not db.can_anonymous_generate(identifier):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Free report limit reached (3 reports). Please sign in for more reports."
-            )
-        user_id = None
-        is_anonymous = True
-
-    # Fetch stock data
-    stock_data = fetch_stock_data(report_request.symbol, report_request.exchange)
-
-    if not stock_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Stock {report_request.symbol} not found on {report_request.exchange}"
-        )
-
-    # Generate AI analysis
-    analysis = generate_ai_analysis(stock_data)
-
-    # Generate HTML report
-    report_html = generate_report_html(stock_data, analysis)
-
-    # Extract key info for storage
-    basic = stock_data.get("basic_info", {})
-    price = stock_data.get("price_info", {})
-
-    # Save report to database and increment usage
-    if is_anonymous:
-        report_id = db.save_report(
-            user_id=0,  # Anonymous user marker
-            company_name=basic.get("company_name", report_request.symbol),
-            ticker=basic.get("ticker", report_request.symbol),
-            exchange=report_request.exchange,
-            sector=basic.get("sector", ""),
-            current_price=price.get("current_price", 0),
-            target_price=analysis.get("target_price", 0),
-            recommendation=analysis.get("recommendation", "HOLD"),
-            report_html=report_html,
-            report_data=json.dumps({"stock_data": stock_data, "analysis": analysis})
-        )
-        db.increment_anonymous_usage(identifier)
-    else:
-        report_id = db.save_report(
-            user_id=user_id,
-            company_name=basic.get("company_name", report_request.symbol),
-            ticker=basic.get("ticker", report_request.symbol),
-            exchange=report_request.exchange,
-            sector=basic.get("sector", ""),
-            current_price=price.get("current_price", 0),
-            target_price=analysis.get("target_price", 0),
-            recommendation=analysis.get("recommendation", "HOLD"),
-            report_html=report_html,
-            report_data=json.dumps({"stock_data": stock_data, "analysis": analysis})
-        )
-        db.increment_usage(user_id)
+        db.link_user_to_report(user_id, report_cache_id)
 
     return {
-        "report_id": report_id,
-        "company_name": basic.get("company_name", ""),
-        "ticker": report_request.symbol,
-        "recommendation": analysis.get("recommendation", "HOLD"),
-        "target_price": analysis.get("target_price", 0),
-        "current_price": price.get("current_price", 0)
+        "report_cache_id": report_cache_id,
+        "company_name": cached_report.get("company_name", ""),
+        "ticker": ticker,
+        "exchange": exchange,
+        "recommendation": cached_report.get("recommendation", "HOLD"),
+        "ai_target_price": cached_report.get("ai_target_price", 0),
+        "current_price": cached_report.get("current_price", 0),
+        "generated_at": str(cached_report.get("generated_at", "")),
+        "is_outdated": cached_report.get("is_outdated", False),
+        "generated_new": generated_new
     }
 
 
@@ -388,41 +427,35 @@ async def get_user_reports(
     limit: int = 50,
     current_user: dict = Depends(auth.get_current_user)
 ):
-    """Get report history for authenticated user."""
-    reports = db.get_user_reports(current_user["id"], limit=limit)
+    """Get report history for authenticated user (with freshness info)."""
+    reports = db.get_user_report_history(current_user["id"], limit=limit)
     return reports
 
 
-@app.get("/api/reports/{report_id}")
-async def get_report(
-    report_id: int,
-    current_user: Optional[dict] = Depends(auth.get_optional_current_user)
+@app.get("/api/reports/cached/{ticker}")
+async def get_cached_report_by_ticker(
+    ticker: str,
+    exchange: str = "NSE"
 ):
-    """Get a specific report by ID."""
-    if current_user:
-        report = db.get_report_by_id(report_id, current_user["id"])
-    else:
-        report = db.get_report_by_id(report_id, 0)
+    """Get a cached report by ticker (if exists)."""
+    report = db.get_cached_report(ticker.upper(), exchange.upper())
 
     if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Report not found"
+            detail=f"No cached report for {ticker} on {exchange}"
         )
 
     return report
 
 
-@app.get("/api/reports/{report_id}/html", response_class=HTMLResponse)
-async def get_report_html(
-    report_id: int,
+@app.get("/api/reports/{report_cache_id}")
+async def get_report(
+    report_cache_id: int,
     current_user: Optional[dict] = Depends(auth.get_optional_current_user)
 ):
-    """Get the HTML content of a report for viewing."""
-    if current_user:
-        report = db.get_report_by_id(report_id, current_user["id"])
-    else:
-        report = db.get_report_by_id(report_id, 0)
+    """Get a specific cached report by ID."""
+    report = db.get_cached_report_by_id(report_cache_id)
 
     if not report:
         raise HTTPException(
@@ -430,105 +463,124 @@ async def get_report_html(
             detail="Report not found"
         )
 
-    return HTMLResponse(content=report["report_html"])
+    # If authenticated, link user to report (tracks viewing)
+    if current_user:
+        db.link_user_to_report(current_user["id"], report_cache_id)
+
+    return report
 
 
-@app.delete("/api/reports/{report_id}")
-async def delete_report(
-    report_id: int,
-    current_user: dict = Depends(auth.get_current_user)
+@app.get("/api/reports/{report_cache_id}/html", response_class=HTMLResponse)
+async def get_report_html(
+    report_cache_id: int,
+    current_user: Optional[dict] = Depends(auth.get_optional_current_user)
 ):
-    """Delete a report (authenticated users only)."""
-    deleted = db.delete_report(report_id, current_user["id"])
+    """Get the HTML content of a cached report for viewing."""
+    report = db.get_cached_report_by_id(report_cache_id)
 
-    if not deleted:
+    if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Report not found"
         )
 
-    return {"message": "Report deleted successfully"}
+    # If authenticated, link user to report (tracks viewing)
+    if current_user:
+        db.link_user_to_report(current_user["id"], report_cache_id)
+
+    return HTMLResponse(content=report["report_html"])
 
 
 # ============================================
-# MF Analytics Routes
+# User Target Price
 # ============================================
 
-@app.get("/api/mf/categories/stats")
-async def get_mf_category_stats():
-    """Get fund counts per category and sub-category."""
-    try:
-        stats = db.get_mf_category_stats()
-        return stats
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch category stats: {str(e)}"
-        )
-
-
-@app.get("/api/mf/funds")
-async def get_mf_funds(
-    category: Optional[str] = None,
-    sub_category: Optional[str] = None,
-    plan: str = "direct",
-    option: str = "growth",
-    limit: int = 100,
-    offset: int = 0
+@app.put("/api/user/target-price")
+async def set_user_target_price(
+    request_data: UserTargetPriceRequest,
+    current_user: dict = Depends(auth.get_current_user)
 ):
-    """Get mutual funds by category with filtering."""
-    try:
-        result = db.get_mf_funds(
-            category=category,
-            sub_category=sub_category,
-            plan=plan,
-            option=option,
-            limit=min(limit, 500),  # Cap at 500
-            offset=offset
-        )
-        return result
-    except Exception as e:
+    """Set user's personal target price for a stock."""
+    success = db.update_user_target_price(
+        current_user["id"],
+        request_data.report_cache_id,
+        request_data.target_price
+    )
+
+    if not success:
+        # User hasn't viewed this report yet, link them first
+        db.link_user_to_report(current_user["id"], request_data.report_cache_id, request_data.target_price)
+
+    return {"message": "Target price updated", "target_price": request_data.target_price}
+
+
+# ============================================
+# Watchlist Routes
+# ============================================
+
+@app.get("/api/watchlist")
+async def get_watchlist(current_user: dict = Depends(auth.get_current_user)):
+    """Get user's watchlist with report availability."""
+    watchlist = db.get_watchlist(current_user["id"])
+    return watchlist
+
+
+@app.post("/api/watchlist")
+async def add_to_watchlist(
+    item: WatchlistAddRequest,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Add a stock to user's watchlist."""
+    watchlist_id = db.add_to_watchlist(
+        current_user["id"],
+        item.ticker,
+        item.exchange,
+        item.company_name
+    )
+
+    if watchlist_id is None:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch funds: {str(e)}"
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Stock already in watchlist"
         )
 
+    return {"message": "Added to watchlist", "id": watchlist_id}
 
-@app.get("/api/mf/funds/{scheme_code}")
-async def get_mf_fund_detail(scheme_code: str):
-    """Get details for a specific mutual fund."""
-    fund = db.get_mf_fund_by_scheme_code(scheme_code)
 
-    if not fund:
+@app.delete("/api/watchlist/{ticker}")
+async def remove_from_watchlist(
+    ticker: str,
+    exchange: str = "NSE",
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Remove a stock from user's watchlist."""
+    removed = db.remove_from_watchlist(current_user["id"], ticker, exchange)
+
+    if not removed:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Fund not found"
+            detail="Stock not in watchlist"
         )
 
-    return fund
+    return {"message": "Removed from watchlist"}
 
 
-@app.get("/api/mf/search")
-async def search_mf_funds(q: str, limit: int = 20):
-    """Search for mutual funds by name."""
-    if not q or len(q) < 2:
-        return []
-
-    try:
-        results = db.search_mf_funds(q, limit=min(limit, 50))
-        return results
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Search failed: {str(e)}"
-        )
+@app.get("/api/watchlist/check/{ticker}")
+async def check_watchlist(
+    ticker: str,
+    exchange: str = "NSE",
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Check if a stock is in user's watchlist."""
+    is_watched = db.is_in_watchlist(current_user["id"], ticker, exchange)
+    return {"in_watchlist": is_watched}
 
 
-# Future: Stripe webhook endpoint (placeholder for Phase 4)
-@app.post("/api/webhooks/stripe")
-async def stripe_webhook(request: Request):
-    """Handle Stripe webhook events (placeholder for future implementation)."""
-    # TODO: Implement Stripe webhook handling in Phase 4
+# Future: Cashfree webhook endpoint (placeholder for Phase 3)
+@app.post("/api/webhooks/cashfree")
+async def cashfree_webhook(request: Request):
+    """Handle Cashfree payment webhook events (placeholder for future implementation)."""
+    # TODO: Implement Cashfree webhook handling in Phase 3
     return {"status": "received"}
 
 

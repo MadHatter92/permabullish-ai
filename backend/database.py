@@ -68,6 +68,30 @@ class UsageStats(BaseModel):
     reset_date: str
 
 
+class CachedReport(BaseModel):
+    id: int
+    ticker: str
+    exchange: str
+    company_name: str
+    sector: Optional[str]
+    current_price: float
+    ai_target_price: float
+    recommendation: str
+    report_html: str
+    report_data: Optional[str]
+    generated_at: str
+    is_outdated: bool = False
+
+
+class WatchlistItem(BaseModel):
+    id: int
+    ticker: str
+    exchange: str
+    company_name: Optional[str]
+    added_at: str
+    has_report: bool = False
+
+
 @contextmanager
 def get_db_connection():
     """Get a database connection (context manager for proper cleanup)."""
@@ -175,10 +199,55 @@ def init_database():
             cursor.execute("""
                 INSERT INTO usage_limits (tier, monthly_reports, features)
                 VALUES
-                    ('free', 20, '{"stock_research": true, "mf_analytics": false, "pms_tracker": false}'),
-                    ('pro', 100, '{"stock_research": true, "mf_analytics": true, "pms_tracker": true}'),
-                    ('enterprise', 1000, '{"stock_research": true, "mf_analytics": true, "pms_tracker": true, "api_access": true}')
+                    ('free', 3, '{"stock_research": true}'),
+                    ('basic', 10, '{"stock_research": true}'),
+                    ('pro', 50, '{"stock_research": true}'),
+                    ('enterprise', 10000, '{"stock_research": true, "api_access": true}')
                 ON CONFLICT (tier) DO NOTHING
+            """)
+
+            # Report cache - shared reports across all users
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS report_cache (
+                    id SERIAL PRIMARY KEY,
+                    ticker VARCHAR(20) NOT NULL,
+                    exchange VARCHAR(10) NOT NULL,
+                    company_name VARCHAR(255),
+                    sector VARCHAR(255),
+                    current_price REAL,
+                    ai_target_price REAL,
+                    recommendation VARCHAR(50),
+                    report_html TEXT,
+                    report_data JSONB,
+                    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(ticker, exchange)
+                )
+            """)
+
+            # User reports - links users to cached reports with user-specific data
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_reports (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    report_cache_id INTEGER NOT NULL REFERENCES report_cache(id),
+                    user_target_price REAL,
+                    first_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, report_cache_id)
+                )
+            """)
+
+            # Watchlist
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    ticker VARCHAR(20) NOT NULL,
+                    exchange VARCHAR(10) NOT NULL,
+                    company_name VARCHAR(255),
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, ticker, exchange)
+                )
             """)
 
         else:
@@ -245,6 +314,53 @@ def init_database():
                     monthly_reports INTEGER NOT NULL,
                     features TEXT DEFAULT '{}',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Report cache - shared reports across all users
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS report_cache (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ticker TEXT NOT NULL,
+                    exchange TEXT NOT NULL,
+                    company_name TEXT,
+                    sector TEXT,
+                    current_price REAL,
+                    ai_target_price REAL,
+                    recommendation TEXT,
+                    report_html TEXT,
+                    report_data TEXT,
+                    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(ticker, exchange)
+                )
+            """)
+
+            # User reports - links users to cached reports with user-specific data
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    report_cache_id INTEGER NOT NULL,
+                    user_target_price REAL,
+                    first_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id),
+                    FOREIGN KEY (report_cache_id) REFERENCES report_cache(id),
+                    UNIQUE(user_id, report_cache_id)
+                )
+            """)
+
+            # Watchlist
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    ticker TEXT NOT NULL,
+                    exchange TEXT NOT NULL,
+                    company_name TEXT,
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id),
+                    UNIQUE(user_id, ticker, exchange)
                 )
             """)
 
@@ -739,6 +855,307 @@ def search_mf_funds(query: str, limit: int = 20) -> List[dict]:
         """, (f"%{query}%", limit))
         rows = cursor.fetchall()
         return [_dict_from_row(row) for row in rows]
+
+
+# ============================================
+# Report Cache Operations
+# ============================================
+
+REPORT_FRESHNESS_DAYS = 15
+
+
+def get_cached_report(ticker: str, exchange: str) -> Optional[dict]:
+    """Get a cached report by ticker and exchange."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"""
+            SELECT * FROM report_cache
+            WHERE ticker = {p} AND exchange = {p}
+        """, (ticker.upper(), exchange.upper()))
+        row = cursor.fetchone()
+        if row:
+            result = _dict_from_row(row)
+            # Calculate if report is outdated
+            if result.get('generated_at'):
+                from datetime import datetime, timedelta
+                generated = result['generated_at']
+                if isinstance(generated, str):
+                    generated = datetime.fromisoformat(generated.replace('Z', '+00:00').replace(' ', 'T'))
+                result['is_outdated'] = (datetime.now() - generated.replace(tzinfo=None)) > timedelta(days=REPORT_FRESHNESS_DAYS)
+            return result
+        return None
+
+
+def save_cached_report(
+    ticker: str,
+    exchange: str,
+    company_name: str,
+    sector: str,
+    current_price: float,
+    ai_target_price: float,
+    recommendation: str,
+    report_html: str,
+    report_data: str = None
+) -> int:
+    """Save or update a cached report. Returns the report cache ID."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        if USE_POSTGRES:
+            cursor.execute("""
+                INSERT INTO report_cache
+                (ticker, exchange, company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, generated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (ticker, exchange)
+                DO UPDATE SET
+                    company_name = EXCLUDED.company_name,
+                    sector = EXCLUDED.sector,
+                    current_price = EXCLUDED.current_price,
+                    ai_target_price = EXCLUDED.ai_target_price,
+                    recommendation = EXCLUDED.recommendation,
+                    report_html = EXCLUDED.report_html,
+                    report_data = EXCLUDED.report_data,
+                    generated_at = CURRENT_TIMESTAMP
+                RETURNING id
+            """, (ticker.upper(), exchange.upper(), company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data))
+            result = cursor.fetchone()
+            conn.commit()
+            return result['id']
+        else:
+            # SQLite: try insert, if conflict, update and get id
+            cursor.execute("""
+                INSERT INTO report_cache
+                (ticker, exchange, company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, generated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT (ticker, exchange)
+                DO UPDATE SET
+                    company_name = excluded.company_name,
+                    sector = excluded.sector,
+                    current_price = excluded.current_price,
+                    ai_target_price = excluded.ai_target_price,
+                    recommendation = excluded.recommendation,
+                    report_html = excluded.report_html,
+                    report_data = excluded.report_data,
+                    generated_at = CURRENT_TIMESTAMP
+            """, (ticker.upper(), exchange.upper(), company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data))
+            conn.commit()
+            # Get the id
+            cursor.execute("SELECT id FROM report_cache WHERE ticker = ? AND exchange = ?", (ticker.upper(), exchange.upper()))
+            row = cursor.fetchone()
+            return row['id'] if row else cursor.lastrowid
+
+
+# ============================================
+# User Reports Operations
+# ============================================
+
+def link_user_to_report(user_id: int, report_cache_id: int, user_target_price: float = None) -> int:
+    """Link a user to a cached report (tracks viewing). Returns user_report id."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        if USE_POSTGRES:
+            cursor.execute("""
+                INSERT INTO user_reports (user_id, report_cache_id, user_target_price, first_viewed_at, last_viewed_at)
+                VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT (user_id, report_cache_id)
+                DO UPDATE SET last_viewed_at = CURRENT_TIMESTAMP
+                RETURNING id
+            """, (user_id, report_cache_id, user_target_price))
+            result = cursor.fetchone()
+            conn.commit()
+            return result['id']
+        else:
+            cursor.execute("""
+                INSERT INTO user_reports (user_id, report_cache_id, user_target_price, first_viewed_at, last_viewed_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT (user_id, report_cache_id)
+                DO UPDATE SET last_viewed_at = CURRENT_TIMESTAMP
+            """, (user_id, report_cache_id, user_target_price))
+            conn.commit()
+            cursor.execute("SELECT id FROM user_reports WHERE user_id = ? AND report_cache_id = ?", (user_id, report_cache_id))
+            row = cursor.fetchone()
+            return row['id'] if row else cursor.lastrowid
+
+
+def has_user_viewed_report(user_id: int, ticker: str, exchange: str) -> bool:
+    """Check if user has previously viewed a report for this stock."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"""
+            SELECT ur.id FROM user_reports ur
+            JOIN report_cache rc ON ur.report_cache_id = rc.id
+            WHERE ur.user_id = {p} AND rc.ticker = {p} AND rc.exchange = {p}
+        """, (user_id, ticker.upper(), exchange.upper()))
+        return cursor.fetchone() is not None
+
+
+def get_user_report_history(user_id: int, limit: int = 50) -> List[dict]:
+    """Get user's report history with freshness info."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"""
+            SELECT
+                rc.id as report_cache_id,
+                rc.ticker,
+                rc.exchange,
+                rc.company_name,
+                rc.sector,
+                rc.current_price,
+                rc.ai_target_price,
+                rc.recommendation,
+                rc.generated_at,
+                ur.user_target_price,
+                ur.first_viewed_at,
+                ur.last_viewed_at
+            FROM user_reports ur
+            JOIN report_cache rc ON ur.report_cache_id = rc.id
+            WHERE ur.user_id = {p}
+            ORDER BY ur.last_viewed_at DESC
+            LIMIT {p}
+        """, (user_id, limit))
+        rows = cursor.fetchall()
+        results = []
+        for row in rows:
+            item = _dict_from_row(row)
+            # Calculate freshness
+            if item.get('generated_at'):
+                from datetime import datetime, timedelta
+                generated = item['generated_at']
+                if isinstance(generated, str):
+                    generated = datetime.fromisoformat(generated.replace('Z', '+00:00').replace(' ', 'T'))
+                item['is_outdated'] = (datetime.now() - generated.replace(tzinfo=None)) > timedelta(days=REPORT_FRESHNESS_DAYS)
+                item['days_old'] = (datetime.now() - generated.replace(tzinfo=None)).days
+            results.append(item)
+        return results
+
+
+def update_user_target_price(user_id: int, report_cache_id: int, target_price: float) -> bool:
+    """Update user's target price for a stock."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"""
+            UPDATE user_reports
+            SET user_target_price = {p}
+            WHERE user_id = {p} AND report_cache_id = {p}
+        """, (target_price, user_id, report_cache_id))
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def get_cached_report_by_id(report_cache_id: int) -> Optional[dict]:
+    """Get a cached report by its ID."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"SELECT * FROM report_cache WHERE id = {p}", (report_cache_id,))
+        row = cursor.fetchone()
+        if row:
+            result = _dict_from_row(row)
+            if result.get('generated_at'):
+                from datetime import datetime, timedelta
+                generated = result['generated_at']
+                if isinstance(generated, str):
+                    generated = datetime.fromisoformat(generated.replace('Z', '+00:00').replace(' ', 'T'))
+                result['is_outdated'] = (datetime.now() - generated.replace(tzinfo=None)) > timedelta(days=REPORT_FRESHNESS_DAYS)
+            return result
+        return None
+
+
+# ============================================
+# Watchlist Operations
+# ============================================
+
+def add_to_watchlist(user_id: int, ticker: str, exchange: str, company_name: str = None) -> Optional[int]:
+    """Add a stock to user's watchlist. Returns watchlist item id or None if already exists."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        try:
+            if USE_POSTGRES:
+                cursor.execute("""
+                    INSERT INTO watchlist (user_id, ticker, exchange, company_name)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (user_id, ticker, exchange) DO NOTHING
+                    RETURNING id
+                """, (user_id, ticker.upper(), exchange.upper(), company_name))
+                result = cursor.fetchone()
+                conn.commit()
+                return result['id'] if result else None
+            else:
+                cursor.execute("""
+                    INSERT OR IGNORE INTO watchlist (user_id, ticker, exchange, company_name)
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, ticker.upper(), exchange.upper(), company_name))
+                conn.commit()
+                if cursor.rowcount > 0:
+                    return cursor.lastrowid
+                return None
+        except Exception:
+            return None
+
+
+def remove_from_watchlist(user_id: int, ticker: str, exchange: str) -> bool:
+    """Remove a stock from user's watchlist."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"""
+            DELETE FROM watchlist
+            WHERE user_id = {p} AND ticker = {p} AND exchange = {p}
+        """, (user_id, ticker.upper(), exchange.upper()))
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def get_watchlist(user_id: int) -> List[dict]:
+    """Get user's watchlist with report availability status."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"""
+            SELECT
+                w.id,
+                w.ticker,
+                w.exchange,
+                w.company_name,
+                w.added_at,
+                rc.id as report_cache_id,
+                rc.ai_target_price,
+                rc.current_price as cached_price,
+                rc.recommendation,
+                rc.generated_at
+            FROM watchlist w
+            LEFT JOIN report_cache rc ON w.ticker = rc.ticker AND w.exchange = rc.exchange
+            WHERE w.user_id = {p}
+            ORDER BY w.added_at DESC
+        """, (user_id,))
+        rows = cursor.fetchall()
+        results = []
+        for row in rows:
+            item = _dict_from_row(row)
+            item['has_report'] = item.get('report_cache_id') is not None
+            if item.get('generated_at'):
+                from datetime import datetime, timedelta
+                generated = item['generated_at']
+                if isinstance(generated, str):
+                    generated = datetime.fromisoformat(generated.replace('Z', '+00:00').replace(' ', 'T'))
+                item['is_outdated'] = (datetime.now() - generated.replace(tzinfo=None)) > timedelta(days=REPORT_FRESHNESS_DAYS)
+            results.append(item)
+        return results
+
+
+def is_in_watchlist(user_id: int, ticker: str, exchange: str) -> bool:
+    """Check if a stock is in user's watchlist."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"""
+            SELECT id FROM watchlist
+            WHERE user_id = {p} AND ticker = {p} AND exchange = {p}
+        """, (user_id, ticker.upper(), exchange.upper()))
+        return cursor.fetchone() is not None
 
 
 # Initialize database on module import

@@ -81,38 +81,46 @@ elif IS_STAGING:
 if FRONTEND_URL and FRONTEND_URL not in CORS_ORIGINS:
     CORS_ORIGINS.append(FRONTEND_URL)
 
-# Stripe Configuration (for future paywall)
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_PRICE_PRO_MONTHLY = os.getenv("STRIPE_PRICE_PRO_MONTHLY", "")  # Stripe Price ID
-STRIPE_PRICE_ENTERPRISE_MONTHLY = os.getenv("STRIPE_PRICE_ENTERPRISE_MONTHLY", "")
+# Cashfree Configuration (for payments)
+CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID", "")
+CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY", "")
+CASHFREE_ENV = os.getenv("CASHFREE_ENV", "sandbox")  # sandbox or production
+
+# Report freshness threshold (days)
+REPORT_FRESHNESS_DAYS = 15
 
 # Subscription Tiers
 SUBSCRIPTION_TIERS = {
     "free": {
-        "monthly_reports": 20,
+        "reports_limit": 3,
+        "is_lifetime": True,  # Free tier is lifetime limit, not monthly
         "features": {
             "stock_research": True,
-            "mf_analytics": False,
-            "pms_tracker": False,
-            "api_access": False,
+            "watchlist": True,
+        }
+    },
+    "basic": {
+        "reports_limit": 10,
+        "is_lifetime": False,  # Monthly limit
+        "features": {
+            "stock_research": True,
+            "watchlist": True,
         }
     },
     "pro": {
-        "monthly_reports": 100,
+        "reports_limit": 50,
+        "is_lifetime": False,
         "features": {
             "stock_research": True,
-            "mf_analytics": True,
-            "pms_tracker": True,
-            "api_access": False,
+            "watchlist": True,
         }
     },
     "enterprise": {
-        "monthly_reports": 1000,
+        "reports_limit": 10000,  # Effectively unlimited
+        "is_lifetime": False,
         "features": {
             "stock_research": True,
-            "mf_analytics": True,
-            "pms_tracker": True,
+            "watchlist": True,
             "api_access": True,
         }
     }
