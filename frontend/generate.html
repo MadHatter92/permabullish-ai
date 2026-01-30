@@ -531,6 +531,14 @@
                 const response = await apiCall(`/reports/cached/${ticker}?exchange=${exchange}`);
                 if (response.ok) {
                     cachedReport = await response.json();
+
+                    // For guests: silently redirect to view the cached report
+                    if (!isLoggedIn && cachedReport && !cachedReport.is_outdated) {
+                        window.location.href = `report.html?id=${cachedReport.id}`;
+                        return;
+                    }
+
+                    // For logged-in users: show the notice
                     const notice = document.getElementById('cachedNotice');
                     const dateSpan = document.getElementById('cachedDate');
                     const actionSpan = document.getElementById('cachedAction');

@@ -167,21 +167,21 @@
     </div>
 
     <!-- Guest Nudge Banner (shown for non-logged-in users) -->
-    <div id="guestNudge" class="hidden fixed top-[108px] sm:top-[124px] left-0 right-0 bg-gradient-to-r from-[#102a43] to-[#1e3a5f] text-white z-30">
-        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
-                <div class="flex items-center space-x-3">
-                    <svg class="w-5 h-5 text-[#e8913a] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div id="guestNudge" class="hidden fixed top-[108px] sm:top-[124px] left-0 right-0 bg-gradient-to-r from-[#102a43] to-[#1e3a5f] text-white z-40 shadow-lg">
+        <div class="max-w-full mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2 min-w-0">
+                    <svg class="w-4 h-4 text-[#e8913a] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                     </svg>
-                    <span class="text-xs sm:text-sm">Like this report? <span class="font-medium">Sign in to generate your own!</span></span>
+                    <span class="text-xs sm:text-sm truncate">Like this? <span class="font-medium">Sign in to generate your own!</span></span>
                 </div>
-                <div class="flex items-center space-x-2 w-full sm:w-auto">
-                    <button onclick="signInWithGoogle()" class="bg-white text-[#102a43] px-4 py-1.5 rounded-lg font-medium hover:bg-gray-100 transition-colors text-sm flex-1 sm:flex-initial">
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button onclick="signInWithGoogle()" class="bg-white text-[#102a43] px-3 py-1 rounded-lg font-medium hover:bg-gray-100 transition-colors text-xs sm:text-sm">
                         Sign In
                     </button>
-                    <button onclick="dismissGuestNudge()" class="text-white/60 hover:text-white p-1 flex-shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button onclick="dismissGuestNudge()" class="text-white/60 hover:text-white p-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
@@ -248,9 +248,9 @@
                 // Show guest nudge for non-logged-in users (after a short delay)
                 setTimeout(() => {
                     document.getElementById('guestNudge').classList.remove('hidden');
-                    // Adjust report frame position when nudge is shown (~48px nudge height)
+                    // Adjust report frame position when nudge is shown (~36px nudge height)
                     const isMobile = window.innerWidth < 640;
-                    document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '92px' : '108px';
+                    document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '80px' : '100px';
                 }, 1500);
             }
 

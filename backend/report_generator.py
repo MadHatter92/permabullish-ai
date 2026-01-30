@@ -802,6 +802,44 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any]) -
             .nav-links {{ display: none; }}
             .header-top {{ flex-direction: column; }}
             .recommendation-box {{ width: 100%; }}
+            .metrics-strip {{
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.5rem;
+                margin-top: 1rem;
+                padding-top: 1rem;
+            }}
+            .metric-item {{
+                padding: 0.5rem 0.25rem;
+            }}
+            .metric-label {{
+                font-size: 0.6rem;
+                margin-bottom: 0.125rem;
+            }}
+            .metric-value {{
+                font-size: 0.85rem;
+            }}
+            .main {{
+                padding: 1rem;
+            }}
+            .section-header {{
+                padding: 1rem;
+            }}
+            .section-content {{
+                padding: 1rem !important;
+            }}
+            .header {{
+                padding: 1rem;
+            }}
+            .header h1 {{
+                font-size: 1.25rem;
+            }}
+            .company-meta {{
+                font-size: 0.7rem;
+                flex-wrap: wrap;
+            }}
+            .price-current {{
+                font-size: 1.1rem;
+            }}
         }}
 
         @media print {{
