@@ -54,14 +54,14 @@
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Upgrade Banner (hidden by default) -->
-        <div id="upgradeBanner" class="hidden bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-4 mb-6 flex items-center justify-between">
+        <div id="upgradeBanner" class="hidden bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div class="flex items-center space-x-3">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-6 h-6 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                 </svg>
-                <p class="text-white font-medium" id="upgradeBannerText">You're running low on reports! Upgrade for more.</p>
+                <p class="text-white font-medium text-sm sm:text-base" id="upgradeBannerText">You're running low on reports! Upgrade for more.</p>
             </div>
-            <a href="pricing.html" class="bg-white text-orange-600 px-4 py-2 rounded-lg font-medium hover:bg-orange-50 transition-all">
+            <a href="pricing.html" class="bg-white text-orange-600 px-4 py-2 rounded-lg font-medium hover:bg-orange-50 transition-all text-sm whitespace-nowrap">
                 Upgrade Now
             </a>
         </div>
@@ -373,20 +373,24 @@
 
                 listEl.innerHTML = reports.map(report => `
                     <div class="p-4 hover:bg-gray-50 transition-all">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white ${getRecommendationColor(report.recommendation)}">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex items-center space-x-3 sm:space-x-4 min-w-0">
+                                <div class="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white flex-shrink-0 ${getRecommendationColor(report.recommendation)}">
                                     ${report.recommendation?.charAt(0) || 'H'}
                                 </div>
-                                <div>
-                                    <div class="flex items-center space-x-2">
-                                        <h3 class="font-medium text-gray-900">${report.company_name}</h3>
+                                <div class="min-w-0">
+                                    <div class="flex items-center space-x-2 flex-wrap">
+                                        <h3 class="font-medium text-gray-900 truncate">${report.company_name}</h3>
                                         ${report.is_outdated ? '<span class="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">Outdated</span>' : ''}
                                     </div>
-                                    <p class="text-sm text-gray-500">${report.ticker} | Generated ${formatDate(report.generated_at)}${report.days_old ? ` (${report.days_old} days ago)` : ''}</p>
+                                    <p class="text-sm text-gray-500 truncate">${report.ticker} | ${formatDate(report.generated_at)}${report.days_old ? ` (${report.days_old}d)` : ''}</p>
                                 </div>
                             </div>
-                            <div class="flex items-center space-x-4">
+                            <div class="flex items-center justify-between sm:justify-end space-x-4 ml-13 sm:ml-0">
+                                <div class="flex space-x-3 sm:hidden">
+                                    <span class="text-sm text-gray-500">AI: <span class="font-medium text-gray-900">₹${report.ai_target_price?.toFixed(0) || '-'}</span></span>
+                                    ${report.user_target_price ? `<span class="text-sm text-gray-500">You: <span class="font-medium text-[#e8913a]">₹${report.user_target_price?.toFixed(0)}</span></span>` : ''}
+                                </div>
                                 <div class="text-right hidden sm:block">
                                     <p class="font-medium text-gray-900">₹${report.ai_target_price?.toFixed(0) || '-'}</p>
                                     <p class="text-sm text-gray-500">AI Target</p>
@@ -397,20 +401,27 @@
                                     <p class="text-sm text-gray-500">Your Target</p>
                                 </div>
                                 ` : ''}
-                                <div class="flex space-x-2">
+                                <div class="flex space-x-1 sm:space-x-2">
+                                    <button onclick="toggleReportWatchlist('${report.ticker}', '${report.exchange || 'NSE'}', '${report.company_name?.replace(/'/g, "\\'")}', this)"
+                                        class="p-2 text-gray-400 hover:text-[#e8913a] hover:bg-[#fdecd4] rounded-lg transition-all watchlist-btn"
+                                        data-ticker="${report.ticker}" data-exchange="${report.exchange || 'NSE'}" title="Add to Watchlist">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                                        </svg>
+                                    </button>
                                     <a href="report.html?id=${report.report_cache_id}" class="p-2 text-[#e8913a] hover:bg-[#fdecd4] rounded-lg transition-all" title="View Report">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                         </svg>
                                     </a>
-                                    ${report.is_outdated ? `
+                                    ${report.is_outdated ? \`
                                     <a href="generate.html?ticker=${report.ticker}&exchange=${report.exchange}&regenerate=true" class="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all" title="Regenerate Report">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                                         </svg>
                                     </a>
-                                    ` : ''}
+                                    \` : ''}
                                 </div>
                             </div>
                         </div>
@@ -530,6 +541,76 @@
             const date = new Date(dateStr);
             return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
         }
+
+        // Store watchlist tickers for quick lookup
+        let watchlistTickers = new Set();
+
+        async function loadWatchlistTickers() {
+            try {
+                const response = await apiCall('/watchlist');
+                const watchlist = await response.json();
+                watchlistTickers = new Set(watchlist.map(w => `${w.ticker}_${w.exchange}`));
+                updateWatchlistButtonStates();
+            } catch (error) {
+                console.error('Failed to load watchlist tickers:', error);
+            }
+        }
+
+        function updateWatchlistButtonStates() {
+            document.querySelectorAll('.watchlist-btn').forEach(btn => {
+                const ticker = btn.dataset.ticker;
+                const exchange = btn.dataset.exchange || 'NSE';
+                const key = `${ticker}_${exchange}`;
+                const svg = btn.querySelector('svg');
+
+                if (watchlistTickers.has(key)) {
+                    btn.classList.remove('text-gray-400');
+                    btn.classList.add('text-[#e8913a]');
+                    svg.setAttribute('fill', 'currentColor');
+                    btn.title = 'In Watchlist';
+                } else {
+                    btn.classList.remove('text-[#e8913a]');
+                    btn.classList.add('text-gray-400');
+                    svg.setAttribute('fill', 'none');
+                    btn.title = 'Add to Watchlist';
+                }
+            });
+        }
+
+        async function toggleReportWatchlist(ticker, exchange, companyName, btn) {
+            const key = `${ticker}_${exchange}`;
+            const isInWatchlist = watchlistTickers.has(key);
+
+            btn.disabled = true;
+
+            try {
+                if (isInWatchlist) {
+                    await apiCall(`/watchlist/${ticker}?exchange=${exchange}`, { method: 'DELETE' });
+                    watchlistTickers.delete(key);
+                } else {
+                    await apiCall('/watchlist', {
+                        method: 'POST',
+                        body: JSON.stringify({ ticker, exchange, company_name: companyName })
+                    });
+                    watchlistTickers.add(key);
+                }
+                updateWatchlistButtonStates();
+                // Refresh watchlist tab if visible
+                if (!document.getElementById('watchlistContent').classList.contains('hidden')) {
+                    loadWatchlist();
+                }
+            } catch (error) {
+                console.error('Failed to toggle watchlist:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Load watchlist tickers after reports load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Original init is already called, add watchlist tickers load
+            setTimeout(loadWatchlistTickers, 500);
+        });
     </script>
 </body>
 </html>

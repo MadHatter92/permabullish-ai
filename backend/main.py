@@ -141,6 +141,35 @@ async def reset_user_usage(email: str, secret: str = ""):
     return {"message": f"Usage reset for {email}", "success": True}
 
 
+# Admin endpoint to reset provider rate limits
+@app.post("/api/admin/reset-rate-limits")
+async def reset_rate_limits(secret: str = ""):
+    """Reset all stock data provider rate limits. Requires admin secret."""
+    admin_secret = os.getenv("ADMIN_SECRET", "permabullish-test-2024")
+    if secret != admin_secret:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+
+    from yahoo_finance import stock_manager
+    stock_manager.reset_rate_limits()
+
+    return {
+        "message": "All provider rate limits reset",
+        "providers": stock_manager.get_provider_status()
+    }
+
+
+# Admin endpoint to check provider status
+@app.get("/api/admin/provider-status")
+async def get_provider_status(secret: str = ""):
+    """Get status of all stock data providers. Requires admin secret."""
+    admin_secret = os.getenv("ADMIN_SECRET", "permabullish-test-2024")
+    if secret != admin_secret:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+
+    from yahoo_finance import stock_manager
+    return {"providers": stock_manager.get_provider_status()}
+
+
 # Auth Routes
 @app.post("/api/auth/register", response_model=TokenResponse)
 async def register(user_data: UserRegister):

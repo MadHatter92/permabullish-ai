@@ -44,20 +44,24 @@
     </section>
 
     <!-- Billing Toggle -->
-    <div class="flex justify-center mb-8">
-        <div class="bg-[#243b53] rounded-lg p-1 inline-flex">
+    <div class="flex justify-center mb-8 px-4">
+        <div class="bg-[#243b53] rounded-lg p-1 inline-flex flex-wrap sm:flex-nowrap justify-center relative gap-1">
             <button id="monthlyBtn" onclick="setBillingPeriod('monthly')"
-                class="px-4 py-2 rounded-md text-sm font-medium transition-all billing-btn active">
+                class="px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all billing-btn">
                 Monthly
             </button>
             <button id="6monthsBtn" onclick="setBillingPeriod('6months')"
-                class="px-4 py-2 rounded-md text-sm font-medium transition-all billing-btn">
-                6 Months <span class="text-green-400 text-xs">Save 17%</span>
+                class="px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all billing-btn whitespace-nowrap">
+                6 Months <span class="text-green-400 text-xs ml-1">-17%</span>
             </button>
             <button id="yearlyBtn" onclick="setBillingPeriod('yearly')"
-                class="px-4 py-2 rounded-md text-sm font-medium transition-all billing-btn">
-                Yearly <span class="text-green-400 text-xs">Save 30%</span>
+                class="px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all billing-btn relative whitespace-nowrap">
+                Yearly <span class="bg-green-500 text-white text-xs px-1.5 sm:px-2 py-0.5 rounded-full ml-1 font-bold">-30%</span>
             </button>
+            <!-- Best Value badge -->
+            <div class="absolute -top-3 right-0 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold shadow-lg hidden sm:block">
+                Best Value
+            </div>
         </div>
     </div>
 
@@ -65,7 +69,7 @@
     <section class="py-8 px-6">
         <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- Free -->
-            <div class="card-gradient rounded-2xl border border-[#334e68] p-6 flex flex-col">
+            <div id="freeTierCard" class="card-gradient rounded-2xl border border-[#334e68] p-6 flex flex-col">
                 <h3 class="text-xl font-semibold mb-2">Free</h3>
                 <p class="text-[#9fb3c8] text-sm mb-4">Try out AI stock research</p>
                 <div class="mb-6">
@@ -102,8 +106,9 @@
                 <h3 class="text-xl font-semibold mb-2">Basic</h3>
                 <p class="text-[#9fb3c8] text-sm mb-4">For casual investors</p>
                 <div class="mb-6">
-                    <span class="text-4xl font-bold" id="basicPrice">₹299</span>
-                    <span class="text-[#9fb3c8]" id="basicPeriod">/month</span>
+                    <span class="text-4xl font-bold" id="basicPrice">₹2,499</span>
+                    <span class="text-[#9fb3c8]" id="basicPeriod">/year</span>
+                    <div id="basicMonthlyEquiv" class="text-green-400 text-sm mt-1 font-medium">Just ₹208/month</div>
                 </div>
                 <ul class="space-y-3 mb-8 flex-grow">
                     <li class="flex items-center text-sm">
@@ -144,8 +149,9 @@
                 <h3 class="text-xl font-semibold mb-2 mt-2">Pro</h3>
                 <p class="text-[#9fb3c8] text-sm mb-4">For active traders</p>
                 <div class="mb-6">
-                    <span class="text-4xl font-bold" id="proPrice">₹799</span>
-                    <span class="text-[#9fb3c8]" id="proPeriod">/month</span>
+                    <span class="text-4xl font-bold" id="proPrice">₹6,999</span>
+                    <span class="text-[#9fb3c8]" id="proPeriod">/year</span>
+                    <div id="proMonthlyEquiv" class="text-green-400 text-sm mt-1 font-medium">Just ₹583/month</div>
                 </div>
                 <ul class="space-y-3 mb-8 flex-grow">
                     <li class="flex items-center text-sm">
@@ -250,7 +256,13 @@
             pro: { monthly: 799, '6months': 3999, yearly: 6999 }
         };
 
-        let currentPeriod = 'monthly';
+        // Monthly equivalents (pre-calculated)
+        const monthlyEquiv = {
+            basic: { '6months': 250, yearly: 208 },
+            pro: { '6months': 667, yearly: 583 }
+        };
+
+        let currentPeriod = 'yearly';  // Default to yearly (best value)
         const token = localStorage.getItem('token');
 
         function setBillingPeriod(period) {
@@ -273,6 +285,21 @@
             document.getElementById('basicPeriod').textContent = periodLabel;
             document.getElementById('proPrice').textContent = '₹' + pricing.pro[period].toLocaleString('en-IN');
             document.getElementById('proPeriod').textContent = periodLabel;
+
+            // Update monthly equivalents
+            const basicEquivEl = document.getElementById('basicMonthlyEquiv');
+            const proEquivEl = document.getElementById('proMonthlyEquiv');
+
+            if (period === 'monthly') {
+                basicEquivEl.style.display = 'none';
+                proEquivEl.style.display = 'none';
+            } else {
+                const savings = period === 'yearly' ? '30%' : '17%';
+                basicEquivEl.style.display = 'block';
+                basicEquivEl.innerHTML = `Just ₹${monthlyEquiv.basic[period]}/month <span class="text-xs opacity-75">(save ${savings})</span>`;
+                proEquivEl.style.display = 'block';
+                proEquivEl.innerHTML = `Just ₹${monthlyEquiv.pro[period]}/month <span class="text-xs opacity-75">(save ${savings})</span>`;
+            }
         }
 
         async function selectPlan(plan) {
@@ -313,8 +340,50 @@
             }
         }
 
-        // Initialize
-        setBillingPeriod('monthly');
+        // Check subscription status and hide Free tier for paying users
+        async function checkUserStatus() {
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/subscription/status`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const status = await response.json();
+                    const tier = status.tier || 'free';
+
+                    // Hide Free tier card for paying users
+                    if (tier !== 'free') {
+                        const freeTierCard = document.getElementById('freeTierCard');
+                        if (freeTierCard) {
+                            freeTierCard.style.display = 'none';
+                        }
+                        // Adjust grid to 3 columns for paid users
+                        const grid = document.querySelector('.grid.grid-cols-1');
+                        if (grid) {
+                            grid.classList.remove('lg:grid-cols-4');
+                            grid.classList.add('lg:grid-cols-3');
+                        }
+                    }
+
+                    // Update button text for current plan
+                    const currentTierBtn = document.querySelector(`[onclick="selectPlan('${tier}')"]`);
+                    if (currentTierBtn && tier !== 'free') {
+                        currentTierBtn.textContent = 'Current Plan';
+                        currentTierBtn.classList.remove('bg-[#243b53]', 'bg-[#e8913a]');
+                        currentTierBtn.classList.add('bg-green-600', 'cursor-default');
+                        currentTierBtn.onclick = null;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to check subscription status:', e);
+            }
+        }
+
+        // Initialize with yearly (best value) as default
+        setBillingPeriod('yearly');
+        checkUserStatus();
     </script>
 </body>
 </html>

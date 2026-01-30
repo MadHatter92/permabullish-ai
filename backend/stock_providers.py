@@ -179,7 +179,7 @@ class YahooFinanceProvider(StockDataProvider):
         except Exception as e:
             error_msg = str(e).lower()
             if "rate" in error_msg or "too many" in error_msg or "429" in error_msg:
-                self.mark_rate_limited(60)
+                self.mark_rate_limited(15)  # Reduced from 60 to 15 minutes
                 logger.warning(f"Yahoo Finance rate limited: {e}")
             else:
                 logger.error(f"Yahoo Finance error for {symbol}: {e}")
@@ -222,20 +222,38 @@ class TickertapeProvider(StockDataProvider):
         if cached:
             return cached
 
-        # Try to search for it
+        # Try Tickertape's autocomplete API first (returns JSON)
+        try:
+            api_url = f"https://www.tickertape.in/api/search?text={symbol}&types=stock"
+            response = self.session.get(api_url, timeout=10)
+
+            if response.status_code == 200:
+                data = response.json()
+                stocks = data.get("data", {}).get("stocks", [])
+                for stock in stocks:
+                    if stock.get("ticker", "").upper() == symbol:
+                        slug = stock.get("slug")
+                        if slug:
+                            tickertape_symbol_cache.set(f"tt_slug:{symbol}", slug)
+                            logger.info(f"Found Tickertape slug for {symbol}: {slug}")
+                            return slug
+        except Exception as e:
+            logger.warning(f"Tickertape API search failed for {symbol}: {e}")
+
+        # Fallback: Try HTML search
         try:
             search_url = f"{self.BASE_URL}/search?text={symbol}"
             response = self.session.get(search_url, timeout=10)
 
             if response.status_code == 200:
                 # Look for stock link in the page
-                match = re.search(rf'/stocks/([a-z0-9-]+-[A-Z]+)"', response.text)
+                match = re.search(rf'/stocks/([a-z0-9-]+-[A-Z0-9]+)"', response.text)
                 if match:
                     slug = match.group(1)
                     tickertape_symbol_cache.set(f"tt_slug:{symbol}", slug)
                     return slug
         except Exception as e:
-            logger.warning(f"Tickertape slug search failed for {symbol}: {e}")
+            logger.warning(f"Tickertape HTML search failed for {symbol}: {e}")
 
         return None
 

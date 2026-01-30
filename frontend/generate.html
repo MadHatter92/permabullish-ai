@@ -81,6 +81,46 @@
 
     <!-- Main Content -->
     <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Guest Login Nudge -->
+        <div id="guestNudge" class="hidden bg-gradient-to-r from-[#102a43] to-[#1e3a5f] rounded-xl p-4 mb-6 text-white">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-white/20 rounded-full p-2 flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="font-medium text-sm sm:text-base">Sign in for more reports</p>
+                        <p class="text-xs sm:text-sm text-white/70">Get 10+ reports/month with a free account</p>
+                    </div>
+                </div>
+                <button onclick="signInWithGoogle()" class="bg-white text-[#102a43] px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors text-sm whitespace-nowrap w-full sm:w-auto">
+                    Sign In
+                </button>
+            </div>
+        </div>
+
+        <!-- Upgrade Nudge (for logged-in users with low quota) -->
+        <div id="upgradeNudge" class="hidden bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-4 mb-6 text-white">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-white/20 rounded-full p-2 flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="font-medium text-sm sm:text-base" id="upgradeNudgeTitle">Running low on reports</p>
+                        <p class="text-xs sm:text-sm text-white/80" id="upgradeNudgeText">Upgrade for more reports and save up to 30%</p>
+                    </div>
+                </div>
+                <a href="pricing.html" class="bg-white text-orange-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors text-sm whitespace-nowrap text-center w-full sm:w-auto">
+                    See Plans
+                </a>
+            </div>
+        </div>
+
         <!-- Search Section -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
             <h2 class="text-lg font-semibold text-gray-900 mb-4">Search for a Company</h2>
@@ -265,19 +305,42 @@
 
         async function updateUsageDisplay() {
             const remainingEl = document.getElementById('reportsRemaining');
+            const guestNudge = document.getElementById('guestNudge');
+            const upgradeNudge = document.getElementById('upgradeNudge');
 
             if (isLoggedIn) {
+                guestNudge.classList.add('hidden');
+
                 // Fetch from server for authenticated users
                 try {
                     const response = await apiCall('/usage');
                     if (response.ok) {
                         const usage = await response.json();
                         remainingEl.textContent = usage.reports_remaining;
+
+                        // Show upgrade nudge if low on reports (<=3 remaining or used >70%)
+                        const usedPercent = usage.reports_limit > 0 ? (usage.reports_used / usage.reports_limit) * 100 : 0;
+                        const tier = usage.tier || 'free';
+
+                        if (tier !== 'enterprise' && (usage.reports_remaining <= 3 || usedPercent >= 70)) {
+                            upgradeNudge.classList.remove('hidden');
+                            if (usage.reports_remaining === 0) {
+                                document.getElementById('upgradeNudgeTitle').textContent = 'Out of reports';
+                                document.getElementById('upgradeNudgeText').textContent = 'Upgrade now to continue generating reports';
+                            } else if (usage.reports_remaining <= 3) {
+                                document.getElementById('upgradeNudgeTitle').textContent = `Only ${usage.reports_remaining} report${usage.reports_remaining > 1 ? 's' : ''} left`;
+                                document.getElementById('upgradeNudgeText').textContent = 'Upgrade for more reports - save up to 30% yearly';
+                            }
+                        } else {
+                            upgradeNudge.classList.add('hidden');
+                        }
                     }
                 } catch (e) {
                     remainingEl.textContent = '-';
                 }
             } else {
+                upgradeNudge.classList.add('hidden');
+
                 // Fetch anonymous usage from server
                 try {
                     const response = await apiCall('/usage/anonymous');
@@ -285,12 +348,19 @@
                         const usage = await response.json();
                         remainingEl.textContent = usage.reports_remaining;
 
+                        // Show guest nudge when they have limited reports or just arrived
+                        if (usage.reports_remaining <= 2) {
+                            guestNudge.classList.remove('hidden');
+                        }
+
                         if (usage.reports_remaining === 0) {
                             showLimitModal();
                         }
                     }
                 } catch (e) {
                     remainingEl.textContent = '3';
+                    // Show nudge for new users
+                    guestNudge.classList.remove('hidden');
                 }
             }
         }
