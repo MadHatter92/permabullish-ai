@@ -340,9 +340,21 @@
             }
         }
 
-        // Check subscription status and hide Free tier for paying users
+        // Check subscription status and hide Free tier for logged-in users
         async function checkUserStatus() {
             if (!token) return;
+
+            // Hide Free tier for all logged-in users (they already have an account)
+            const freeTierCard = document.getElementById('freeTierCard');
+            if (freeTierCard) {
+                freeTierCard.style.display = 'none';
+            }
+            // Adjust grid to 3 columns
+            const grid = document.querySelector('.grid.grid-cols-1');
+            if (grid) {
+                grid.classList.remove('lg:grid-cols-4');
+                grid.classList.add('lg:grid-cols-3');
+            }
 
             try {
                 const response = await fetch(`${API_BASE}/subscription/status`, {
@@ -353,27 +365,15 @@
                     const status = await response.json();
                     const tier = status.tier || 'free';
 
-                    // Hide Free tier card for paying users
+                    // Update button text for current plan (for paying users)
                     if (tier !== 'free') {
-                        const freeTierCard = document.getElementById('freeTierCard');
-                        if (freeTierCard) {
-                            freeTierCard.style.display = 'none';
+                        const currentTierBtn = document.querySelector(`[onclick="selectPlan('${tier}')"]`);
+                        if (currentTierBtn) {
+                            currentTierBtn.textContent = 'Current Plan';
+                            currentTierBtn.classList.remove('bg-[#243b53]', 'bg-[#e8913a]');
+                            currentTierBtn.classList.add('bg-green-600', 'cursor-default');
+                            currentTierBtn.onclick = null;
                         }
-                        // Adjust grid to 3 columns for paid users
-                        const grid = document.querySelector('.grid.grid-cols-1');
-                        if (grid) {
-                            grid.classList.remove('lg:grid-cols-4');
-                            grid.classList.add('lg:grid-cols-3');
-                        }
-                    }
-
-                    // Update button text for current plan
-                    const currentTierBtn = document.querySelector(`[onclick="selectPlan('${tier}')"]`);
-                    if (currentTierBtn && tier !== 'free') {
-                        currentTierBtn.textContent = 'Current Plan';
-                        currentTierBtn.classList.remove('bg-[#243b53]', 'bg-[#e8913a]');
-                        currentTierBtn.classList.add('bg-green-600', 'cursor-default');
-                        currentTierBtn.onclick = null;
                     }
                 }
             } catch (e) {
