@@ -632,6 +632,20 @@ def can_generate_report(user_id: int) -> bool:
     return usage["reports_remaining"] > 0
 
 
+def reset_user_usage(user_id: int) -> bool:
+    """Reset user's usage count for testing purposes."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        month_year = datetime.now().strftime("%Y-%m")
+        p = placeholder()
+        cursor.execute(
+            f"UPDATE usage SET reports_generated = 0 WHERE user_id = {p} AND month_year = {p}",
+            (user_id, month_year)
+        )
+        conn.commit()
+        return True
+
+
 # Anonymous Usage Operations
 def get_anonymous_usage(identifier: str) -> dict:
     """Get anonymous user's usage stats."""

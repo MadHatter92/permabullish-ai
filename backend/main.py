@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from typing import Optional
 import json
 import hashlib
+import os
 from pathlib import Path
 
 from authlib.integrations.starlette_client import OAuth
@@ -116,8 +117,27 @@ async def health_check():
         "status": "healthy",
         "service": "Permabullish API",
         "environment": ENVIRONMENT,
-        "version": "1.0.0"
+        "version": "2.0.0"
     }
+
+
+# Admin endpoint to reset usage (for testing)
+@app.post("/api/admin/reset-usage/{email}")
+async def reset_user_usage(email: str, secret: str = ""):
+    """Reset a user's usage count for testing. Requires admin secret."""
+    # Simple security - require a secret key
+    admin_secret = os.getenv("ADMIN_SECRET", "permabullish-test-2024")
+    if secret != admin_secret:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+
+    user = db.get_user_by_email(email)
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User {email} not found")
+
+    # Reset usage for current month
+    db.reset_user_usage(user["id"])
+
+    return {"message": f"Usage reset for {email}", "success": True}
 
 
 # Auth Routes
