@@ -28,7 +28,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ANTHROPIC_API_KEY
-        sync: false  # Set manually in dashboard
+        sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
@@ -38,9 +38,9 @@ services:
       - key: FRONTEND_URL
         value: https://permabullish.com
       - key: CASHFREE_APP_ID
-        sync: false  # Set manually - payment gateway
+        sync: false
       - key: CASHFREE_SECRET_KEY
-        sync: false  # Set manually - payment gateway
+        sync: false
 
   # Stock Research Frontend (Static)
   - type: web
@@ -153,21 +153,11 @@ services:
       - key: RESEND_API_KEY
         sync: false
 
-  # Monthly Screener Data Scrape (runs 1st of month at 2:00 AM UTC)
-  - type: cron
-    name: permabullish-screener-scrape
-    runtime: python
-    schedule: "0 2 1 * *"
-    region: oregon
-    branch: main
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/scrape_screener.py
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: permabullish-db
-          property: connectionString
+  # TODO: Add monthly Screener scrape cron job in Phase 4
+  # - type: cron
+  #   name: permabullish-screener-scrape
+  #   schedule: "0 2 1 * *"
+  #   startCommand: python scripts/scrape_screener.py
 
 databases:
   # Production Database
@@ -188,8 +178,8 @@ databases:
 # - ANTHROPIC_API_KEY: Claude API key for AI report generation
 # - GOOGLE_CLIENT_ID: Google OAuth client ID
 # - GOOGLE_CLIENT_SECRET: Google OAuth client secret
-# - CASHFREE_APP_ID: Cashfree payment gateway app ID
-# - CASHFREE_SECRET_KEY: Cashfree payment gateway secret
+# - CASHFREE_APP_ID: Cashfree payment gateway app ID (Phase 3)
+# - CASHFREE_SECRET_KEY: Cashfree payment gateway secret (Phase 3)
 # - RESEND_API_KEY: Resend API key for email reports
 #
 # Cost Estimate:
