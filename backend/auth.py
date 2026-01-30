@@ -1,6 +1,6 @@
 """
 Authentication module with subscription tier support.
-Prepared for future Stripe integration.
+Payment integration via Cashfree (Phase 3).
 """
 
 from datetime import datetime, timedelta

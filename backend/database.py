@@ -142,7 +142,7 @@ def init_database():
                     avatar_url TEXT,
                     subscription_tier TEXT DEFAULT 'free',
                     subscription_expires_at TIMESTAMP,
-                    stripe_customer_id TEXT,
+                    payment_customer_id TEXT,  -- For Cashfree or future payment provider
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT TRUE
                 )
@@ -288,7 +288,7 @@ def init_database():
                     avatar_url TEXT,
                     subscription_tier TEXT DEFAULT 'free',
                     subscription_expires_at TIMESTAMP,
-                    stripe_customer_id TEXT,
+                    payment_customer_id TEXT,  -- For Cashfree or future payment provider
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT 1
                 )
