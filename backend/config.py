@@ -53,25 +53,21 @@ BSE_SUFFIX = ".BO"
 # Alpha Vantage API (backup stock data provider)
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "")
 
-# CORS Origins
+# CORS Origins - Always include production URLs to handle env var misconfiguration
 CORS_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8000",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:8000",
+    # Always include Render URLs regardless of environment
+    "https://permabullish.com",
+    "https://www.permabullish.com",
+    "https://api.permabullish.com",
+    "https://permabullish-web.onrender.com",
+    "https://permabullish-api.onrender.com",
 ]
 
-if IS_PRODUCTION:
-    CORS_ORIGINS.extend([
-        "https://permabullish.com",
-        "https://www.permabullish.com",
-        "https://api.permabullish.com",
-        "https://permabullish-web.onrender.com",
-        "https://permabullish-api.onrender.com",
-        "https://permabullish-mf.onrender.com",
-        "https://permabullish-landing.onrender.com",
-    ])
-elif IS_STAGING:
+if IS_STAGING:
     CORS_ORIGINS.extend([
         "https://permabullish-web-staging.onrender.com",
         "https://permabullish-api-staging.onrender.com",
