@@ -1041,8 +1041,11 @@ def get_user_target_price(user_id: int, report_cache_id: int) -> Optional[float]
             WHERE user_id = {p} AND report_cache_id = {p}
         """, (user_id, report_cache_id))
         row = cursor.fetchone()
-        if row and row[0]:
-            return float(row[0])
+        if row:
+            # Handle both dict (PostgreSQL) and tuple (SQLite) results
+            price = row.get('user_target_price') if hasattr(row, 'get') else row[0]
+            if price:
+                return float(price)
         return None
 
 
