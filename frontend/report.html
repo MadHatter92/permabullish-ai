@@ -12,10 +12,10 @@
         .gradient-header {
             background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
         }
-        /* Mobile: nav 64px + info bar ~88px = 152px */
+        /* Mobile: nav 64px + info bar ~44px = 108px */
         #reportFrame {
             width: 100%;
-            height: calc(100vh - 152px);
+            height: calc(100vh - 108px);
             border: none;
         }
         /* Desktop: nav 64px + info bar 60px = 124px */
@@ -81,35 +81,33 @@
     <!-- Report Info Bar (hidden until report loads) -->
     <div id="reportInfoBar" class="hidden fixed top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-sm z-40">
         <div class="max-w-full mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
-            <!-- Mobile Layout: 2 rows -->
-            <div class="flex flex-col gap-2 sm:hidden">
-                <!-- Row 1: Date + Targets -->
-                <div class="flex items-center justify-between">
-                    <span id="reportDateMobile" class="text-xs text-gray-500">--</span>
-                    <div class="flex items-center gap-4">
-                        <div class="text-center">
-                            <div class="text-[10px] text-gray-400 uppercase">AI Target</div>
-                            <div id="aiTargetPriceMobile" class="text-sm font-semibold text-[#102a43]">--</div>
-                        </div>
-                        <div class="text-center" id="userTargetContainerMobile">
-                            <div class="text-[10px] text-gray-400 uppercase">Your Target</div>
-                            <input type="number" id="userTargetInputMobile" placeholder="--"
-                                class="w-14 text-sm font-semibold text-[#102a43] border-b border-gray-300 focus:border-[#e8913a] focus:outline-none text-center bg-transparent"
-                                onchange="saveUserTargetPrice()">
-                        </div>
+            <!-- Mobile Layout: Single compact row -->
+            <div class="flex items-center justify-between gap-2 sm:hidden">
+                <!-- Price info -->
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="flex items-center gap-1">
+                        <span class="text-[10px] text-gray-400">CMP</span>
+                        <span id="currentPriceMobile" class="text-sm font-semibold text-[#102a43]">--</span>
                     </div>
+                    <div class="flex items-center gap-1">
+                        <span class="text-[10px] text-gray-400">Target</span>
+                        <span id="aiTargetPriceMobile" class="text-sm font-semibold text-green-600">--</span>
+                    </div>
+                    <span id="upsideMobile" class="text-xs font-medium px-1.5 py-0.5 rounded bg-green-100 text-green-700">--</span>
                 </div>
-                <!-- Row 2: Badges + Actions -->
-                <div class="flex items-center justify-between">
-                    <span id="outdatedBadgeMobile" class="hidden px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">Outdated</span>
-                    <div class="flex items-center gap-2 ml-auto">
-                        <button id="watchlistBtnMobile" onclick="toggleWatchlist()" class="hidden p-1.5 rounded-lg border border-gray-300 transition-all">
-                            <svg id="watchlistIconMobile" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
-                            </svg>
-                        </button>
-                        <button id="outdatedBtnMobile" onclick="regenerateReport()" class="hidden text-xs text-amber-600 underline">Regenerate</button>
-                    </div>
+                <!-- Actions -->
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <span id="outdatedBadgeMobile" class="hidden w-2 h-2 rounded-full bg-amber-400" title="Report outdated"></span>
+                    <button id="outdatedBtnMobile" onclick="regenerateReport()" class="hidden p-1.5 rounded-lg text-amber-600 hover:bg-amber-50" title="Regenerate">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                    </button>
+                    <button id="watchlistBtnMobile" onclick="toggleWatchlist()" class="hidden p-1.5 rounded-lg border border-gray-300 transition-all">
+                        <svg id="watchlistIconMobile" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -126,15 +124,23 @@
                     <span id="outdatedBadge" class="hidden px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">Report outdated</span>
                 </div>
 
-                <!-- Center: Target Prices -->
+                <!-- Center: Prices -->
                 <div class="flex items-center space-x-6">
                     <div class="text-center">
+                        <div class="text-xs text-gray-500 uppercase tracking-wide">CMP</div>
+                        <div id="currentPrice" class="text-lg font-semibold text-[#102a43]">--</div>
+                    </div>
+                    <div class="text-center">
                         <div class="text-xs text-gray-500 uppercase tracking-wide">AI Target</div>
-                        <div id="aiTargetPrice" class="text-lg font-semibold text-[#102a43]">--</div>
+                        <div id="aiTargetPrice" class="text-lg font-semibold text-green-600">--</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-xs text-gray-500 uppercase tracking-wide">Upside</div>
+                        <div id="upside" class="text-lg font-semibold text-green-600">--</div>
                     </div>
                     <div class="text-center" id="userTargetContainer">
                         <div class="text-xs text-gray-500 uppercase tracking-wide">Your Target</div>
-                        <div class="flex items-center space-x-2">
+                        <div class="flex items-center space-x-1">
                             <span class="text-gray-400">₹</span>
                             <input type="number" id="userTargetInput" placeholder="--"
                                 class="w-20 text-lg font-semibold text-[#102a43] border-b border-gray-300 focus:border-[#e8913a] focus:outline-none text-center bg-transparent"
@@ -161,7 +167,7 @@
     </div>
 
     <!-- Guest Nudge Banner (shown for non-logged-in users) -->
-    <div id="guestNudge" class="hidden fixed top-[152px] sm:top-[124px] left-0 right-0 bg-gradient-to-r from-[#102a43] to-[#1e3a5f] text-white z-30">
+    <div id="guestNudge" class="hidden fixed top-[108px] sm:top-[124px] left-0 right-0 bg-gradient-to-r from-[#102a43] to-[#1e3a5f] text-white z-30">
         <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
                 <div class="flex items-center space-x-3">
@@ -216,7 +222,7 @@
 
     <!-- Report Container -->
     <div id="reportContainer" class="hidden pt-16">
-        <div id="reportFrameWrapper" class="pt-[88px] sm:pt-[60px]">
+        <div id="reportFrameWrapper" class="pt-[44px] sm:pt-[60px]">
             <iframe id="reportFrame" sandbox="allow-scripts allow-same-origin"></iframe>
         </div>
     </div>
@@ -242,9 +248,9 @@
                 // Show guest nudge for non-logged-in users (after a short delay)
                 setTimeout(() => {
                     document.getElementById('guestNudge').classList.remove('hidden');
-                    // Adjust report frame position when nudge is shown (48px nudge height)
+                    // Adjust report frame position when nudge is shown (~48px nudge height)
                     const isMobile = window.innerWidth < 640;
-                    document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '136px' : '108px';
+                    document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '92px' : '108px';
                 }, 1500);
             }
 
@@ -347,16 +353,45 @@
             const daysOld = calculateDaysOld(generatedDate);
             const isOutdated = daysOld > FRESHNESS_DAYS;
 
-            // Desktop
+            // Desktop date
             document.getElementById('reportDate').textContent = `Generated: ${formatDate(generatedDate)} (${daysOld} day${daysOld !== 1 ? 's' : ''} ago)`;
-            // Mobile
-            document.getElementById('reportDateMobile').textContent = `${formatDate(generatedDate)} (${daysOld}d ago)`;
+
+            // Set current price (CMP)
+            const currentPriceVal = currentReport.current_price || currentReport.stock_price;
+            if (currentPriceVal) {
+                const cmpText = `₹${parseFloat(currentPriceVal).toLocaleString('en-IN')}`;
+                document.getElementById('currentPrice').textContent = cmpText;
+                document.getElementById('currentPriceMobile').textContent = cmpText;
+            }
 
             // Set AI target price
-            if (currentReport.ai_target_price) {
-                const priceText = `₹${parseFloat(currentReport.ai_target_price).toLocaleString('en-IN')}`;
-                document.getElementById('aiTargetPrice').textContent = priceText;
-                document.getElementById('aiTargetPriceMobile').textContent = priceText;
+            const targetPrice = currentReport.ai_target_price;
+            if (targetPrice) {
+                const targetText = `₹${parseFloat(targetPrice).toLocaleString('en-IN')}`;
+                document.getElementById('aiTargetPrice').textContent = targetText;
+                document.getElementById('aiTargetPriceMobile').textContent = targetText;
+
+                // Calculate and show upside percentage
+                if (currentPriceVal && currentPriceVal > 0) {
+                    const upside = ((targetPrice - currentPriceVal) / currentPriceVal) * 100;
+                    const upsideText = upside >= 0 ? `+${upside.toFixed(0)}%` : `${upside.toFixed(0)}%`;
+                    const upsideColor = upside >= 0 ? 'text-green-600' : 'text-red-600';
+                    const upsideBgColor = upside >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+
+                    // Desktop
+                    const upsideEl = document.getElementById('upside');
+                    upsideEl.textContent = upsideText;
+                    upsideEl.className = `text-lg font-semibold ${upsideColor}`;
+
+                    // Mobile
+                    const upsideMobileEl = document.getElementById('upsideMobile');
+                    upsideMobileEl.textContent = upsideText;
+                    upsideMobileEl.className = `text-xs font-medium px-1.5 py-0.5 rounded ${upsideBgColor}`;
+
+                    // Update target price color based on upside
+                    document.getElementById('aiTargetPrice').className = `text-lg font-semibold ${upsideColor}`;
+                    document.getElementById('aiTargetPriceMobile').className = `text-sm font-semibold ${upsideColor}`;
+                }
             }
 
             // Show outdated indicators
@@ -366,12 +401,6 @@
                 document.getElementById('outdatedBadgeMobile').classList.remove('hidden');
                 document.getElementById('outdatedBtnMobile').classList.remove('hidden');
                 document.getElementById('regenerateBtn').classList.remove('hidden');
-            }
-
-            // Hide user target on mobile if not logged in
-            if (!isLoggedIn) {
-                const mobileUserTarget = document.getElementById('userTargetContainerMobile');
-                if (mobileUserTarget) mobileUserTarget.classList.add('hidden');
             }
         }
 
@@ -573,7 +602,7 @@
         function dismissGuestNudge() {
             document.getElementById('guestNudge').classList.add('hidden');
             const isMobile = window.innerWidth < 640;
-            document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '88px' : '60px';
+            document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '44px' : '60px';
         }
     </script>
 </body>
