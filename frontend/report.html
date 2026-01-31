@@ -639,8 +639,28 @@
         }
 
         // Share functionality
+        function getShareUrl() {
+            // Use API share endpoint for rich previews on WhatsApp/social
+            const reportId = new URLSearchParams(window.location.search).get('id');
+            if (reportId) {
+                // Use custom domain in production
+                const apiHost = API_BASE.includes('localhost')
+                    ? 'http://localhost:8000/api'
+                    : API_BASE.includes('api.permabullish.com')
+                        ? 'https://api.permabullish.com/api'
+                        : 'https://permabullish-api.onrender.com/api';
+                return `${apiHost}/reports/${reportId}/share`;
+            }
+            return window.location.href;
+        }
+
+        function getDirectUrl() {
+            // Direct URL to report page (for clipboard)
+            return window.location.href;
+        }
+
         function shareReport() {
-            const shareUrl = window.location.href;
+            const shareUrl = getShareUrl();
 
             if (navigator.share) {
                 // Use native share on mobile
@@ -682,10 +702,11 @@
         }
 
         function shareWhatsApp() {
-            const shareUrl = window.location.href;
+            const shareUrl = getShareUrl();
             const companyName = currentReport ? currentReport.company_name : 'Stock';
-            const text = `Check out this AI-powered research report for ${companyName} on Permabullish: ${shareUrl}`;
-            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+            const recommendation = currentReport ? currentReport.recommendation.replace('_', ' ') : '';
+            const text = `${companyName} - ${recommendation}\nAI-powered research report:`;
+            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + shareUrl)}`;
             window.open(whatsappUrl, '_blank');
         }
 

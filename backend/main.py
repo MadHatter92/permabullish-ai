@@ -6,7 +6,7 @@ Generate institutional-quality equity research reports for Indian stocks.
 from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from typing import Optional
 import json
@@ -27,6 +27,7 @@ from config import (
     SUBSCRIPTION_TIERS, CASHFREE_APP_ID, CASHFREE_SECRET_KEY
 )
 import cashfree
+import share_card
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -636,6 +637,72 @@ async def get_report_html(
         db.link_user_to_report(current_user["id"], report_cache_id)
 
     return HTMLResponse(content=report["report_html"])
+
+
+# ============================================
+# Share Card Generation
+# ============================================
+
+@app.get("/api/reports/{report_cache_id}/og-image")
+async def get_report_og_image(report_cache_id: int):
+    """Generate and return Open Graph image for social sharing."""
+    report = db.get_cached_report_by_id(report_cache_id)
+
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found"
+        )
+
+    # Generate share card image
+    image_bytes = share_card.generate_share_card(
+        company_name=report.get("company_name", report.get("ticker", "Unknown")),
+        ticker=report.get("ticker", ""),
+        exchange=report.get("exchange", "NSE"),
+        sector=report.get("sector", ""),
+        recommendation=report.get("recommendation", "HOLD"),
+        current_price=report.get("current_price"),
+        target_price=report.get("ai_target_price"),
+    )
+
+    return Response(
+        content=image_bytes,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=86400",  # Cache for 24 hours
+        }
+    )
+
+
+@app.get("/api/reports/{report_cache_id}/share", response_class=HTMLResponse)
+async def get_report_share_page(report_cache_id: int):
+    """Return HTML page with OG meta tags for social sharing. Redirects to actual report."""
+    report = db.get_cached_report_by_id(report_cache_id)
+
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found"
+        )
+
+    # Determine API base URL
+    if ENVIRONMENT == "production":
+        api_base = "https://api.permabullish.com/api"
+    else:
+        api_base = "https://permabullish-api.onrender.com/api"
+
+    html = share_card.generate_share_html(
+        report_id=report_cache_id,
+        company_name=report.get("company_name", report.get("ticker", "Unknown")),
+        ticker=report.get("ticker", ""),
+        recommendation=report.get("recommendation", "HOLD"),
+        current_price=report.get("current_price"),
+        target_price=report.get("ai_target_price"),
+        api_base=api_base,
+        frontend_url=FRONTEND_URL,
+    )
+
+    return HTMLResponse(content=html)
 
 
 # ============================================
