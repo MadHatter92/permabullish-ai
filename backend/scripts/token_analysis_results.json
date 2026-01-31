@@ -1,0 +1,60 @@
+{
+  "date": "2026-01-30T15:10:33.779229",
+  "reports": [
+    {
+      "company": "Tata Consultancy Services",
+      "ticker": "TCS.NS",
+      "sector": "IT",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 0,
+      "recommendation": "HOLD"
+    },
+    {
+      "company": "Reliance Industries",
+      "ticker": "RELIANCE.NS",
+      "sector": "Conglomerate",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 0,
+      "recommendation": "HOLD"
+    },
+    {
+      "company": "HDFC Bank",
+      "ticker": "HDFCBANK.NS",
+      "sector": "Banking",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 0,
+      "recommendation": "HOLD"
+    },
+    {
+      "company": "Bharti Airtel",
+      "ticker": "BHARTIARTL.NS",
+      "sector": "Telecom",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 0,
+      "recommendation": "HOLD"
+    },
+    {
+      "company": "Maruti Suzuki",
+      "ticker": "MARUTI.NS",
+      "sector": "Auto",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 0,
+      "recommendation": "HOLD"
+    }
+  ],
+  "summary": {
+    "count": 5,
+    "avg_input_tokens": 0.0,
+    "avg_output_tokens": 0.0,
+    "avg_total_tokens": 0.0,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_tokens": 0,
+    "estimated_cost_per_report_usd": 0.0
+  }
+}
