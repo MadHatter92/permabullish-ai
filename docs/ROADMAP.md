@@ -272,43 +272,52 @@ Launch the product on custom domain with production-ready features.
 ---
 
 ## Phase 4: Data Enhancement
-**Status:** Pending
-**Priority:** Medium
+**Status:** 🔄 IN PROGRESS
+**Priority:** High
 **Dependencies:** Phase 1
 
 ### Objective
-Improve stock data quality with Screener.in integration.
+Improve stock data quality and coverage.
 
-### 4.1 Screener.in Scraper
+### 4.1 Stock Coverage Expansion ✅
 
-- [ ] Build Screener.in scraper using Puppeteer/Playwright
-- [ ] Extract key data:
-  - Financials (quarterly, annual)
-  - Ratios (PE, PB, ROE, etc.)
-  - Shareholding patterns
-  - Peer comparison
-- [ ] Store in `screener_data` table
-- [ ] Handle rate limiting and authentication
+- [x] Create Nifty 500 stock list (`data/nifty500_stocks.json` - 499 stocks)
+- [x] Expand Tickertape slug mappings (291 stocks, 58% coverage)
+- [x] Update stock search to use full Nifty 500 list
+- [x] Add newer listings (Swiggy, Nykaa, etc.)
 
-### 4.2 Monthly Scrape Job
+### 4.2 Fundamentals Data Scraper ✅
 
-- [ ] Create scraper script for batch processing
-- [ ] Set up monthly cron job (1st of month)
-- [ ] Cover major indices: Nifty 500, BSE 500
-- [ ] Add incremental update capability
-- [ ] Log scraping status and errors
+- [x] Build fundamentals fetcher (`scripts/fundamentals_sync.py`)
+- [x] Extract key data: P/E, ROE, ROCE, quarterly results, shareholding
+- [x] Create `stock_fundamentals` table schema
+- [x] Handle rate limiting (0.5s delay between requests)
+- [x] Support single-stock and batch sync modes
 
-### 4.3 Data Integration
+### 4.3 Initial Data Sync 🔄
 
-- [ ] Modify report generator to use Screener data
-- [ ] Fall back to Yahoo Finance if Screener data missing
-- [ ] Enhance AI prompt with richer data
-- [ ] Improve report quality with detailed financials
+- [x] Database operations module (`fundamentals_db.py`)
+- [ ] Run initial sync for all 499 stocks (IN PROGRESS)
+- [ ] Verify data quality
+
+### 4.4 Monthly Refresh Job
+
+- [ ] Set up Render cron job (1st of month)
+- [ ] Or use GitHub Actions as free alternative
+- [ ] Add on-demand refresh for stale data (>45 days)
+
+### 4.5 Report Generator Integration
+
+- [ ] Modify report generator to use cached fundamentals
+- [ ] Fall back to Yahoo Finance for missing data
+- [ ] Enhance AI prompt with richer fundamentals
 
 ### Deliverables
-- Working Screener.in scraper
-- Monthly automated scraping
-- Enhanced reports with better data
+- ✅ 499 Nifty 500 stocks searchable
+- ✅ Fundamentals sync infrastructure
+- 🔄 Initial data population
+- Pending: Monthly cron job
+- Pending: Report generator integration
 
 ---
 
@@ -352,45 +361,32 @@ Determine optimal pricing based on token consumption and costs.
 ---
 
 ## Phase 6: Landing Page & Marketing
+**Status:** ❌ DROPPED
+**Reason:** Current flow drops users directly into product, which works well
+
+*Note: May revisit post-launch if conversion optimization is needed.*
+
+---
+
+## Phase 6: Mobile UX Optimization
 **Status:** Pending
 **Priority:** Medium
-**Dependencies:** Phase 2
 
 ### Objective
-Create compelling landing page for conversions.
+Ensure perfect mobile experience across all screens.
 
-### 6.1 Landing Page Design
+### 6.1 Mobile Audit
 
-- [ ] Hero section with value proposition
-- [ ] Feature highlights:
-  - AI-powered analysis
-  - Instant reports
-  - Professional quality
-- [ ] Sample report preview
-- [ ] Pricing section
-- [ ] Testimonials/social proof (when available)
-- [ ] FAQ section
-- [ ] Footer with links
-
-### 6.2 Landing Page Development
-
-- [ ] Build with static HTML + Tailwind (consistent with app)
-- [ ] Implement responsive design
-- [ ] Add animations and interactions
-- [ ] Optimize for performance
-- [ ] SEO optimization
-
-### 6.3 Conversion Optimization
-
-- [ ] Add Google sign-in CTA prominently
-- [ ] Show "3 free reports" incentive
-- [ ] Create urgency/scarcity elements
-- [ ] A/B test different headlines
+- [ ] Report screen - fix AI target banner blocking elements
+- [ ] Report screen - fix text cutoff in cards
+- [ ] Watchlist table - smaller icons and text
+- [ ] Pricing screen - optimize for mobile
+- [ ] Dashboard - further mobile optimization
 
 ### Deliverables
-- Production-ready landing page
-- Mobile-optimized design
-- SEO-friendly implementation
+- Fully responsive design on all screens
+- No overlapping/blocking elements
+- Proper text sizing and spacing
 
 ---
 
@@ -455,8 +451,50 @@ Add Hindi and Gujarati language support for reports.
 | 2 | Subscription System | ✅ Complete |
 | 3 | Payment Integration | ✅ Complete |
 | 3.5 | Production Launch | ✅ Complete |
-| 4 | Data Enhancement | Pending |
+| 4 | Data Enhancement | 🔄 In Progress |
 | 5 | Pricing Analysis | Partial |
+| 6 | ~~Landing Page~~ Mobile UX | Pending |
+| 7 | Multi-Language | Future |
+| 8 | Future Features | Backlog |
+
+---
+
+## Admin & Operations Scripts
+
+### User Management Scripts ✅
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `scripts/export_users.py` | Export all users | `--google-only --emails-only` |
+| `scripts/weekly_new_users.py` | New users report | `--days 7 --format csv` |
+
+```bash
+# Get all Google OAuth user emails
+python scripts/export_users.py --google-only --emails-only
+
+# Weekly new users report
+python scripts/weekly_new_users.py --days 7
+
+# Export as CSV
+python scripts/weekly_new_users.py --format csv --output new_users.csv
+```
+
+### Data Sync Scripts
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `scripts/fundamentals_sync.py` | Sync stock fundamentals | `--symbol TCS` or full sync |
+
+```bash
+# Full sync (all 499 stocks)
+python scripts/fundamentals_sync.py
+
+# Single stock
+python scripts/fundamentals_sync.py --symbol RELIANCE
+
+# Test mode (no DB save)
+python scripts/fundamentals_sync.py --test --symbol TCS
+```
 | 6 | Landing Page | Pending |
 | 7 | Multi-Language | Future |
 | 8 | Future Features | Backlog |
