@@ -118,7 +118,10 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-xs sm:text-sm text-gray-500">Current Plan</p>
-                        <p class="text-lg sm:text-2xl font-bold text-[#1e3a5f]" id="tierName">Free</p>
+                        <!-- Loading skeleton -->
+                        <div id="tierNameSkeleton" class="h-6 sm:h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                        <!-- Actual value (hidden until loaded) -->
+                        <p class="text-lg sm:text-2xl font-bold text-[#1e3a5f] hidden" id="tierName">-</p>
                     </div>
                     <div class="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-full flex items-center justify-center">
                         <svg class="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,7 +137,10 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-xs sm:text-sm text-gray-500">Reports Used</p>
-                        <p class="text-xl sm:text-3xl font-bold text-[#1e3a5f]"><span id="reportsUsed">0</span>/<span id="reportsLimit">3</span></p>
+                        <!-- Loading skeleton -->
+                        <div id="reportsUsedSkeleton" class="h-7 sm:h-9 w-20 bg-gray-200 rounded animate-pulse"></div>
+                        <!-- Actual value (hidden until loaded) -->
+                        <p class="text-xl sm:text-3xl font-bold text-[#1e3a5f] hidden" id="reportsUsedContainer"><span id="reportsUsed">-</span>/<span id="reportsLimit">-</span></p>
                     </div>
                     <div class="w-10 h-10 sm:w-12 sm:h-12 bg-[#fdecd4] rounded-full flex items-center justify-center">
                         <svg class="w-5 h-5 sm:w-6 sm:h-6 text-[#e8913a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -154,7 +160,10 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-xs sm:text-sm text-gray-500">Remaining</p>
-                        <p class="text-xl sm:text-3xl font-bold" id="reportsRemaining">3</p>
+                        <!-- Loading skeleton -->
+                        <div id="reportsRemainingSkeleton" class="h-7 sm:h-9 w-12 bg-gray-200 rounded animate-pulse"></div>
+                        <!-- Actual value (hidden until loaded) -->
+                        <p class="text-xl sm:text-3xl font-bold hidden" id="reportsRemaining">-</p>
                     </div>
                     <div id="remainingIcon" class="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center">
                         <svg class="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,7 +171,11 @@
                         </svg>
                     </div>
                 </div>
-                <p class="mt-2 sm:mt-4 text-xs sm:text-sm text-gray-500" id="resetInfo">Resets on <span id="resetDate">-</span></p>
+                <p class="mt-2 sm:mt-4 text-xs sm:text-sm text-gray-500" id="resetInfo">
+                    <!-- Loading skeleton for reset info -->
+                    <span id="resetInfoSkeleton" class="inline-block h-4 w-24 bg-gray-200 rounded animate-pulse"></span>
+                    <span id="resetInfoText" class="hidden">Resets on <span id="resetDate">-</span></span>
+                </p>
             </div>
 
             <!-- Generate CTA -->
@@ -351,6 +364,16 @@
                 const response = await apiCall('/subscription/status');
                 const status = await response.json();
 
+                // Hide skeletons, show actual values
+                document.getElementById('tierNameSkeleton').classList.add('hidden');
+                document.getElementById('tierName').classList.remove('hidden');
+                document.getElementById('reportsUsedSkeleton').classList.add('hidden');
+                document.getElementById('reportsUsedContainer').classList.remove('hidden');
+                document.getElementById('reportsRemainingSkeleton').classList.add('hidden');
+                document.getElementById('reportsRemaining').classList.remove('hidden');
+                document.getElementById('resetInfoSkeleton').classList.add('hidden');
+                document.getElementById('resetInfoText').classList.remove('hidden');
+
                 // Update tier name
                 document.getElementById('tierName').textContent = status.tier_name || 'Free';
 
@@ -365,11 +388,11 @@
                 document.getElementById('reportsRemaining').textContent = status.reports_remaining;
 
                 // Update reset info based on lifetime vs monthly
-                const resetInfo = document.getElementById('resetInfo');
+                const resetInfoText = document.getElementById('resetInfoText');
                 if (status.is_lifetime) {
-                    resetInfo.innerHTML = '<span class="text-amber-600">Lifetime limit</span>';
+                    resetInfoText.innerHTML = '<span class="text-amber-600">Lifetime limit</span>';
                 } else if (status.reset_date) {
-                    resetInfo.innerHTML = `Resets on <span id="resetDate">${status.reset_date}</span>`;
+                    resetInfoText.innerHTML = `Resets on <span id="resetDate">${status.reset_date}</span>`;
                 }
 
                 // Update usage bar
