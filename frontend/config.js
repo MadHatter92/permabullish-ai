@@ -79,17 +79,16 @@
         reportFreshnessDays: 15,
 
         // Cashfree Payment Form URLs
-        // TODO: Replace test form with individual plan forms
         paymentForms: {
             basic: {
-                monthly: 'https://payments.cashfree.com/forms/testpaymentpermabullish',
-                '6months': 'https://payments.cashfree.com/forms/testpaymentpermabullish',
-                yearly: 'https://payments.cashfree.com/forms/testpaymentpermabullish'
+                monthly: 'https://payments.cashfree.com/forms/PermabullishBasicMonthly',
+                '6months': 'https://payments.cashfree.com/forms/PermabullishBasic6Months',
+                yearly: 'https://payments.cashfree.com/forms/PermabullishBasicYearly'
             },
             pro: {
-                monthly: 'https://payments.cashfree.com/forms/testpaymentpermabullish',
-                '6months': 'https://payments.cashfree.com/forms/testpaymentpermabullish',
-                yearly: 'https://payments.cashfree.com/forms/testpaymentpermabullish'
+                monthly: 'https://payments.cashfree.com/forms/PermabullishProMonthly',
+                '6months': 'https://payments.cashfree.com/forms/Pro6Months',
+                yearly: 'https://payments.cashfree.com/forms/PermabullishProYearly'
             }
         }
     };
