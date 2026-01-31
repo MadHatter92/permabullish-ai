@@ -223,8 +223,13 @@ def generate_share_html(
     <!-- WhatsApp specific -->
     <meta property="og:image:type" content="image/png">
 
-    <!-- Redirect to actual report -->
-    <meta http-equiv="refresh" content="0;url={report_url}">
+    <!-- Telegram specific -->
+    <meta property="telegram:channel" content="@permabullish">
+
+    <!-- Delayed fallback redirect (gives crawlers time to read OG tags) -->
+    <noscript>
+        <meta http-equiv="refresh" content="2;url={report_url}">
+    </noscript>
 
     <style>
         body {{
@@ -264,6 +269,10 @@ def generate_share_html(
         <p>Loading report...</p>
         <p><a href="{report_url}">Click here if not redirected</a></p>
     </div>
+    <script>
+        // Use JS redirect so crawlers can read OG tags (they ignore JS)
+        window.location.replace("{report_url}");
+    </script>
 </body>
 </html>"""
 
