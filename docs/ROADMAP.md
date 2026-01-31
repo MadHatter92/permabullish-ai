@@ -342,7 +342,7 @@ Polish and enhance the live product based on initial usage.
 - `RESEND_API_KEY` - Email service API key
 
 ### Pending (Email System)
-- [ ] DNS verification for permabullish.com (SPF, DKIM, DMARC)
+- [x] DNS verification for permabullish.com (SPF, DKIM) ✅
 - [ ] Set up cron job for re-engagement emails on Render
 
 ---
