@@ -16,13 +16,17 @@ _stock_list_cache: Optional[List[Dict]] = None
 
 
 def _load_stock_list() -> List[Dict]:
-    """Load Nifty 500 stock list from JSON file."""
+    """Load stock list from JSON file (prefers expanded NSE list, falls back to Nifty 500)."""
     global _stock_list_cache
     if _stock_list_cache is not None:
         return _stock_list_cache
 
     try:
-        data_file = Path(__file__).parent / "data" / "nifty500_stocks.json"
+        # Try expanded list first (1900 stocks), fall back to Nifty 500
+        data_file = Path(__file__).parent / "data" / "nse_eq_stocks.json"
+        if not data_file.exists():
+            data_file = Path(__file__).parent / "data" / "nifty500_stocks.json"
+
         with open(data_file, 'r') as f:
             stocks = json.load(f)
         # Convert to search format
