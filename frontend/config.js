@@ -76,7 +76,22 @@
         },
 
         // Report freshness threshold (days)
-        reportFreshnessDays: 15
+        reportFreshnessDays: 15,
+
+        // Cashfree Payment Form URLs
+        // Replace these with your actual payment form URLs from Cashfree dashboard
+        paymentForms: {
+            basic: {
+                monthly: 'https://payments.cashfree.com/forms/YOUR_BASIC_MONTHLY_FORM',
+                '6months': 'https://payments.cashfree.com/forms/YOUR_BASIC_6MONTH_FORM',
+                yearly: 'https://payments.cashfree.com/forms/YOUR_BASIC_YEARLY_FORM'
+            },
+            pro: {
+                monthly: 'https://payments.cashfree.com/forms/YOUR_PRO_MONTHLY_FORM',
+                '6months': 'https://payments.cashfree.com/forms/YOUR_PRO_6MONTH_FORM',
+                yearly: 'https://payments.cashfree.com/forms/YOUR_PRO_YEARLY_FORM'
+            }
+        }
     };
 
     // Log configuration in development

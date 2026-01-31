@@ -1078,6 +1078,106 @@ async def cashfree_webhook(request: Request):
         return {"status": "error", "message": str(e)}
 
 
+@app.post("/api/webhooks/payment-form")
+async def payment_form_webhook(request: Request):
+    """
+    Handle Cashfree Payment Form webhook events.
+    This is called when a customer pays via a payment form.
+    Matches customer email to user account and activates subscription.
+    """
+    try:
+        body = await request.body()
+        payload = json.loads(body)
+
+        event_type = payload.get("type")
+        data = payload.get("data", {})
+
+        print(f"[PAYMENT FORM WEBHOOK] Event: {event_type}")
+        print(f"[PAYMENT FORM WEBHOOK] Data: {json.dumps(data, indent=2)}")
+
+        # Handle payment form order webhook
+        if event_type == "payment_form_order_webhook":
+            order = data.get("order", {})
+            customer = data.get("customer_details", {})
+            form = data.get("form", {})
+
+            order_status = order.get("order_status")
+            customer_email = customer.get("customer_email", "").lower().strip()
+            amount = float(order.get("order_amount", 0))
+            payment_id = order.get("cf_order_id") or order.get("order_id")
+            form_id = form.get("form_id", "")
+
+            if order_status == "PAID" and customer_email:
+                # Look up user by email
+                user = db.get_user_by_email(customer_email)
+
+                if not user:
+                    print(f"[PAYMENT FORM WEBHOOK] User not found for email: {customer_email}")
+                    # Store payment for manual reconciliation
+                    return {
+                        "status": "user_not_found",
+                        "email": customer_email,
+                        "amount": amount,
+                        "message": "Payment received but user not found. Manual activation required."
+                    }
+
+                # Determine tier and period from amount
+                # This mapping should match your payment form prices
+                tier, period = None, None
+
+                # Basic plans
+                if amount == 999:
+                    tier, period = "basic", 1
+                elif amount == 3999:
+                    tier, period = "basic", 6
+                elif amount == 7499:
+                    tier, period = "basic", 12
+                # Pro plans
+                elif amount == 1499:
+                    tier, period = "pro", 1
+                elif amount == 5999:
+                    tier, period = "pro", 6
+                elif amount == 9999:
+                    tier, period = "pro", 12
+                else:
+                    print(f"[PAYMENT FORM WEBHOOK] Unknown amount: {amount}")
+                    return {
+                        "status": "unknown_amount",
+                        "amount": amount,
+                        "message": "Payment received but amount doesn't match any plan."
+                    }
+
+                # Create subscription
+                tier_config = SUBSCRIPTION_TIERS.get(tier, {})
+                subscription_id = db.create_subscription_record(
+                    user_id=user["id"],
+                    tier=tier,
+                    period_months=period,
+                    amount_paid=amount,
+                    payment_id=f"pf_{payment_id}"
+                )
+
+                print(f"[PAYMENT FORM WEBHOOK] Subscription activated for {customer_email}: {tier} ({period}m)")
+
+                return {
+                    "status": "success",
+                    "email": customer_email,
+                    "user_id": user["id"],
+                    "subscription_id": subscription_id,
+                    "tier": tier,
+                    "period_months": period,
+                    "message": f"Subscription activated: {tier_config.get('name', tier)}"
+                }
+
+        return {"status": "received", "event_type": event_type}
+
+    except Exception as e:
+        print(f"[PAYMENT FORM WEBHOOK ERROR] {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+
 @app.get("/api/admin/test-cashfree")
 async def test_cashfree_connection(secret: str = ""):
     """Test Cashfree API connection. Requires admin secret."""

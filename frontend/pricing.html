@@ -333,43 +333,40 @@
                 return;
             }
 
-            const periodMonths = currentPeriod === 'monthly' ? 1 :
-                                currentPeriod === '6months' ? 6 : 12;
-
+            // Get user email to remind them
+            let userEmail = '';
             try {
-                const response = await fetch(`${API_BASE}/subscription/checkout`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        tier: plan,
-                        period: periodMonths
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.detail || 'Checkout failed');
+                const userStr = localStorage.getItem('user');
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    userEmail = user.email || '';
                 }
+            } catch (e) {}
 
-                if (data.type === 'checkout' && data.payment_session_id) {
-                    // Redirect to checkout page with Cashfree payment session
-                    const checkoutUrl = `checkout.html?` +
-                        `order_id=${encodeURIComponent(data.order_id)}` +
-                        `&session_id=${encodeURIComponent(data.payment_session_id)}` +
-                        `&tier=${encodeURIComponent(data.tier)}` +
-                        `&period=${data.period_months}` +
-                        `&amount=${data.amount}`;
-                    window.location.href = checkoutUrl;
-                } else if (data.type === 'contact') {
-                    alert(data.message);
-                }
-            } catch (error) {
-                console.error('Checkout error:', error);
-                alert('Failed to initiate checkout: ' + error.message);
+            // Get payment form URL from config
+            const formUrls = CONFIG.paymentForms[plan];
+            if (!formUrls || !formUrls[currentPeriod]) {
+                alert('Payment form not configured for this plan. Please contact support.');
+                return;
+            }
+
+            const formUrl = formUrls[currentPeriod];
+
+            // Check if form URL is still a placeholder
+            if (formUrl.includes('YOUR_')) {
+                alert('Payment forms are being set up. Please try again later.');
+                return;
+            }
+
+            // Show reminder about using same email
+            const confirmed = confirm(
+                `Important: Please use the same email on the payment page.\n\n` +
+                `Your account email: ${userEmail}\n\n` +
+                `This ensures your subscription is activated automatically.`
+            );
+
+            if (confirmed) {
+                window.location.href = formUrl;
             }
         }
 
