@@ -1,10 +1,96 @@
 import anthropic
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
 
 from config import ANTHROPIC_API_KEY
 from yahoo_finance import format_market_cap, format_indian_number, calculate_upside
+
+
+def get_indian_fiscal_quarter(date: datetime = None) -> Tuple[str, str, str]:
+    """
+    Get Indian fiscal quarter info for a given date.
+    Indian FY runs Apr-Mar. Returns (quarter_name, fy_label, period_desc).
+
+    Example: Jan 2026 -> ("Q4", "FY26", "Jan-Mar 2026")
+    """
+    if date is None:
+        date = datetime.now()
+
+    month = date.month
+    year = date.year
+
+    # Determine fiscal year (FY ends in March)
+    # Jan-Mar belongs to previous calendar year's FY
+    if month <= 3:
+        fy_year = year  # Jan 2026 = FY26
+    else:
+        fy_year = year + 1  # Apr 2025 = FY26
+
+    fy_label = f"FY{fy_year % 100:02d}"
+
+    # Determine quarter
+    if month in [4, 5, 6]:
+        quarter = "Q1"
+        period = f"Apr-Jun {year}"
+    elif month in [7, 8, 9]:
+        quarter = "Q2"
+        period = f"Jul-Sep {year}"
+    elif month in [10, 11, 12]:
+        quarter = "Q3"
+        period = f"Oct-Dec {year}"
+    else:  # 1, 2, 3
+        quarter = "Q4"
+        period = f"Jan-Mar {year}"
+
+    return quarter, fy_label, period
+
+
+def parse_quarter_label(label: str) -> Optional[str]:
+    """
+    Parse quarter label from Screener data (e.g., 'Sep 2025', 'Dec 2024').
+    Returns formatted string like 'Q2 FY26 (Jul-Sep 2025)'.
+    """
+    if not label:
+        return None
+
+    try:
+        # Parse "Mon YYYY" format
+        parts = label.strip().split()
+        if len(parts) != 2:
+            return label
+
+        month_str, year_str = parts
+        year = int(year_str)
+
+        month_map = {
+            'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+            'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+        }
+        month = month_map.get(month_str.lower()[:3])
+
+        if not month:
+            return label
+
+        # Quarter ending month -> Quarter name and period
+        if month in [3]:  # Mar = Q4 ending
+            quarter, fy = "Q4", f"FY{year % 100:02d}"
+            period = f"Jan-Mar {year}"
+        elif month in [6]:  # Jun = Q1 ending
+            quarter, fy = "Q1", f"FY{(year + 1) % 100:02d}"
+            period = f"Apr-Jun {year}"
+        elif month in [9]:  # Sep = Q2 ending
+            quarter, fy = "Q2", f"FY{(year + 1) % 100:02d}"
+            period = f"Jul-Sep {year}"
+        elif month in [12]:  # Dec = Q3 ending
+            quarter, fy = "Q3", f"FY{(year + 1) % 100:02d}"
+            period = f"Oct-Dec {year}"
+        else:
+            return label
+
+        return f"{quarter} {fy} ({period})"
+    except:
+        return label
 
 
 def generate_ai_analysis(stock_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -29,10 +115,17 @@ STOCK DATA (from our data providers):
 
 YOUR TASK: Generate a STRONG, OPINIONATED investment thesis. Take a clear stance - either you love this stock or you don't. Avoid fence-sitting.
 
+IMPORTANT - TIME CONTEXT (Indian Fiscal Year runs Apr-Mar):
+- Today's date: {data_summary.get('report_date')}
+- Current fiscal quarter: {data_summary.get('current_fiscal_quarter')}
+- Latest available results: {data_summary.get('latest_results_quarter') or 'Check quarterly_results data'}
+- When discussing news or events, ensure they are RECENT (within the last 3-6 months from today's date)
+- When discussing quarterly results, reference the ACTUAL quarters from the data (e.g., "Q2 FY26 results showed...")
+
 CRITICAL INSTRUCTIONS FOR HANDLING MISSING DATA:
 - If fundamental data (PE, revenue, margins, etc.) shows as 0, null, or N/A, USE YOUR KNOWLEDGE of this company to provide accurate information. You are Claude, you know about major Indian companies.
 - If quarterly_results is empty, USE YOUR KNOWLEDGE of this company's recent quarters. Describe what you know about their recent performance.
-- If recent_news is empty, USE YOUR KNOWLEDGE of recent developments, announcements, or events related to this company in the last 6 months. Reference real news you know about.
+- If recent_news is empty, USE YOUR KNOWLEDGE of recent developments, announcements, or events related to this company from the past 6 months (before {data_summary.get('report_date')}). Reference real news you know about.
 - NEVER say "data not available" or "quarterly data not provided" - instead, use your knowledge to fill in the gaps.
 - For major Indian companies (Nifty 50, Nifty Next 50), you should know their approximate PE ratios, recent performance, and major news.
 
@@ -156,6 +249,22 @@ def prepare_data_summary(stock_data: Dict[str, Any]) -> Dict[str, Any]:
     quarterly = stock_data.get("quarterly_results", [])
     news = stock_data.get("recent_news", [])
 
+    # Get current date and fiscal quarter context
+    now = datetime.now()
+    current_quarter, current_fy, current_period = get_indian_fiscal_quarter(now)
+
+    # Extract latest available results quarter from data
+    latest_results_quarter = None
+    if quarterly and len(quarterly) > 0:
+        # Quarterly results have 'period' key with values like 'Sep 2025'
+        first_quarter = quarterly[0]
+        if isinstance(first_quarter, dict):
+            # Try to get the period from the first data column (not 'metric')
+            for key in first_quarter.keys():
+                if key != 'metric' and key:
+                    latest_results_quarter = parse_quarter_label(key)
+                    break
+
     # Format news for the AI
     news_summary = []
     for article in news[:7]:  # Top 7 news items
@@ -175,6 +284,11 @@ def prepare_data_summary(stock_data: Dict[str, Any]) -> Dict[str, Any]:
         position_in_range = 50
 
     return {
+        # Time context for grounding
+        "report_date": now.strftime("%B %d, %Y"),
+        "current_fiscal_quarter": f"{current_quarter} {current_fy} ({current_period})",
+        "latest_results_quarter": latest_results_quarter,
+        # Company info
         "company_name": basic.get("company_name"),
         "sector": basic.get("sector"),
         "industry": basic.get("industry"),
