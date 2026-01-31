@@ -102,7 +102,7 @@
         let cashfree = null;
 
         // Determine Cashfree environment from API base
-        const isProduction = API_BASE.includes('api.permabullish.com');
+        const isProduction = API_BASE.includes('api.permabullish.com') || API_BASE.includes('permabullish-api.onrender.com');
         const cashfreeMode = isProduction ? 'production' : 'sandbox';
 
         // Parse URL params
