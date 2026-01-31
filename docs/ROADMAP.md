@@ -357,9 +357,9 @@ Improve stock data quality and coverage.
 
 ### 4.1 Stock Coverage Expansion ✅
 
-- [x] Create Nifty 500 stock list (`data/nifty500_stocks.json` - 499 stocks)
-- [x] Expand Tickertape slug mappings (291 stocks, 58% coverage)
-- [x] Update stock search to use full Nifty 500 list
+- [x] Expanded to 2000+ NSE stocks (`data/nse_eq_stocks.json`)
+- [x] Merged with Nifty 500 company names for better search
+- [x] Update stock search to work with company names (not just tickers)
 - [x] Add newer listings (Swiggy, Nykaa, etc.)
 
 ### 4.2 Fundamentals Data Scraper ✅
@@ -370,30 +370,35 @@ Improve stock data quality and coverage.
 - [x] Handle rate limiting (0.5s delay between requests)
 - [x] Support single-stock and batch sync modes
 
-### 4.3 Initial Data Sync 🔄
+### 4.3 Report Generator Integration ✅
+
+- [x] Modified `yahoo_finance.py` to merge cached Screener data
+- [x] Added `get_cached_fundamentals()` to database.py
+- [x] Updated AI prompt to analyze shareholding TRENDS (buying/selling)
+- [x] Added shareholding insight section to HTML reports
+- [x] Integrated Screener pros/cons into AI analysis
+
+### 4.4 Initial Data Sync ⏳ PENDING
 
 - [x] Database operations module (`fundamentals_db.py`)
-- [ ] Run initial sync for all 499 stocks (IN PROGRESS)
-- [ ] Verify data quality
+- [ ] **TODO: Run overnight sync for all 2000+ stocks**
+  - Command: `python scripts/fundamentals_sync.py`
+  - Estimated time: ~20-30 minutes (0.5s per stock + rate limiting)
+  - Run on production server with DATABASE_URL set
+- [ ] Verify data quality after sync
 
-### 4.4 Monthly Refresh Job
+### 4.5 Monthly Refresh Job
 
 - [ ] Set up Render cron job (1st of month)
 - [ ] Or use GitHub Actions as free alternative
 - [ ] Add on-demand refresh for stale data (>45 days)
 
-### 4.5 Report Generator Integration
-
-- [ ] Modify report generator to use cached fundamentals
-- [ ] Fall back to Yahoo Finance for missing data
-- [ ] Enhance AI prompt with richer fundamentals
-
 ### Deliverables
-- ✅ 499 Nifty 500 stocks searchable
+- ✅ 2000+ NSE stocks searchable
 - ✅ Fundamentals sync infrastructure
-- 🔄 Initial data population
+- ✅ Report generator integration (shareholding trends, pros/cons)
+- ⏳ Initial data population (run overnight)
 - Pending: Monthly cron job
-- Pending: Report generator integration
 
 ---
 

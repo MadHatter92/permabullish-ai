@@ -4,6 +4,7 @@ Automatically detects DATABASE_URL environment variable to choose backend.
 """
 
 import os
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
@@ -276,6 +277,41 @@ def init_database():
                 )
             """)
 
+            # Stock fundamentals cache (from Screener.in)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS stock_fundamentals (
+                    id SERIAL PRIMARY KEY,
+                    symbol TEXT UNIQUE NOT NULL,
+                    company_name TEXT,
+                    sector TEXT,
+                    industry TEXT,
+                    market_cap REAL,
+                    current_price REAL,
+                    high_low TEXT,
+                    pe_ratio REAL,
+                    pb_ratio REAL,
+                    dividend_yield REAL,
+                    roe REAL,
+                    roce REAL,
+                    book_value REAL,
+                    face_value REAL,
+                    quarterly_results JSONB,
+                    profit_loss JSONB,
+                    balance_sheet JSONB,
+                    cash_flow JSONB,
+                    shareholding JSONB,
+                    ratios JSONB,
+                    pros TEXT[],
+                    cons TEXT[],
+                    source_url TEXT,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_fundamentals_symbol ON stock_fundamentals(symbol)
+            """)
+
             # Add subscription_expires_at column if not exists (migration)
             try:
                 cursor.execute("""
@@ -433,6 +469,38 @@ def init_database():
                     expires_at TIMESTAMP NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """)
+
+            # Stock fundamentals cache (from Screener.in)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS stock_fundamentals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    symbol TEXT UNIQUE NOT NULL,
+                    company_name TEXT,
+                    sector TEXT,
+                    industry TEXT,
+                    market_cap REAL,
+                    current_price REAL,
+                    high_low TEXT,
+                    pe_ratio REAL,
+                    pb_ratio REAL,
+                    dividend_yield REAL,
+                    roe REAL,
+                    roce REAL,
+                    book_value REAL,
+                    face_value REAL,
+                    quarterly_results TEXT,
+                    profit_loss TEXT,
+                    balance_sheet TEXT,
+                    cash_flow TEXT,
+                    shareholding TEXT,
+                    ratios TEXT,
+                    pros TEXT,
+                    cons TEXT,
+                    source_url TEXT,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
@@ -1575,6 +1643,89 @@ def get_featured_reports(tickers: List[str]) -> List[dict]:
 
         rows = cursor.fetchall()
         return [_dict_from_row(row) for row in rows]
+
+
+# ============================================
+# Stock Fundamentals Operations
+# ============================================
+
+def get_cached_fundamentals(symbol: str) -> Optional[dict]:
+    """
+    Get cached fundamentals for a stock from Screener data.
+    Returns None if not found or data is stale (>45 days old).
+    """
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+
+        if USE_POSTGRES:
+            cursor.execute(f"""
+                SELECT
+                    symbol, company_name, sector, industry,
+                    market_cap, current_price, high_low,
+                    pe_ratio, pb_ratio, dividend_yield, roe, roce,
+                    book_value, face_value,
+                    quarterly_results, profit_loss, balance_sheet,
+                    cash_flow, shareholding, ratios,
+                    pros, cons, source_url, last_updated
+                FROM stock_fundamentals
+                WHERE symbol = {p}
+                  AND last_updated > CURRENT_TIMESTAMP - INTERVAL '45 days'
+            """, (symbol.upper(),))
+        else:
+            cursor.execute(f"""
+                SELECT
+                    symbol, company_name, sector, industry,
+                    market_cap, current_price, high_low,
+                    pe_ratio, pb_ratio, dividend_yield, roe, roce,
+                    book_value, face_value,
+                    quarterly_results, profit_loss, balance_sheet,
+                    cash_flow, shareholding, ratios,
+                    pros, cons, source_url, last_updated
+                FROM stock_fundamentals
+                WHERE symbol = {p}
+                  AND last_updated > datetime('now', '-45 days')
+            """, (symbol.upper(),))
+
+        row = cursor.fetchone()
+        if not row:
+            return None
+
+        result = _dict_from_row(row)
+
+        # Parse JSON fields if they're strings (SQLite)
+        if not USE_POSTGRES:
+            for field in ['quarterly_results', 'profit_loss', 'balance_sheet',
+                         'cash_flow', 'shareholding', 'ratios', 'pros', 'cons']:
+                if result.get(field) and isinstance(result[field], str):
+                    try:
+                        result[field] = json.loads(result[field])
+                    except:
+                        pass
+
+        return result
+
+
+def is_fundamentals_fresh(symbol: str, max_age_days: int = 45) -> bool:
+    """Check if we have fresh fundamentals data for a symbol."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+
+        if USE_POSTGRES:
+            cursor.execute(f"""
+                SELECT 1 FROM stock_fundamentals
+                WHERE symbol = {p}
+                  AND last_updated > CURRENT_TIMESTAMP - INTERVAL '{max_age_days} days'
+            """, (symbol.upper(),))
+        else:
+            cursor.execute(f"""
+                SELECT 1 FROM stock_fundamentals
+                WHERE symbol = {p}
+                  AND last_updated > datetime('now', '-{max_age_days} days')
+            """, (symbol.upper(),))
+
+        return cursor.fetchone() is not None
 
 
 # Initialize database on module import

@@ -100,6 +100,7 @@ def fetch_stock_data(symbol: str, exchange: str = "NSE") -> Optional[Dict[str, A
     """
     Fetch comprehensive stock data using multi-provider rotation.
     Primary: NSE India direct, Backup: Yahoo Finance, Fallback: Alpha Vantage.
+    Also enriches with cached fundamentals from Screener if available.
     Returns structured data for report generation.
     """
     manager = get_manager()
@@ -124,7 +125,78 @@ def fetch_stock_data(symbol: str, exchange: str = "NSE") -> Optional[Dict[str, A
         except Exception as e:
             logger.warning(f"Yahoo enrichment failed for {symbol}: {e}")
 
+    # Enrich with cached fundamentals from Screener (if available)
+    try:
+        screener_data = _get_screener_fundamentals(symbol)
+        if screener_data:
+            basic_data = _merge_screener_data(basic_data, screener_data)
+            logger.info(f"Enriched {symbol} with cached Screener data")
+    except Exception as e:
+        logger.warning(f"Screener enrichment failed for {symbol}: {e}")
+
     return basic_data
+
+
+def _get_screener_fundamentals(symbol: str) -> Optional[Dict[str, Any]]:
+    """Get cached fundamentals from Screener data in database."""
+    try:
+        import database as db
+        return db.get_cached_fundamentals(symbol)
+    except Exception as e:
+        logger.warning(f"Failed to get cached fundamentals for {symbol}: {e}")
+        return None
+
+
+def _merge_screener_data(primary: Dict[str, Any], screener: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge Screener fundamentals into primary stock data."""
+    result = primary.copy()
+
+    # Add Screener-specific data that Yahoo doesn't have
+    screener_additions = {
+        "screener_data": {
+            "quarterly_results": screener.get("quarterly_results", []),
+            "profit_loss": screener.get("profit_loss", []),
+            "balance_sheet": screener.get("balance_sheet", []),
+            "cash_flow": screener.get("cash_flow", []),
+            "shareholding": screener.get("shareholding", []),
+            "pros": screener.get("pros", []),
+            "cons": screener.get("cons", []),
+            "source_url": screener.get("source_url", ""),
+            "last_updated": str(screener.get("last_updated", "")),
+        }
+    }
+
+    result.update(screener_additions)
+
+    # Also update key ratios if missing from primary data
+    if "valuation" not in result:
+        result["valuation"] = {}
+
+    valuation = result["valuation"]
+
+    # Fill in missing valuation metrics from Screener
+    if not valuation.get("pe_ratio") and screener.get("pe_ratio"):
+        valuation["pe_ratio"] = screener["pe_ratio"]
+    if not valuation.get("pb_ratio") and screener.get("pb_ratio"):
+        valuation["pb_ratio"] = screener["pb_ratio"]
+
+    # Add returns metrics from Screener
+    if "returns" not in result:
+        result["returns"] = {}
+
+    returns = result["returns"]
+    if not returns.get("roe") and screener.get("roe"):
+        returns["roe"] = screener["roe"] / 100 if screener["roe"] > 1 else screener["roe"]
+    if not returns.get("roce") and screener.get("roce"):
+        returns["roce"] = screener["roce"] / 100 if screener["roce"] > 1 else screener["roce"]
+
+    # Add dividend yield if missing
+    if "dividends" not in result:
+        result["dividends"] = {}
+    if not result["dividends"].get("dividend_yield") and screener.get("dividend_yield"):
+        result["dividends"]["dividend_yield"] = screener["dividend_yield"] / 100 if screener["dividend_yield"] > 1 else screener["dividend_yield"]
+
+    return result
 
 
 def _fetch_yahoo_enrichment(symbol: str, exchange: str) -> Optional[Dict[str, Any]]:

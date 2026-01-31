@@ -140,6 +140,12 @@ CRITICAL INSTRUCTIONS FOR CONTENT:
 4. ANALYZE QUARTERLY TRENDS: Discuss the last 2-4 quarters. Is revenue/profit growing or declining? Use your knowledge if quarterly data is missing.
 5. BE SPECIFIC: Use actual numbers. If data shows 0, use your knowledge of approximate values.
 6. HAVE CONVICTION: Write like you're putting your own money on this call.
+7. ANALYZE SHAREHOLDING TRENDS: If shareholding_changes is provided, focus on the CHANGES not just current levels. Key signals:
+   - Promoters buying = strong confidence signal. Promoters selling = potential red flag.
+   - FII accumulation = global institutional interest. FII selling = risk-off sentiment.
+   - DII buying often counters FII selling = domestic support.
+   - Look at the "change" field to see movement over the past year.
+8. LEVERAGE SCREENER INSIGHTS: If screener_pros/screener_cons are provided, incorporate these insights. These are pre-analyzed strengths and weaknesses from fundamental analysis. Use them to support your thesis.
 
 Return your analysis in this JSON format:
 {{
@@ -176,6 +182,7 @@ Return your analysis in this JSON format:
     "business_analysis": "<paragraph with STRONG opinions on business model, moat, and competitive position>",
     "financial_analysis": "<paragraph analyzing margins, growth trajectory, and what the numbers REALLY tell us. Use your knowledge for any missing metrics.>",
     "valuation_analysis": "<paragraph on whether this is CHEAP or EXPENSIVE. Use PE, PB, compare to growth rate and sector peers. Use your knowledge of typical valuations if data shows 0. Be definitive.>",
+    "shareholding_insight": "<If shareholding_changes data is available, analyze WHO is buying/selling and what it signals. Example: 'Promoters increased stake by 2.1% over the past year, signaling confidence. FIIs have been net buyers, adding 3.5% to their holdings.' Focus on TRENDS and their implications. If not available, omit or use your knowledge.>",
     "competitive_advantages": [
         {{
             "title": "<moat name>",
@@ -248,6 +255,7 @@ def prepare_data_summary(stock_data: Dict[str, Any]) -> Dict[str, Any]:
     analyst = stock_data.get("analyst_data", {})
     quarterly = stock_data.get("quarterly_results", [])
     news = stock_data.get("recent_news", [])
+    screener = stock_data.get("screener_data", {})
 
     # Get current date and fiscal quarter context
     now = datetime.now()
@@ -318,7 +326,78 @@ def prepare_data_summary(stock_data: Dict[str, Any]) -> Dict[str, Any]:
         "analyst_recommendation": analyst.get("recommendation"),
         "quarterly_results": quarterly[:4] if quarterly else [],
         "recent_news": news_summary,
+        # Screener.in enriched data (if available)
+        "roce": returns.get("roce"),  # Return on Capital Employed
+        "shareholding_changes": _format_shareholding_changes(screener.get("shareholding", [])),
+        "screener_pros": screener.get("pros", [])[:5],  # Top 5 pros
+        "screener_cons": screener.get("cons", [])[:5],  # Top 5 cons
+        "screener_quarterly": _format_screener_quarterly(screener.get("quarterly_results", []))[:4],
     }
+
+
+def _format_shareholding_changes(shareholding: list) -> list:
+    """
+    Format shareholding changes for AI analysis.
+    Shows trend: current vs 1 year ago (or earliest available).
+    Returns list of changes like:
+    [{"holder": "Promoters", "current": 54.2, "previous": 56.1, "change": -1.9, "trend": "decreasing"}]
+    """
+    if not shareholding:
+        return []
+
+    changes = []
+    for row in shareholding:
+        holder = row.get("holder", "")
+        if not holder:
+            continue
+
+        # Get all quarterly values (keys are like "Dec 2024", "Sep 2024", etc.)
+        values = []
+        for key, val in row.items():
+            if key != "holder" and val is not None:
+                values.append(val)
+
+        if len(values) >= 2:
+            current = values[0]  # Most recent
+            previous = values[-1]  # Oldest available (ideally 1 year ago)
+            change = current - previous
+
+            trend = "increasing" if change > 0.5 else "decreasing" if change < -0.5 else "stable"
+
+            changes.append({
+                "holder": holder,
+                "current": round(current, 1),
+                "previous": round(previous, 1),
+                "change": round(change, 1),
+                "trend": trend
+            })
+        elif len(values) == 1:
+            changes.append({
+                "holder": holder,
+                "current": round(values[0], 1),
+                "previous": None,
+                "change": None,
+                "trend": "unknown"
+            })
+
+    return changes
+
+
+def _format_screener_quarterly(quarterly: list) -> list:
+    """Format Screener quarterly results for AI summary."""
+    if not quarterly:
+        return []
+
+    # Extract key metrics: Sales, Operating Profit, Net Profit, EPS
+    key_metrics = ["Sales", "Operating Profit", "Net Profit", "EPS"]
+    result = []
+
+    for row in quarterly:
+        metric = row.get("metric", "")
+        if any(key in metric for key in key_metrics):
+            result.append(row)
+
+    return result
 
 
 def generate_fallback_analysis(stock_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -395,6 +474,22 @@ def generate_fallback_analysis(stock_data: Dict[str, Any]) -> Dict[str, Any]:
             }
         ]
     }
+
+
+def _generate_shareholding_section(analysis: Dict[str, Any], stock_data: Dict[str, Any]) -> str:
+    """Generate shareholding insight HTML section if AI provided analysis."""
+    shareholding_insight = analysis.get("shareholding_insight", "")
+
+    # Only show section if AI provided meaningful insight
+    if not shareholding_insight or shareholding_insight.lower() in ["", "n/a", "not available"]:
+        return ""
+
+    return f'''
+                <div style="background: var(--bg-light); padding: 1.5rem; border-radius: 8px; margin-top: 1.5rem;">
+                    <h4 style="color: var(--primary); margin-bottom: 0.75rem;">📊 Shareholding Trends</h4>
+                    <p style="color: var(--text-secondary); line-height: 1.8;">{shareholding_insight}</p>
+                </div>
+    '''
 
 
 def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any]) -> str:
@@ -1278,6 +1373,7 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any]) -
                         {analysis.get("valuation_analysis", "")}
                     </p>
                 </div>
+                {_generate_shareholding_section(analysis, stock_data)}
             </div>
         </section>
 
