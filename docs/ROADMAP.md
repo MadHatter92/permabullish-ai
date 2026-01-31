@@ -387,10 +387,15 @@ Improve stock data quality and coverage.
   - Run on production server with DATABASE_URL set
 - [ ] Verify data quality after sync
 
-### 4.5 Monthly Refresh Job
+### 4.5 Infrastructure Upgrade
 
-- [ ] Set up Render cron job (1st of month)
-- [ ] Or use GitHub Actions as free alternative
+- [ ] **Upgrade to paid Render tier**
+  - Enables cron jobs (re-engagement emails, fundamentals refresh)
+  - Better performance and uptime
+  - No cold starts on API
+- [ ] Set up cron jobs after upgrade:
+  - Re-engagement emails: daily at 10 AM IST
+  - Fundamentals refresh: 1st of month
 - [ ] Add on-demand refresh for stale data (>45 days)
 
 ### Deliverables
