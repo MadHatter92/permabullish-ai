@@ -1,14 +1,14 @@
 # Permabullish - Product Roadmap
 ## AI Stock Researcher
 
-**Version:** 2.1
-**Last Updated:** January 30, 2026
+**Version:** 3.0
+**Last Updated:** January 31, 2026
 
 ---
 
 ## Overview
 
-This roadmap outlines the development phases for Permabullish AI Stock Researcher. We're building on the existing `equity-research-generator` codebase and will eventually consolidate everything into the `permabullish-ai` repository.
+This roadmap outlines the development phases for Permabullish AI Stock Researcher. The product is now live at **permabullish.com** with a working subscription and payment system.
 
 ---
 
@@ -114,7 +114,8 @@ Enhance the existing equity research generator with new features.
 ---
 
 ## Phase 2: Subscription System
-**Status:** Pending
+**Status:** ✅ COMPLETE
+**Completed:** January 31, 2026
 **Priority:** High
 **Dependencies:** Phase 1
 
@@ -123,95 +124,150 @@ Implement tiered subscription system with usage limits.
 
 ### 2.1 Subscription Tiers
 
-- [ ] Define tier limits in config:
+- [x] Define tier limits in config:
   ```python
-  TIERS = {
-      'free': {'reports': 3, 'is_lifetime': True},
-      'basic': {'reports': 10, 'is_lifetime': False},
-      'pro': {'reports': 50, 'is_lifetime': False},
-      'enterprise': {'reports': float('inf'), 'is_lifetime': False}
+  SUBSCRIPTION_TIERS = {
+      'free': {'reports_per_month': 3, 'price_monthly': 0},
+      'basic': {'reports_per_month': 10, 'price_monthly': 199, 'price_6months': 999, 'price_yearly': 1799},
+      'pro': {'reports_per_month': 50, 'price_monthly': 499, 'price_6months': 2499, 'price_yearly': 4499},
+      'enterprise': {'reports_per_month': float('inf')}
   }
   ```
-- [ ] Create `subscriptions` table
-- [ ] Implement subscription status checking
-- [ ] Add subscription expiry handling
+- [x] Create `subscriptions` table
+- [x] Implement subscription status checking
+- [x] Add subscription expiry handling
 
 ### 2.2 Usage Tracking
 
-- [ ] Enhance `usage` table for monthly tracking
-- [ ] Reset usage on 1st of each month (paid tiers)
-- [ ] Implement quota enforcement on report generation
-- [ ] Create usage display component
-- [ ] Add "X reports remaining" indicator
+- [x] Enhance `usage` table for monthly tracking
+- [x] Reset usage on 1st of each month (paid tiers)
+- [x] Implement quota enforcement on report generation
+- [x] Create usage display component
+- [x] Add "X reports remaining" indicator
 
 ### 2.3 Pricing Page
 
-- [ ] Design pricing page with tier comparison
-- [ ] Show: Free (3 reports), Basic (10/mo), Pro (50/mo), Enterprise (contact us)
-- [ ] Add payment period options: 1 month, 6 months, 12 months
-- [ ] Display "Contact us" for Enterprise tier
-- [ ] Placeholder for actual prices (TBD after Phase 5 analysis)
+- [x] Design pricing page with tier comparison (`frontend/pricing.html`)
+- [x] Show: Free (3 reports), Basic (10/mo), Pro (50/mo), Enterprise (contact us)
+- [x] Add payment period options: 1 month, 6 months, 12 months
+- [x] Display savings percentages for longer periods
+- [x] "Contact us" for Enterprise tier
 
 ### 2.4 Upgrade Flow
 
-- [ ] Create upgrade prompts when quota exhausted
-- [ ] Build subscription selection UI
-- [ ] Implement subscription API endpoints
-- [ ] Add subscription status to user profile
+- [x] Create upgrade prompts when quota exhausted
+- [x] Build subscription selection UI
+- [x] Implement subscription API endpoints
+- [x] Add subscription status to user profile
 
 ### Deliverables
-- Working tier system with limits
-- Usage tracking and display
-- Pricing page (prices TBD)
-- Upgrade flow UI
+- ✅ Working tier system with limits
+- ✅ Usage tracking and display
+- ✅ Pricing page with all plans
+- ✅ Upgrade flow UI
 
 ---
 
 ## Phase 3: Payment Integration
-**Status:** Pending
+**Status:** ✅ COMPLETE
+**Completed:** January 31, 2026
 **Priority:** High
 **Dependencies:** Phase 2
 
 ### Objective
-Integrate Cashfree payment gateway for subscription payments.
+Integrate Cashfree for subscription payments.
 
 ### 3.1 Cashfree Setup
 
-- [ ] Create Cashfree merchant account
-- [ ] Obtain API credentials (Key, Secret)
-- [ ] Configure webhook endpoints
-- [ ] Set up test/sandbox environment
+- [x] Created Cashfree merchant account
+- [x] Obtained API credentials (App ID, Secret Key)
+- [x] **Used Payment Forms instead of Payment Gateway** (due to domain whitelisting requirements)
+- [x] Created 6 payment forms for all plan/period combinations:
+  - Basic: Monthly, 6-Months, Yearly
+  - Pro: Monthly, 6-Months, Yearly
+- [x] Configured webhook endpoints
 
 ### 3.2 Payment Flow
 
-- [ ] Implement checkout initiation endpoint
-- [ ] Create payment page/redirect
-- [ ] Handle Cashfree webhooks:
-  - Payment success
-  - Payment failure
-  - Payment pending
-- [ ] Update subscription on successful payment
+- [x] Payment forms handle checkout (no API integration needed)
+- [x] Users redirected to Cashfree payment form
+- [x] Handle Cashfree webhooks (`POST /api/webhooks/payment-form`):
+  - `payment_form.payment.success` - activates subscription
+  - Matches customer email to user account
+  - Determines tier/period from payment amount
+- [x] Update subscription on successful payment
 
 ### 3.3 Payment UI
 
-- [ ] Build checkout page with plan summary
-- [ ] Show payment options (1/6/12 months)
-- [ ] Display total amount and any discounts
-- [ ] Add payment success/failure pages
-- [ ] Email confirmation (optional)
+- [x] Pricing page redirects to appropriate payment form
+- [x] Shows email reminder before redirect
+- [x] Payment success handled by Cashfree redirect
 
 ### 3.4 Subscription Management
 
-- [ ] Create "My Subscription" page
-- [ ] Show current plan, expiry date, usage
-- [ ] Add renewal prompts before expiry
-- [ ] Handle subscription expiry gracefully
+- [x] Created subscription management page (`frontend/subscription.html`)
+- [x] Shows current plan, expiry date, usage statistics
+- [x] Upgrade options for higher tiers/longer periods
+- [x] Period upgrades allowed (monthly → 6 months → yearly)
+
+### 3.5 Enterprise User Management
+
+- [x] Admin endpoints for creating enterprise users:
+  - `POST /api/admin/enterprise/users` - Create enterprise user
+  - `GET /api/admin/enterprise/users` - List enterprise users
+  - `PUT /api/admin/enterprise/users/{user_id}` - Update enterprise user
+- [x] Documentation in `docs/ADMIN_GUIDE.md`
 
 ### Deliverables
-- Working Cashfree integration
-- Complete payment flow
-- Subscription management UI
-- Webhook handling
+- ✅ Working Cashfree Payment Forms integration
+- ✅ Complete payment flow
+- ✅ Subscription management UI
+- ✅ Webhook handling
+- ✅ Enterprise user management
+
+---
+
+## Phase 3.5: Production Launch
+**Status:** ✅ COMPLETE
+**Completed:** January 31, 2026
+**Priority:** High
+
+### Objective
+Launch the product on custom domain with production-ready features.
+
+### 3.5.1 Custom Domain Setup
+
+- [x] Configured permabullish.com on Namecheap DNS
+- [x] Set up Render hosting for frontend and API
+- [x] Configured SSL certificates (Let's Encrypt)
+- [x] Added CAA records for certificate issuance
+- [x] Updated environment variables for production URLs
+
+### 3.5.2 Social Sharing (WhatsApp Virality)
+
+- [x] Created share card generator (`backend/share_card.py`)
+- [x] Generates 1200x630 PNG images with Pillow
+- [x] Open Graph image endpoint (`GET /api/reports/{id}/og-image`)
+- [x] Share page with OG meta tags (`GET /api/reports/{id}/share`)
+- [x] Updated WhatsApp share to use rich preview URLs
+- [x] Share card includes:
+  - Company name and ticker
+  - Recommendation badge (color-coded)
+  - AI Target Price
+  - Potential Upside percentage
+  - Current Price
+  - Permabullish branding
+
+### 3.5.3 UX Improvements
+
+- [x] Added loading skeletons to dashboard stats cards
+- [x] Eliminated visual jitter on page load
+- [x] Smooth transitions when data loads
+
+### Deliverables
+- ✅ Live at permabullish.com
+- ✅ Social sharing with rich previews
+- ✅ Polished UX with loading states
 
 ---
 
@@ -257,7 +313,7 @@ Improve stock data quality with Screener.in integration.
 ---
 
 ## Phase 5: Pricing Analysis
-**Status:** Pending
+**Status:** Partially Complete
 **Priority:** Medium
 **Dependencies:** Phase 2, Phase 3
 
@@ -266,7 +322,8 @@ Determine optimal pricing based on token consumption and costs.
 
 ### 5.1 Token Usage Analysis
 
-- [ ] Log token usage per report generation
+- [x] Added token tracking columns to database (`input_tokens`, `output_tokens`)
+- [ ] Implement logging of token usage per report generation
 - [ ] Track: input tokens, output tokens, total cost
 - [ ] Calculate average cost per report
 - [ ] Analyze cost variance by stock complexity
@@ -283,22 +340,14 @@ Determine optimal pricing based on token consumption and costs.
 ### 5.3 Pricing Strategy
 
 - [ ] Research competitor pricing
-- [ ] Define pricing for each tier
-- [ ] Set discount levels for 6/12 month subscriptions
-- [ ] Update pricing page with actual prices
-- [ ] A/B test pricing if possible
-
-### 5.4 Implementation
-
-- [ ] Update Cashfree checkout with final prices
-- [ ] Configure subscription amounts
-- [ ] Add promotional/launch pricing if desired
+- [ ] Validate current pricing (Basic ₹199/mo, Pro ₹499/mo)
+- [ ] Analyze discount levels for 6/12 month subscriptions
+- [ ] Adjust pricing if needed based on analysis
 
 ### Deliverables
 - Token usage analytics
 - Cost model spreadsheet
-- Final pricing decision
-- Updated payment integration
+- Pricing validation/adjustment
 
 ---
 
@@ -325,7 +374,7 @@ Create compelling landing page for conversions.
 
 ### 6.2 Landing Page Development
 
-- [ ] Build with React + Tailwind (or static HTML)
+- [ ] Build with static HTML + Tailwind (consistent with app)
 - [ ] Implement responsive design
 - [ ] Add animations and interactions
 - [ ] Optimize for performance
@@ -397,64 +446,57 @@ Add Hindi and Gujarati language support for reports.
 
 ---
 
-## Migration Plan
-
-### From equity-research-generator to permabullish-ai
-
-1. **Phase 0:** Clean permabullish-ai repo, remove MF/PMS code
-2. **Phase 1-3:** Develop in equity-research-generator
-3. **After Phase 3:** Merge code into permabullish-ai
-4. **Update render.yaml:** Point to new repo structure
-5. **Deprecate:** Archive equity-research-generator
-
-### Git Strategy
-
-```
-equity-research-generator (development)
-         |
-         | (merge after Phase 3)
-         v
-permabullish-ai (production)
-```
-
----
-
 ## Timeline Summary
 
-| Phase | Description | Duration | Status |
-|-------|-------------|----------|--------|
-| 0 | Repository Cleanup | 1 day | ✅ Complete |
-| 1 | Core Product Enhancement | 1 day | ✅ Complete |
-| 2 | Subscription System | 1 week | Pending |
-| 3 | Payment Integration | 1 week | Pending |
-| 4 | Data Enhancement | 1-2 weeks | Pending |
-| 5 | Pricing Analysis | 3-5 days | Pending |
-| 6 | Landing Page | 1 week | Pending |
-| 7 | Multi-Language | 1 week | Future |
-| 8 | Future Features | Ongoing | Backlog |
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 0 | Repository Cleanup | ✅ Complete |
+| 1 | Core Product Enhancement | ✅ Complete |
+| 2 | Subscription System | ✅ Complete |
+| 3 | Payment Integration | ✅ Complete |
+| 3.5 | Production Launch | ✅ Complete |
+| 4 | Data Enhancement | Pending |
+| 5 | Pricing Analysis | Partial |
+| 6 | Landing Page | Pending |
+| 7 | Multi-Language | Future |
+| 8 | Future Features | Backlog |
 
-**Completed:** Phases 0-1 (January 30, 2026)
-**Remaining to MVP (Phases 2-6):** 4-6 weeks
+**MVP Status:** ✅ LIVE at permabullish.com
 
 ---
 
-## Dependencies & Blockers
+## Technical Architecture
 
-| Dependency | Blocks | Status |
-|------------|--------|--------|
-| Cashfree API credentials | Phase 3 | Waiting for user |
-| Screener.in access | Phase 4 | To be set up |
-| Final pricing decision | Phase 5 | After analysis |
-| Logo/branding assets | Phase 6 | Existing available |
+### Production URLs
+- **Frontend:** https://permabullish.com
+- **API:** https://api.permabullish.com
+- **Render Dashboard:** https://dashboard.render.com
+
+### Key Files
+- `backend/main.py` - FastAPI application
+- `backend/share_card.py` - Social sharing image generator
+- `backend/cashfree.py` - Payment integration
+- `backend/config.py` - Subscription tiers and configuration
+- `frontend/config.js` - Frontend configuration and payment form URLs
+- `docs/ADMIN_GUIDE.md` - Enterprise user management guide
+
+### Environment Variables (Production)
+- `DATABASE_URL` - PostgreSQL connection string
+- `ANTHROPIC_API_KEY` - Claude API key
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` - OAuth
+- `CASHFREE_APP_ID` / `CASHFREE_SECRET_KEY` - Payments
+- `CASHFREE_ENV=production` - Payment environment
+- `ENVIRONMENT=production` - App environment
+- `FRONTEND_URL=https://permabullish.com`
 
 ---
 
 ## Notes
 
-1. **Development happens in equity-research-generator** until Phase 3 is complete
-2. **Pricing is TBD** - placeholder prices until Phase 5 analysis
-3. **Recurring payments** - Not in initial scope, users charged upfront
-4. **Chat feature** - Explicitly deferred to post-launch
+1. **Payment Forms vs Gateway:** Using Cashfree Payment Forms due to domain whitelisting requirements for Payment Gateway
+2. **Recurring payments:** Not implemented - users pay upfront for subscription period
+3. **Enterprise users:** Created manually via admin API endpoints
+4. **Chat feature:** Explicitly deferred to post-launch (Phase 8)
 
 ---
 
