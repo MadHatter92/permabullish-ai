@@ -283,12 +283,18 @@ class FundamentalsFetcher:
 
 
 def load_stock_list() -> List[Dict]:
-    """Load the Nifty 500 stock list."""
-    data_file = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        'data', 'nifty500_stocks.json'
-    )
-    with open(data_file, 'r') as f:
+    """Load stock list (prefers expanded NSE list, falls back to Nifty 500)."""
+    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+
+    # Try expanded list first
+    expanded_file = os.path.join(data_dir, 'nse_eq_stocks.json')
+    if os.path.exists(expanded_file):
+        with open(expanded_file, 'r') as f:
+            return json.load(f)
+
+    # Fall back to Nifty 500
+    nifty_file = os.path.join(data_dir, 'nifty500_stocks.json')
+    with open(nifty_file, 'r') as f:
         return json.load(f)
 
 
