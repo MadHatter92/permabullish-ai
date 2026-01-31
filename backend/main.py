@@ -1095,19 +1095,56 @@ async def payment_form_webhook(request: Request):
         print(f"[PAYMENT FORM WEBHOOK] Event: {event_type}")
         print(f"[PAYMENT FORM WEBHOOK] Data: {json.dumps(data, indent=2)}")
 
-        # Handle payment form order webhook
-        if event_type == "payment_form_order_webhook":
+        # Handle payment form webhook - check for multiple event type formats
+        # Cashfree may send "PAYMENT_SUCCESS_WEBHOOK", "success payment", or "payment_form_order_webhook"
+        is_success_event = (
+            event_type in ["payment_form_order_webhook", "PAYMENT_SUCCESS_WEBHOOK"] or
+            (event_type and "success" in event_type.lower())
+        )
+
+        if is_success_event:
+            # Try different payload structures
             order = data.get("order", {})
-            customer = data.get("customer_details", {})
+            customer = data.get("customer_details", {}) or data.get("customer", {})
+            payment = data.get("payment", {})
             form = data.get("form", {})
 
-            order_status = order.get("order_status")
-            customer_email = customer.get("customer_email", "").lower().strip()
-            amount = float(order.get("order_amount", 0))
-            payment_id = order.get("cf_order_id") or order.get("order_id")
-            form_id = form.get("form_id", "")
+            # Get order status from various possible locations
+            order_status = (
+                order.get("order_status") or
+                payment.get("payment_status") or
+                data.get("payment_status") or
+                "PAID"  # Assume paid if this is a success event
+            )
 
-            if order_status == "PAID" and customer_email:
+            # Get customer email from various possible locations
+            customer_email = (
+                customer.get("customer_email") or
+                customer.get("email") or
+                data.get("customer_email") or
+                ""
+            ).lower().strip()
+
+            # Get amount from various possible locations
+            amount = float(
+                order.get("order_amount") or
+                payment.get("payment_amount") or
+                data.get("order_amount") or
+                0
+            )
+
+            # Get payment ID
+            payment_id = (
+                order.get("cf_order_id") or
+                order.get("order_id") or
+                payment.get("cf_payment_id") or
+                data.get("cf_order_id") or
+                "unknown"
+            )
+
+            print(f"[PAYMENT FORM WEBHOOK] Parsed: email={customer_email}, amount={amount}, status={order_status}")
+
+            if customer_email:
                 # Look up user by email
                 user = db.get_user_by_email(customer_email)
 
@@ -1140,12 +1177,9 @@ async def payment_form_webhook(request: Request):
                 elif amount == 9999:
                     tier, period = "pro", 12
                 else:
-                    print(f"[PAYMENT FORM WEBHOOK] Unknown amount: {amount}")
-                    return {
-                        "status": "unknown_amount",
-                        "amount": amount,
-                        "message": "Payment received but amount doesn't match any plan."
-                    }
+                    # Test mode: any other amount gives 1 month basic
+                    print(f"[PAYMENT FORM WEBHOOK] Test mode - unknown amount {amount}, granting 1 month basic")
+                    tier, period = "basic", 1
 
                 # Create subscription
                 tier_config = SUBSCRIPTION_TIERS.get(tier, {})
