@@ -16,29 +16,56 @@ _stock_list_cache: Optional[List[Dict]] = None
 
 
 def _load_stock_list() -> List[Dict]:
-    """Load stock list from JSON file (prefers expanded NSE list, falls back to Nifty 500)."""
+    """Load stock list from JSON files, merging NSE list with Nifty 500 names."""
     global _stock_list_cache
     if _stock_list_cache is not None:
         return _stock_list_cache
 
     try:
-        # Try expanded list first (1900 stocks), fall back to Nifty 500
-        data_file = Path(__file__).parent / "data" / "nse_eq_stocks.json"
-        if not data_file.exists():
-            data_file = Path(__file__).parent / "data" / "nifty500_stocks.json"
+        data_dir = Path(__file__).parent / "data"
 
-        with open(data_file, 'r') as f:
-            stocks = json.load(f)
-        # Convert to search format
-        _stock_list_cache = [
-            {
-                "symbol": s["symbol"],
-                "name": s.get("company_name", s["symbol"]),
-                "sector": s.get("industry", "")
-            }
-            for s in stocks
-        ]
-        logger.info(f"Loaded {len(_stock_list_cache)} stocks for search")
+        # Load Nifty 500 first (has proper company names)
+        nifty_names = {}
+        nifty_file = data_dir / "nifty500_stocks.json"
+        if nifty_file.exists():
+            with open(nifty_file, 'r') as f:
+                nifty_stocks = json.load(f)
+                for s in nifty_stocks:
+                    nifty_names[s["symbol"]] = {
+                        "name": s.get("company_name", s["symbol"]),
+                        "sector": s.get("industry", "")
+                    }
+
+        # Load expanded NSE list
+        nse_file = data_dir / "nse_eq_stocks.json"
+        if nse_file.exists():
+            with open(nse_file, 'r') as f:
+                stocks = json.load(f)
+        elif nifty_file.exists():
+            stocks = nifty_stocks
+        else:
+            stocks = []
+
+        # Convert to search format, preferring Nifty 500 names when available
+        _stock_list_cache = []
+        for s in stocks:
+            symbol = s["symbol"]
+            if symbol in nifty_names:
+                # Use proper name from Nifty 500
+                _stock_list_cache.append({
+                    "symbol": symbol,
+                    "name": nifty_names[symbol]["name"],
+                    "sector": nifty_names[symbol]["sector"] or s.get("industry", "")
+                })
+            else:
+                # Use NSE data (name might just be symbol)
+                _stock_list_cache.append({
+                    "symbol": symbol,
+                    "name": s.get("company_name", symbol),
+                    "sector": s.get("industry", "")
+                })
+
+        logger.info(f"Loaded {len(_stock_list_cache)} stocks for search ({len(nifty_names)} with full names)")
         return _stock_list_cache
     except Exception as e:
         logger.error(f"Failed to load stock list: {e}")

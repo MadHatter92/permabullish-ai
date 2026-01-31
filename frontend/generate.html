@@ -725,10 +725,13 @@
             }, 3000);
 
             try {
+                // If there's a cached report and user clicked the button, they want a fresh report
+                const shouldRegenerate = forceRegenerate || (cachedReport !== null);
+
                 const requestBody = {
                     symbol: selectedStock.symbol,
                     exchange: selectedStock.exchange || 'NSE',
-                    force_regenerate: forceRegenerate
+                    force_regenerate: shouldRegenerate
                 };
                 console.log('Generating report with:', requestBody);
 
