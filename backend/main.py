@@ -237,7 +237,7 @@ async def admin_get_user_info(email: str, secret: str = ""):
         raise HTTPException(status_code=404, detail=f"User not found: {email}")
 
     subscription = db.get_subscription_status(user["id"])
-    usage = db.get_user_usage(user["id"])
+    usage = db.get_usage(user["id"])
 
     return {
         "user": {
