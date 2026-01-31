@@ -181,6 +181,16 @@ def register_user(email: str, password: str, full_name: str) -> tuple[bool, str,
     if user_id is None:
         return False, "Failed to create user", None
 
+    # Send welcome email (async, don't block registration)
+    try:
+        from email_service import send_welcome_email, get_featured_reports_for_email, get_first_name
+        sample_reports = get_featured_reports_for_email()
+        first_name = get_first_name(full_name)
+        if send_welcome_email(email, first_name, sample_reports):
+            db.mark_welcome_email_sent(user_id)
+    except Exception as e:
+        print(f"[AUTH] Failed to send welcome email to {email}: {e}")
+
     return True, "User created successfully", {
         "id": user_id,
         "email": email,

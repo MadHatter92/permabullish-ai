@@ -144,7 +144,12 @@ def init_database():
                     subscription_expires_at TIMESTAMP,
                     payment_customer_id TEXT,  -- For Cashfree or future payment provider
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    is_active BOOLEAN DEFAULT TRUE
+                    is_active BOOLEAN DEFAULT TRUE,
+                    -- Email tracking columns
+                    last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    welcome_email_sent BOOLEAN DEFAULT FALSE,
+                    last_reengagement_email_at TIMESTAMP,
+                    reengagement_email_count INTEGER DEFAULT 0
                 )
             """)
 
@@ -279,6 +284,18 @@ def init_database():
             except:
                 pass  # Column already exists
 
+            # Add email tracking columns (migration)
+            for col_sql in [
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_email_sent BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_reengagement_email_at TIMESTAMP",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS reengagement_email_count INTEGER DEFAULT 0",
+            ]:
+                try:
+                    cursor.execute(col_sql)
+                except:
+                    pass  # Column already exists
+
         else:
             # SQLite schema (for local development)
             cursor.execute("""
@@ -294,7 +311,12 @@ def init_database():
                     subscription_expires_at TIMESTAMP,
                     payment_customer_id TEXT,  -- For Cashfree or future payment provider
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    is_active BOOLEAN DEFAULT 1
+                    is_active BOOLEAN DEFAULT 1,
+                    -- Email tracking columns
+                    last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    welcome_email_sent BOOLEAN DEFAULT 0,
+                    last_reengagement_email_at TIMESTAMP,
+                    reengagement_email_count INTEGER DEFAULT 0
                 )
             """)
 
@@ -414,6 +436,18 @@ def init_database():
                 )
             """)
 
+            # SQLite migrations for email tracking columns
+            for col_name, col_def in [
+                ("last_activity_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+                ("welcome_email_sent", "BOOLEAN DEFAULT 0"),
+                ("last_reengagement_email_at", "TIMESTAMP"),
+                ("reengagement_email_count", "INTEGER DEFAULT 0"),
+            ]:
+                try:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}")
+                except:
+                    pass  # Column already exists
+
         conn.commit()
         print(f"Database initialized successfully ({'PostgreSQL' if USE_POSTGRES else 'SQLite'}).")
 
@@ -507,6 +541,7 @@ def get_or_create_google_user(google_id: str, email: str, full_name: str, avatar
         return user
 
     # Create new Google user
+    is_new_user = True
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
         if USE_POSTGRES:
@@ -526,6 +561,17 @@ def get_or_create_google_user(google_id: str, email: str, full_name: str, avatar
             )
             conn.commit()
             user_id = cursor.lastrowid
+
+    # Send welcome email for new Google users
+    if is_new_user:
+        try:
+            from email_service import send_welcome_email, get_featured_reports_for_email, get_first_name
+            sample_reports = get_featured_reports_for_email()
+            first_name = get_first_name(full_name)
+            if send_welcome_email(email, first_name, sample_reports):
+                mark_welcome_email_sent(user_id)
+        except Exception as e:
+            print(f"[DB] Failed to send welcome email to {email}: {e}")
 
     return {
         "id": user_id,
@@ -1368,6 +1414,167 @@ def is_in_watchlist(user_id: int, ticker: str, exchange: str) -> bool:
             WHERE user_id = {p} AND ticker = {p} AND exchange = {p}
         """, (user_id, ticker.upper(), exchange.upper()))
         return cursor.fetchone() is not None
+
+
+# ============================================
+# Email Tracking Operations
+# ============================================
+
+def update_user_activity(user_id: int) -> bool:
+    """Update user's last activity timestamp."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        if USE_POSTGRES:
+            cursor.execute(
+                f"UPDATE users SET last_activity_at = CURRENT_TIMESTAMP WHERE id = {p}",
+                (user_id,)
+            )
+        else:
+            cursor.execute(
+                f"UPDATE users SET last_activity_at = CURRENT_TIMESTAMP WHERE id = {p}",
+                (user_id,)
+            )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def mark_welcome_email_sent(user_id: int) -> bool:
+    """Mark that welcome email has been sent to user."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        if USE_POSTGRES:
+            cursor.execute(
+                f"UPDATE users SET welcome_email_sent = TRUE WHERE id = {p}",
+                (user_id,)
+            )
+        else:
+            cursor.execute(
+                f"UPDATE users SET welcome_email_sent = 1 WHERE id = {p}",
+                (user_id,)
+            )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def update_reengagement_email_sent(user_id: int) -> bool:
+    """Update user's re-engagement email tracking after sending an email."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        if USE_POSTGRES:
+            cursor.execute(
+                f"""UPDATE users SET
+                    last_reengagement_email_at = CURRENT_TIMESTAMP,
+                    reengagement_email_count = COALESCE(reengagement_email_count, 0) + 1
+                WHERE id = {p}""",
+                (user_id,)
+            )
+        else:
+            cursor.execute(
+                f"""UPDATE users SET
+                    last_reengagement_email_at = CURRENT_TIMESTAMP,
+                    reengagement_email_count = COALESCE(reengagement_email_count, 0) + 1
+                WHERE id = {p}""",
+                (user_id,)
+            )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def get_users_for_reengagement() -> List[dict]:
+    """
+    Get users who should receive re-engagement emails.
+
+    Criteria:
+    - Free tier (not paid)
+    - Signed up within 6 months (180 days)
+    - Inactive for 7+ days
+    - Email timing:
+      - Days 1-14 of signup: daily (if no email today)
+      - Days 15-180: weekly (if no email in 7 days)
+    """
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+
+        if USE_POSTGRES:
+            cursor.execute("""
+                SELECT
+                    id, email, full_name, created_at,
+                    last_activity_at, last_reengagement_email_at,
+                    reengagement_email_count, subscription_tier
+                FROM users
+                WHERE is_active = TRUE
+                  AND subscription_tier = 'free'
+                  AND created_at >= CURRENT_DATE - INTERVAL '180 days'
+                  AND (last_activity_at IS NULL OR last_activity_at < CURRENT_DATE - INTERVAL '7 days')
+                  AND (
+                      -- Daily phase (first 14 days): send if no email today
+                      (created_at >= CURRENT_DATE - INTERVAL '14 days'
+                       AND (last_reengagement_email_at IS NULL
+                            OR last_reengagement_email_at < CURRENT_DATE))
+                      OR
+                      -- Weekly phase (days 15-180): send if no email in 7 days
+                      (created_at < CURRENT_DATE - INTERVAL '14 days'
+                       AND (last_reengagement_email_at IS NULL
+                            OR last_reengagement_email_at < CURRENT_DATE - INTERVAL '7 days'))
+                  )
+                ORDER BY created_at DESC
+            """)
+        else:
+            cursor.execute("""
+                SELECT
+                    id, email, full_name, created_at,
+                    last_activity_at, last_reengagement_email_at,
+                    reengagement_email_count, subscription_tier
+                FROM users
+                WHERE is_active = 1
+                  AND subscription_tier = 'free'
+                  AND created_at >= date('now', '-180 days')
+                  AND (last_activity_at IS NULL OR last_activity_at < date('now', '-7 days'))
+                  AND (
+                      -- Daily phase (first 14 days): send if no email today
+                      (created_at >= date('now', '-14 days')
+                       AND (last_reengagement_email_at IS NULL
+                            OR last_reengagement_email_at < date('now')))
+                      OR
+                      -- Weekly phase (days 15-180): send if no email in 7 days
+                      (created_at < date('now', '-14 days')
+                       AND (last_reengagement_email_at IS NULL
+                            OR last_reengagement_email_at < date('now', '-7 days')))
+                  )
+                ORDER BY created_at DESC
+            """)
+
+        rows = cursor.fetchall()
+        return [_dict_from_row(row) for row in rows]
+
+
+def get_featured_reports(tickers: List[str]) -> List[dict]:
+    """Get cached reports for featured tickers."""
+    if not tickers:
+        return []
+
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+
+        # Build placeholders for IN clause
+        placeholders = ", ".join([p] * len(tickers))
+        upper_tickers = [t.upper() for t in tickers]
+
+        cursor.execute(f"""
+            SELECT
+                id, ticker, exchange, company_name, sector,
+                current_price, ai_target_price, recommendation, generated_at
+            FROM report_cache
+            WHERE ticker IN ({placeholders})
+            ORDER BY generated_at DESC
+        """, tuple(upper_tickers))
+
+        rows = cursor.fetchall()
+        return [_dict_from_row(row) for row in rows]
 
 
 # Initialize database on module import

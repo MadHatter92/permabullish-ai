@@ -549,9 +549,10 @@ async def generate_report(
         report_cache_id = cached_report['id']
         generated_new = False
 
-    # Link user to report (for authenticated users)
+    # Link user to report (for authenticated users) and update activity
     if current_user:
         db.link_user_to_report(user_id, report_cache_id)
+        db.update_user_activity(user_id)
 
     return {
         "report_cache_id": report_cache_id,
@@ -1003,6 +1004,23 @@ async def verify_payment(
                 payment_id=payment_id or order_id
             )
 
+            # Send purchase confirmation email
+            try:
+                from email_service import send_purchase_email, get_first_name
+                from datetime import datetime, timedelta
+                expiry_date = (datetime.now() + timedelta(days=period * 30)).strftime("%B %d, %Y")
+                first_name = get_first_name(current_user.get("full_name", ""))
+                reports_per_month = tier_config.get("reports_limit", 50)
+                send_purchase_email(
+                    user_email=current_user["email"],
+                    first_name=first_name,
+                    plan_name=tier_config.get("name", tier.title()),
+                    reports_per_month=reports_per_month,
+                    expiry_date=expiry_date
+                )
+            except Exception as e:
+                print(f"[PAYMENT] Failed to send purchase email: {e}")
+
             return {
                 "success": True,
                 "status": "PAID",
@@ -1138,6 +1156,25 @@ async def cashfree_webhook(request: Request):
 
                     print(f"[WEBHOOK] Subscription activated for user {user_id}: {tier} ({period}m)")
 
+                    # Send purchase confirmation email
+                    try:
+                        user = db.get_user_by_id(user_id)
+                        if user:
+                            from email_service import send_purchase_email, get_first_name
+                            from datetime import datetime, timedelta
+                            expiry_date = (datetime.now() + timedelta(days=period * 30)).strftime("%B %d, %Y")
+                            first_name = get_first_name(user.get("full_name", ""))
+                            reports_per_month = tier_config.get("reports_limit", 50)
+                            send_purchase_email(
+                                user_email=user["email"],
+                                first_name=first_name,
+                                plan_name=tier_config.get("name", tier.title()),
+                                reports_per_month=reports_per_month,
+                                expiry_date=expiry_date
+                            )
+                    except Exception as e:
+                        print(f"[WEBHOOK] Failed to send purchase email: {e}")
+
         return {"status": "received", "event_type": event_type}
 
     except Exception as e:
@@ -1259,6 +1296,23 @@ async def payment_form_webhook(request: Request):
                 )
 
                 print(f"[PAYMENT FORM WEBHOOK] Subscription activated for {customer_email}: {tier} ({period}m)")
+
+                # Send purchase confirmation email
+                try:
+                    from email_service import send_purchase_email, get_first_name
+                    from datetime import datetime, timedelta
+                    expiry_date = (datetime.now() + timedelta(days=period * 30)).strftime("%B %d, %Y")
+                    first_name = get_first_name(user.get("full_name", ""))
+                    reports_per_month = tier_config.get("reports_limit", 50)
+                    send_purchase_email(
+                        user_email=customer_email,
+                        first_name=first_name,
+                        plan_name=tier_config.get("name", tier.title()),
+                        reports_per_month=reports_per_month,
+                        expiry_date=expiry_date
+                    )
+                except Exception as e:
+                    print(f"[PAYMENT FORM WEBHOOK] Failed to send purchase email: {e}")
 
                 return {
                     "status": "success",
