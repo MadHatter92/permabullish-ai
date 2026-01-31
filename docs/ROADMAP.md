@@ -271,6 +271,82 @@ Launch the product on custom domain with production-ready features.
 
 ---
 
+## Phase 3.6: Post-Launch Improvements
+**Status:** ✅ COMPLETE
+**Completed:** January 31, 2026
+**Priority:** High
+
+### Objective
+Polish and enhance the live product based on initial usage.
+
+### 3.6.1 Email System (Resend Integration)
+
+- [x] **Welcome Email** - Sent on signup (email/password and Google OAuth)
+  - Introduces platform features
+  - Includes 3 featured sample reports (INFY, SWIGGY, DIXON)
+  - Configurable featured tickers in `config.py`
+- [x] **Purchase Confirmation Email** - Sent on subscription activation
+  - Plan details, expiry date, reports per month
+  - Triggered from verify endpoint and webhooks
+- [x] **Re-engagement Email System**
+  - 5 rotating templates + weekly digest template
+  - Days 1-14: Daily emails (if inactive 7+ days)
+  - Days 15-180: Weekly emails (if inactive 7+ days)
+  - Cron script: `scripts/send_reengagement_emails.py`
+  - IST timezone support
+- [x] Database tracking columns: `last_activity_at`, `welcome_email_sent`, `last_reengagement_email_at`, `reengagement_email_count`
+
+### 3.6.2 AI Report Enhancements
+
+- [x] **Fiscal Quarter Grounding**
+  - Reports now include current date context
+  - Indian fiscal year awareness (Apr-Mar, Q1-Q4)
+  - Latest results quarter labeling (e.g., "Q2 FY26 (Jul-Sep 2025)")
+  - Prevents AI from referencing future dates
+
+### 3.6.3 Search & Discovery
+
+- [x] **Stock Search by Company Name**
+  - Fixed: Search now works with company names, not just tickers
+  - Merged Nifty 500 names with expanded NSE list
+  - Example: "Infosys" now finds INFY
+- [x] **"3000+ Stocks Covered" Badge**
+  - Added prominently on login page below tagline
+
+### 3.6.4 UX & Legal
+
+- [x] **Disclaimer Footer on All Pages**
+  - "Not financial advice" disclaimer
+  - Contact Us mailto link (mail@mayaskara.com)
+  - Added to: index, dashboard, generate, pricing, subscription, checkout, payment-status, report
+- [x] **Share Message Updates**
+  - "NOT FINANCIAL ADVICE" included in WhatsApp/Twitter shares
+  - Consistent share URL format (always uses api.permabullish.com)
+
+### 3.6.5 Bug Fixes
+
+- [x] **Cached Report Regeneration**
+  - Fixed: "Generate Fresh Report" button now properly regenerates
+  - `force_regenerate` flag correctly sent to backend
+- [x] **Share URL Consistency**
+  - Fixed: Share URLs always use production domain regardless of access method
+
+### Deliverables
+- ✅ Complete email automation system
+- ✅ Fiscally-grounded AI reports
+- ✅ Improved stock search
+- ✅ Legal compliance (disclaimers)
+- ✅ Bug fixes for regeneration and sharing
+
+### Environment Variables (New)
+- `RESEND_API_KEY` - Email service API key
+
+### Pending (Email System)
+- [ ] DNS verification for permabullish.com (SPF, DKIM, DMARC)
+- [ ] Set up cron job for re-engagement emails on Render
+
+---
+
 ## Phase 4: Data Enhancement
 **Status:** 🔄 IN PROGRESS
 **Priority:** High
@@ -451,6 +527,7 @@ Add Hindi and Gujarati language support for reports.
 | 2 | Subscription System | ✅ Complete |
 | 3 | Payment Integration | ✅ Complete |
 | 3.5 | Production Launch | ✅ Complete |
+| 3.6 | Post-Launch Improvements | ✅ Complete |
 | 4 | Data Enhancement | 🔄 In Progress |
 | 5 | Pricing Analysis | Partial |
 | 6 | ~~Landing Page~~ Mobile UX | Pending |
@@ -479,6 +556,29 @@ python scripts/weekly_new_users.py --days 7
 python scripts/weekly_new_users.py --format csv --output new_users.csv
 ```
 
+### Email Scripts ✅
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `scripts/send_reengagement_emails.py` | Send re-engagement emails | `--dry-run --limit N` |
+
+```bash
+# Dry run (see what would be sent)
+python scripts/send_reengagement_emails.py --dry-run
+
+# Send to first 10 eligible users
+python scripts/send_reengagement_emails.py --limit 10
+
+# Full run (all eligible users)
+python scripts/send_reengagement_emails.py
+```
+
+**Cron Setup (Render):**
+```bash
+# Run daily at 10 AM IST (4:30 AM UTC)
+0 4 * * * cd /app/backend && python scripts/send_reengagement_emails.py
+```
+
 ### Data Sync Scripts
 
 | Script | Purpose | Usage |
@@ -495,9 +595,6 @@ python scripts/fundamentals_sync.py --symbol RELIANCE
 # Test mode (no DB save)
 python scripts/fundamentals_sync.py --test --symbol TCS
 ```
-| 6 | Landing Page | Pending |
-| 7 | Multi-Language | Future |
-| 8 | Future Features | Backlog |
 
 **MVP Status:** ✅ LIVE at permabullish.com
 
@@ -514,7 +611,8 @@ python scripts/fundamentals_sync.py --test --symbol TCS
 - `backend/main.py` - FastAPI application
 - `backend/share_card.py` - Social sharing image generator
 - `backend/cashfree.py` - Payment integration
-- `backend/config.py` - Subscription tiers and configuration
+- `backend/email_service.py` - Email templates and sending (Resend)
+- `backend/config.py` - Subscription tiers, email config, and settings
 - `frontend/config.js` - Frontend configuration and payment form URLs
 - `docs/ADMIN_GUIDE.md` - Enterprise user management guide
 
@@ -524,6 +622,7 @@ python scripts/fundamentals_sync.py --test --symbol TCS
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` - OAuth
 - `CASHFREE_APP_ID` / `CASHFREE_SECRET_KEY` - Payments
 - `CASHFREE_ENV=production` - Payment environment
+- `RESEND_API_KEY` - Email service (Resend)
 - `ENVIRONMENT=production` - App environment
 - `FRONTEND_URL=https://permabullish.com`
 
