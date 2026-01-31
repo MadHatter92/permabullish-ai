@@ -707,7 +707,14 @@
             const recommendation = currentReport ? currentReport.recommendation.replace('_', ' ') : '';
             const text = `${companyName} - ${recommendation}\nAI-powered research report:`;
             const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + shareUrl)}`;
-            window.open(whatsappUrl, '_blank');
+
+            // Use location.href on mobile to avoid about:blank popup
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            if (isMobile) {
+                window.location.href = whatsappUrl;
+            } else {
+                window.open(whatsappUrl, '_blank');
+            }
         }
 
         // Guest nudge functions
