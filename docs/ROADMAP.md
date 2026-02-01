@@ -563,8 +563,12 @@ Add Hindi and Gujarati language support for reports.
 
 ### 7.5.4 Analytics
 
-- [ ] **Google Analytics (GA4)**
-  - Add tracking to all frontend pages
+- [x] **Google Analytics (GA4)** ✅
+  - Tracking on all 8 frontend pages
+  - Custom events: registration, login, report generation, shares, search, watchlist, purchases
+  - User properties: tier, account type, reports count
+  - E-commerce tracking for subscription purchases
+  - Measurement ID: G-75Y271369Q
 
 - [ ] **Admin Stats API**
   - `/api/admin/stats` endpoint
