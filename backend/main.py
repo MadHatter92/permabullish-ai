@@ -24,7 +24,8 @@ from report_generator import generate_ai_analysis, generate_report_html
 from config import (
     SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
     GOOGLE_REDIRECT_URI, FRONTEND_URL, CORS_ORIGINS, ENVIRONMENT,
-    SUBSCRIPTION_TIERS, CASHFREE_APP_ID, CASHFREE_SECRET_KEY
+    SUBSCRIPTION_TIERS, CASHFREE_APP_ID, CASHFREE_SECRET_KEY,
+    FEATURED_REPORT_TICKERS
 )
 import cashfree
 import share_card
@@ -575,6 +576,13 @@ async def get_user_reports(
 ):
     """Get report history for authenticated user (with freshness info)."""
     reports = db.get_user_report_history(current_user["id"], limit=limit)
+    return reports
+
+
+@app.get("/api/reports/featured")
+async def get_featured_reports():
+    """Get featured sample reports for new users to see."""
+    reports = db.get_featured_reports(FEATURED_REPORT_TICKERS)
     return reports
 
 
