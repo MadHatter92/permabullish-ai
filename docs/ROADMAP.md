@@ -343,12 +343,12 @@ Polish and enhance the live product based on initial usage.
 
 ### Pending (Email System)
 - [x] DNS verification for permabullish.com (SPF, DKIM) ✅
-- [ ] Set up cron job for re-engagement emails on Render
+- [x] Set up cron job for re-engagement emails on Render ✅
 
 ---
 
 ## Phase 4: Data Enhancement
-**Status:** 🔄 IN PROGRESS
+**Status:** ✅ COMPLETE
 **Priority:** High
 **Dependencies:** Phase 1
 
@@ -384,15 +384,17 @@ Improve stock data quality and coverage.
 - [x] Run sync for all 2000+ stocks
 - [x] Data populated in production database
 
-### 4.5 Infrastructure Upgrade
+### 4.5 Infrastructure Upgrade ✅
 
-- [ ] **Upgrade to paid Render tier**
-  - Enables cron jobs (re-engagement emails, fundamentals refresh)
+- [x] **Upgrade to paid Render tier** ✅
+  - Cron jobs enabled
   - Better performance and uptime
   - No cold starts on API
-- [ ] Set up cron jobs after upgrade:
+- [x] Set up cron jobs ✅
   - Re-engagement emails: daily at 10 AM IST
+  - Expiry reminder emails: daily at 10:30 AM IST
   - Fundamentals refresh: 1st of month
+  - Daily/weekly usage reports
 - [ ] Add on-demand refresh for stale data (>45 days)
 
 ### Deliverables
@@ -400,7 +402,7 @@ Improve stock data quality and coverage.
 - ✅ Fundamentals sync infrastructure
 - ✅ Report generator integration (shareholding trends, pros/cons)
 - ✅ Initial data population complete
-- Pending: Monthly cron job (after Render upgrade)
+- ✅ Cron jobs configured in render.yaml
 
 ---
 
@@ -509,19 +511,20 @@ Add Hindi and Gujarati language support for reports.
 ---
 
 ## Phase 7.5: Security & Best Practices
-**Status:** Pending
+**Status:** 🔄 IN PROGRESS
 **Priority:** High
 
 ### 7.5.1 Security Hardening
 
-- [ ] **Disable Swagger in Production**
-  - Hide `/api/docs` and `/api/redoc` endpoints
+- [x] **Disable Swagger in Production** ✅
+  - Hidden `/api/docs`, `/api/redoc`, `/openapi.json` in production
   - Prevents API structure exposure
 
-- [ ] **Rate Limiting**
-  - Limit report generation (e.g., 10/hour per user)
-  - Limit auth attempts (prevent brute force)
-  - Use slowapi or similar
+- [x] **Rate Limiting** ✅
+  - Register: 3/minute
+  - Login: 5/minute
+  - Report generation: 10/hour
+  - Uses slowapi
 
 - [ ] **Input Validation**
   - Validate ticker symbols before Claude API calls
@@ -529,10 +532,10 @@ Add Hindi and Gujarati language support for reports.
 
 ### 7.5.2 Monitoring & Observability
 
-- [ ] **Error Tracking (Sentry)**
-  - Catch production errors automatically
-  - Get stack traces and context
-  - Free tier: 5K errors/month
+- [x] **Error Tracking (Sentry)** ✅
+  - Production errors captured automatically
+  - Stack traces and request context
+  - Test endpoint: `/api/sentry-test`
 
 - [ ] **Health Check Improvements**
   - Add database connectivity check
@@ -543,6 +546,12 @@ Add Hindi and Gujarati language support for reports.
   - Log report generation metrics
 
 ### 7.5.3 Infrastructure
+
+- [x] **Cron Jobs Setup** ✅
+  - Re-engagement emails: daily 10 AM IST
+  - Expiry reminder emails: daily 10:30 AM IST
+  - Fundamentals sync: 1st of month
+  - Daily/weekly usage reports
 
 - [ ] **Backup Strategy**
   - Verify Render PostgreSQL auto-backups
@@ -590,10 +599,10 @@ Add Hindi and Gujarati language support for reports.
 | 3 | Payment Integration | ✅ Complete |
 | 3.5 | Production Launch | ✅ Complete |
 | 3.6 | Post-Launch Improvements | ✅ Complete |
-| 4 | Data Enhancement | 🔄 In Progress |
+| 4 | Data Enhancement | ✅ Complete |
 | 5 | Pricing Analysis | Partial |
 | 6 | ~~Landing Page~~ Mobile UX | Pending |
-| 7.5 | Security & Best Practices | Pending |
+| 7.5 | Security & Best Practices | 🔄 In Progress |
 | 7 | Multi-Language | Future |
 | 8 | Future Features | Backlog |
 
