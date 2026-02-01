@@ -215,7 +215,7 @@ services:
 databases:
   # Production Database
   - name: permabullish-db
-    plan: starter  # $7/month
+    plan: basic-256mb  # $6/month
     region: oregon
     postgresMajorVersion: 15
 
