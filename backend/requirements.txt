@@ -41,3 +41,6 @@ Pillow>=10.0.0,<11.0.0
 
 # Rate limiting
 slowapi>=0.1.9,<1.0.0
+
+# Error tracking
+sentry-sdk[fastapi]>=1.39.0,<3.0.0

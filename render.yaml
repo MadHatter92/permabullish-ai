@@ -43,6 +43,8 @@ services:
         sync: false
       - key: CASHFREE_ENV
         value: production
+      - key: SENTRY_DSN
+        sync: false
 
   # Stock Research Frontend (Static)
   - type: web
@@ -100,6 +102,8 @@ services:
         sync: false
       - key: CASHFREE_ENV
         value: sandbox
+      - key: SENTRY_DSN
+        sync: false
 
   # Staging Frontend (Static)
   - type: web
@@ -234,6 +238,7 @@ databases:
 # - CASHFREE_APP_ID: Cashfree payment gateway app ID
 # - CASHFREE_SECRET_KEY: Cashfree payment gateway secret
 # - RESEND_API_KEY: Resend API key for email reports
+# - SENTRY_DSN: Sentry error tracking DSN (from sentry.io)
 #
 # Note: CASHFREE_ENV is pre-set:
 #   - Production: "production"

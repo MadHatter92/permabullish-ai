@@ -22,6 +22,18 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
+# Error tracking (Sentry)
+import sentry_sdk
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=ENVIRONMENT,
+        traces_sample_rate=0.1,  # 10% of requests for performance monitoring
+        send_default_pii=False,  # Don't send personally identifiable info
+    )
+    print(f"Sentry initialized for {ENVIRONMENT} environment")
+
 import database as db
 import auth
 from yahoo_finance import fetch_stock_data, search_stocks
