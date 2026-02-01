@@ -11,8 +11,16 @@ from pydantic import BaseModel
 from typing import Optional
 import json
 import hashlib
+import logging
 import os
 from pathlib import Path
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("permabullish")
 
 from authlib.integrations.starlette_client import OAuth
 from starlette.middleware.sessions import SessionMiddleware
@@ -45,7 +53,7 @@ if SENTRY_DSN:
         traces_sample_rate=0.1,  # 10% of requests for performance monitoring
         send_default_pii=False,  # Don't send personally identifiable info
     )
-    print(f"Sentry initialized for {ENVIRONMENT} environment")
+    logger.info(f"Sentry initialized for {ENVIRONMENT} environment")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -367,9 +375,9 @@ async def get_current_user_info(current_user: dict = Depends(auth.get_current_us
 @app.get("/api/auth/google/login")
 async def google_login(request: Request):
     """Initiate Google OAuth flow."""
-    print(f"[OAuth] Login initiated. Redirect URI: {GOOGLE_REDIRECT_URI}")
+    logger.info(f"OAuth login initiated. Redirect URI: {GOOGLE_REDIRECT_URI}")
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        print("[OAuth] Error: Google OAuth credentials not configured")
+        logger.error("Google OAuth credentials not configured")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Google OAuth is not configured"
@@ -380,23 +388,23 @@ async def google_login(request: Request):
 @app.get("/api/auth/google/callback")
 async def google_callback(request: Request):
     """Handle Google OAuth callback."""
-    print(f"[OAuth] Callback received. FRONTEND_URL: {FRONTEND_URL}")
+    logger.info(f"OAuth callback received. FRONTEND_URL: {FRONTEND_URL}")
 
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        print("[OAuth] Error: Google OAuth not configured")
+        logger.error("Google OAuth not configured")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Google OAuth is not configured"
         )
 
     try:
-        print("[OAuth] Exchanging authorization code for token...")
+        logger.info("Exchanging authorization code for token...")
         token = await oauth.google.authorize_access_token(request)
         user_info = token.get('userinfo')
-        print(f"[OAuth] Got user info: {user_info.get('email') if user_info else 'None'}")
+        logger.info(f"Got user info: {user_info.get('email') if user_info else 'None'}")
 
         if not user_info:
-            print("[OAuth] Error: No user info in token")
+            logger.error("No user info in token response")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to get user info from Google"
@@ -409,7 +417,7 @@ async def google_callback(request: Request):
             full_name=user_info.get('name', user_info.get('email', '')),
             avatar_url=user_info.get('picture')
         )
-        print(f"[OAuth] User created/retrieved: {user['email']}")
+        logger.info(f"User authenticated: {user['email']}")
 
         # Create JWT token
         access_token = auth.create_access_token(
@@ -418,14 +426,12 @@ async def google_callback(request: Request):
 
         # Redirect to frontend with token (use 302 for OAuth compatibility)
         redirect_url = f"{FRONTEND_URL}/dashboard.html?token={access_token}"
-        print(f"[OAuth] Redirecting to: {FRONTEND_URL}/dashboard.html?token=<redacted>")
+        logger.info(f"Redirecting to dashboard for user: {user['email']}")
         return RedirectResponse(url=redirect_url, status_code=302)
 
     except Exception as e:
-        # Log the error for debugging
-        print(f"[OAuth] Error during callback: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        # Log the error with full traceback
+        logger.exception(f"OAuth callback error: {type(e).__name__}: {str(e)}")
 
         # Capture in Sentry if available
         if SENTRY_DSN:
