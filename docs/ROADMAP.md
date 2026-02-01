@@ -512,6 +512,15 @@ Add Hindi and Gujarati language support for reports.
 **Status:** Backlog
 **Priority:** Low
 
+### Analytics & Monitoring
+
+- [ ] **Google Analytics:** Add GA4 tracking to all pages
+- [ ] **Admin Stats API:** `/api/admin/stats` endpoint with:
+  - User counts (total, today, this week, by auth provider)
+  - Report counts (total, today, this week)
+  - Subscription breakdown (free, basic, pro)
+  - MRR estimate
+
 ### Potential Features
 
 - [ ] **Chat with AI:** Follow-up questions about stocks
