@@ -367,7 +367,9 @@ async def get_current_user_info(current_user: dict = Depends(auth.get_current_us
 @app.get("/api/auth/google/login")
 async def google_login(request: Request):
     """Initiate Google OAuth flow."""
+    print(f"[OAuth] Login initiated. Redirect URI: {GOOGLE_REDIRECT_URI}")
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        print("[OAuth] Error: Google OAuth credentials not configured")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Google OAuth is not configured"
@@ -378,17 +380,23 @@ async def google_login(request: Request):
 @app.get("/api/auth/google/callback")
 async def google_callback(request: Request):
     """Handle Google OAuth callback."""
+    print(f"[OAuth] Callback received. FRONTEND_URL: {FRONTEND_URL}")
+
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        print("[OAuth] Error: Google OAuth not configured")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Google OAuth is not configured"
         )
 
     try:
+        print("[OAuth] Exchanging authorization code for token...")
         token = await oauth.google.authorize_access_token(request)
         user_info = token.get('userinfo')
+        print(f"[OAuth] Got user info: {user_info.get('email') if user_info else 'None'}")
 
         if not user_info:
+            print("[OAuth] Error: No user info in token")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to get user info from Google"
@@ -401,20 +409,31 @@ async def google_callback(request: Request):
             full_name=user_info.get('name', user_info.get('email', '')),
             avatar_url=user_info.get('picture')
         )
+        print(f"[OAuth] User created/retrieved: {user['email']}")
 
         # Create JWT token
         access_token = auth.create_access_token(
             data={"sub": str(user["id"]), "email": user["email"]}
         )
 
-        # Redirect to frontend with token
+        # Redirect to frontend with token (use 302 for OAuth compatibility)
         redirect_url = f"{FRONTEND_URL}/dashboard.html?token={access_token}"
-        return RedirectResponse(url=redirect_url)
+        print(f"[OAuth] Redirecting to: {FRONTEND_URL}/dashboard.html?token=<redacted>")
+        return RedirectResponse(url=redirect_url, status_code=302)
 
     except Exception as e:
+        # Log the error for debugging
+        print(f"[OAuth] Error during callback: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+        # Capture in Sentry if available
+        if SENTRY_DSN:
+            sentry_sdk.capture_exception(e)
+
         # Redirect to frontend with error
-        redirect_url = f"{FRONTEND_URL}/index.html?error=auth_failed"
-        return RedirectResponse(url=redirect_url)
+        redirect_url = f"{FRONTEND_URL}/index.html?error=auth_failed&message={str(e)[:100]}"
+        return RedirectResponse(url=redirect_url, status_code=302)
 
 
 # Helper function for anonymous user identification
