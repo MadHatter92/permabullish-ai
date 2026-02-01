@@ -508,18 +508,64 @@ Add Hindi and Gujarati language support for reports.
 
 ---
 
+## Phase 7.5: Security & Best Practices
+**Status:** Pending
+**Priority:** High
+
+### 7.5.1 Security Hardening
+
+- [ ] **Disable Swagger in Production**
+  - Hide `/api/docs` and `/api/redoc` endpoints
+  - Prevents API structure exposure
+
+- [ ] **Rate Limiting**
+  - Limit report generation (e.g., 10/hour per user)
+  - Limit auth attempts (prevent brute force)
+  - Use slowapi or similar
+
+- [ ] **Input Validation**
+  - Validate ticker symbols before Claude API calls
+  - Sanitize all user inputs
+
+### 7.5.2 Monitoring & Observability
+
+- [ ] **Error Tracking (Sentry)**
+  - Catch production errors automatically
+  - Get stack traces and context
+  - Free tier: 5K errors/month
+
+- [ ] **Health Check Improvements**
+  - Add database connectivity check
+  - Add external API status (Claude, Resend)
+
+- [ ] **Structured Logging**
+  - JSON logging for easier parsing
+  - Log report generation metrics
+
+### 7.5.3 Infrastructure
+
+- [ ] **Backup Strategy**
+  - Verify Render PostgreSQL auto-backups
+  - Consider periodic export to external storage
+
+- [ ] **CI/CD Pipeline** (Nice to have)
+  - GitHub Actions for lint/test on PR
+  - Auto-deploy to staging on merge
+
+### 7.5.4 Analytics
+
+- [ ] **Google Analytics (GA4)**
+  - Add tracking to all frontend pages
+
+- [ ] **Admin Stats API**
+  - `/api/admin/stats` endpoint
+  - User counts, report counts, subscription breakdown, MRR
+
+---
+
 ## Phase 8: Future Features (Post-Launch)
 **Status:** Backlog
 **Priority:** Low
-
-### Analytics & Monitoring
-
-- [ ] **Google Analytics:** Add GA4 tracking to all pages
-- [ ] **Admin Stats API:** `/api/admin/stats` endpoint with:
-  - User counts (total, today, this week, by auth provider)
-  - Report counts (total, today, this week)
-  - Subscription breakdown (free, basic, pro)
-  - MRR estimate
 
 ### Potential Features
 
@@ -547,6 +593,7 @@ Add Hindi and Gujarati language support for reports.
 | 4 | Data Enhancement | 🔄 In Progress |
 | 5 | Pricing Analysis | Partial |
 | 6 | ~~Landing Page~~ Mobile UX | Pending |
+| 7.5 | Security & Best Practices | Pending |
 | 7 | Multi-Language | Future |
 | 8 | Future Features | Backlog |
 
