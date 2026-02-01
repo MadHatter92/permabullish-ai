@@ -471,10 +471,18 @@
                     throw new Error('Report content is unavailable');
                 }
 
-                // Load into iframe
+                // Load into iframe - use srcdoc for better in-app browser compatibility
+                // (Telegram, WhatsApp, etc. WebViews often have issues with blob URLs)
                 const iframe = document.getElementById('reportFrame');
-                const blob = new Blob([html], { type: 'text/html' });
-                iframe.src = URL.createObjectURL(blob);
+                try {
+                    // Try srcdoc first (better WebView compatibility)
+                    iframe.srcdoc = html;
+                } catch (e) {
+                    // Fallback to blob URL for older browsers
+                    console.log('srcdoc failed, falling back to blob URL');
+                    const blob = new Blob([html], { type: 'text/html' });
+                    iframe.src = URL.createObjectURL(blob);
+                }
 
                 // Show report, info bar, and bottom bar
                 document.getElementById('loadingState').classList.add('hidden');
