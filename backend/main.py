@@ -76,7 +76,13 @@ app.add_middleware(
 )
 
 # Session middleware for OAuth state management
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+# Configure with proper cookie settings for OAuth cross-site flows
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    same_site="lax",  # Allow OAuth redirects while maintaining some CSRF protection
+    https_only=ENVIRONMENT != "development",  # Secure cookies in production/staging
+)
 
 # Rate limiting setup
 limiter = Limiter(key_func=get_remote_address)
