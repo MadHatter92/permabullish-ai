@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-75Y271369Q"></script>
+    <script src="analytics.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Report - Permabullish</title>
@@ -422,6 +425,15 @@
                 document.getElementById('reportInfoBar').classList.remove('hidden');
                 document.getElementById('bottomBar').classList.remove('hidden');
 
+                // Track report view
+                if (window.analytics) {
+                    analytics.trackReportView(
+                        currentReport.ticker,
+                        currentReport.recommendation,
+                        currentReport.is_owner || false
+                    );
+                }
+
                 // Load user's target price if logged in
                 if (isLoggedIn && currentReport.user_target_price) {
                     userTargetPrice = currentReport.user_target_price;
@@ -664,9 +676,15 @@
         function shareReport() {
             const shareUrl = getShareUrl();
             const companyName = currentReport ? currentReport.company_name : 'Stock';
+            const ticker = currentReport ? currentReport.ticker : '';
             const recommendation = currentReport ? currentReport.recommendation.replace('_', ' ').toUpperCase() : '';
             const shareTitle = `Permabullish AI Research: ${companyName}`;
             const shareText = `${companyName} - ${recommendation} - NOT FINANCIAL ADVICE`;
+
+            // Track share action
+            if (window.analytics) {
+                analytics.trackShare(navigator.share ? 'native' : 'copy_link', ticker);
+            }
 
             if (navigator.share) {
                 // Use native share on mobile
@@ -710,9 +728,15 @@
         function shareWhatsApp() {
             const shareUrl = getShareUrl();
             const companyName = currentReport ? currentReport.company_name : 'Stock';
+            const ticker = currentReport ? currentReport.ticker : '';
             const recommendation = currentReport ? currentReport.recommendation.replace('_', ' ').toUpperCase() : '';
             const text = `Permabullish AI Research: ${companyName} - ${recommendation} - NOT FINANCIAL ADVICE\n`;
             const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + shareUrl)}`;
+
+            // Track WhatsApp share
+            if (window.analytics) {
+                analytics.trackShare('whatsapp', ticker);
+            }
 
             // Use location.href on mobile to avoid about:blank popup
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -726,9 +750,15 @@
         function shareTelegram() {
             const shareUrl = getShareUrl();
             const companyName = currentReport ? currentReport.company_name : 'Stock';
+            const ticker = currentReport ? currentReport.ticker : '';
             const recommendation = currentReport ? currentReport.recommendation.replace('_', ' ').toUpperCase() : '';
             const text = `Permabullish AI Research: ${companyName} - ${recommendation} - NOT FINANCIAL ADVICE`;
             const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+
+            // Track Telegram share
+            if (window.analytics) {
+                analytics.trackShare('telegram', ticker);
+            }
 
             // Use location.href on mobile to avoid about:blank popup
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);

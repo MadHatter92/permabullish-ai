@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-75Y271369Q"></script>
+    <script src="analytics.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Permabullish</title>
@@ -219,7 +222,7 @@
                         </div>
                     </div>
                 </div>
-                <a href="pricing.html" class="bg-[#e8913a] hover:bg-[#d97f2a] text-white px-5 py-2.5 rounded-lg font-semibold transition-all text-sm whitespace-nowrap shadow-md flex items-center gap-2">
+                <a href="pricing.html" onclick="if(window.analytics) analytics.trackUpgradeNudge('click', 'dashboard')" class="bg-[#e8913a] hover:bg-[#d97f2a] text-white px-5 py-2.5 rounded-lg font-semibold transition-all text-sm whitespace-nowrap shadow-md flex items-center gap-2">
                     View Plans
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 </a>
@@ -351,6 +354,11 @@
 
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             document.getElementById('userName').textContent = user.full_name || user.email || '';
+
+            // Set analytics user properties
+            if (window.analytics) {
+                analytics.setUserProperties(user);
+            }
 
             if (user.avatar_url) {
                 const avatarEl = document.getElementById('userAvatar');
@@ -497,6 +505,11 @@
                 const freeUpgradeNudge = document.getElementById('freeUpgradeNudge');
                 if (status.tier === 'free' && status.reports_remaining > 0) {
                     freeUpgradeNudge.classList.remove('hidden');
+
+                    // Track nudge view
+                    if (window.analytics) {
+                        analytics.trackUpgradeNudge('view', 'dashboard');
+                    }
 
                     // Calculate usage percentage
                     const usagePercent = (status.reports_used / status.reports_limit) * 100;
@@ -689,6 +702,10 @@
 
             try {
                 await apiCall(`/watchlist/${ticker}?exchange=${exchange}`, { method: 'DELETE' });
+                // Track watchlist removal
+                if (window.analytics) {
+                    analytics.trackWatchlist('remove', ticker);
+                }
                 loadWatchlist();
             } catch (error) {
                 console.error('Failed to remove from watchlist:', error);

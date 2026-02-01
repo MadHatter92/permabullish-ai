@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-75Y271369Q"></script>
+    <script src="analytics.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generate Report - Permabullish</title>
@@ -518,6 +521,11 @@
                                 </svg>
                             </div>
                         `).join('');
+
+                        // Track search
+                        if (window.analytics) {
+                            analytics.trackSearch(query, stocks.length);
+                        }
                     }
 
                     results.classList.remove('hidden');
@@ -668,6 +676,10 @@
                 if (isInWatchlist) {
                     await apiCall(`/watchlist/${selectedStock.symbol}?exchange=${selectedStock.exchange}`, { method: 'DELETE' });
                     isInWatchlist = false;
+                    // Track watchlist removal
+                    if (window.analytics) {
+                        analytics.trackWatchlist('remove', selectedStock.symbol);
+                    }
                 } else {
                     await apiCall('/watchlist', {
                         method: 'POST',
@@ -678,6 +690,10 @@
                         })
                     });
                     isInWatchlist = true;
+                    // Track watchlist addition
+                    if (window.analytics) {
+                        analytics.trackWatchlist('add', selectedStock.symbol);
+                    }
                 }
                 updateWatchlistButton();
             } catch (e) {
@@ -754,6 +770,16 @@
                 }
 
                 const result = await response.json();
+
+                // Track successful report generation
+                if (window.analytics) {
+                    analytics.trackReportGeneration(
+                        selectedStock.symbol,
+                        selectedStock.name,
+                        true,
+                        !result.generated_new
+                    );
+                }
 
                 document.getElementById('step3').classList.remove('text-gray-400');
                 document.getElementById('step3').classList.add('text-green-600');

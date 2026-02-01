@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-75Y271369Q"></script>
+    <script src="analytics.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Status - Permabullish</title>
@@ -189,11 +192,24 @@
 
             // Update success message
             if (data.tier_name && data.period_months) {
-                const periodText = data.period_months === 1 ? '1 month' :
+                const periodText = data.period_months === 1 ? 'monthly' :
+                                  data.period_months === 6 ? '6months' : 'yearly';
+                const periodDisplay = data.period_months === 1 ? '1 month' :
                                   data.period_months === 6 ? '6 months' : '12 months';
-                document.getElementById('planDetails').textContent = `${data.tier_name} (${periodText})`;
+                document.getElementById('planDetails').textContent = `${data.tier_name} (${periodDisplay})`;
                 document.getElementById('successMessage').textContent =
                     `Your ${data.tier_name} subscription is now active. Enjoy unlimited research!`;
+
+                // Track successful purchase
+                if (window.analytics) {
+                    const prices = {
+                        Basic: { monthly: 625, '6months': 2999, yearly: 4999 },
+                        Pro: { monthly: 1499, '6months': 7499, yearly: 11999 }
+                    };
+                    const plan = data.tier_name.toLowerCase();
+                    const value = prices[data.tier_name] ? prices[data.tier_name][periodText] : (data.amount || 0);
+                    analytics.trackPurchase(plan, periodText, value);
+                }
             }
         }
 

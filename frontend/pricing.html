@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-75Y271369Q"></script>
+    <script src="analytics.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pricing - Permabullish</title>
@@ -332,6 +335,11 @@
         }
 
         async function selectPlan(plan) {
+            // Track pricing interaction
+            if (window.analytics) {
+                analytics.trackPricingView(plan);
+            }
+
             if (plan === 'free') {
                 window.location.href = 'generate.html';
                 return;
@@ -376,6 +384,15 @@
             );
 
             if (confirmed) {
+                // Track checkout initiation
+                const prices = {
+                    basic: { monthly: 625, '6months': 2999, yearly: 4999 },
+                    pro: { monthly: 1499, '6months': 7499, yearly: 11999 }
+                };
+                const value = prices[plan] ? prices[plan][currentPeriod] : 0;
+                if (window.analytics) {
+                    analytics.trackBeginCheckout(plan, currentPeriod, value);
+                }
                 window.location.href = formUrl;
             }
         }

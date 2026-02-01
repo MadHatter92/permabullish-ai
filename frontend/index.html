@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-75Y271369Q"></script>
+    <script src="analytics.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Permabullish - AI Stock Research</title>
@@ -152,6 +155,16 @@
             .then(res => res.json())
             .then(user => {
                 localStorage.setItem('user', JSON.stringify(user));
+                // Track Google login/registration
+                if (window.analytics) {
+                    const isNewUser = urlParams.get('new_user') === 'true';
+                    if (isNewUser) {
+                        analytics.trackRegistration('google');
+                    } else {
+                        analytics.trackLogin('google');
+                    }
+                    analytics.setUserProperties(user);
+                }
                 window.location.href = 'dashboard.html';
             })
             .catch(() => {
@@ -171,6 +184,12 @@
         }
 
         function continueAsGuest() {
+            // Track guest mode
+            if (window.analytics) {
+                gtag('event', 'continue_as_guest', {
+                    event_category: 'engagement'
+                });
+            }
             window.location.href = 'generate.html';
         }
     </script>
