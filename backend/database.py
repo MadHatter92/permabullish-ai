@@ -150,7 +150,9 @@ def init_database():
                     last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     welcome_email_sent BOOLEAN DEFAULT FALSE,
                     last_reengagement_email_at TIMESTAMP,
-                    reengagement_email_count INTEGER DEFAULT 0
+                    reengagement_email_count INTEGER DEFAULT 0,
+                    last_expiry_email_at TIMESTAMP,
+                    expiry_email_count INTEGER DEFAULT 0
                 )
             """)
 
@@ -326,6 +328,8 @@ def init_database():
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_email_sent BOOLEAN DEFAULT FALSE",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_reengagement_email_at TIMESTAMP",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS reengagement_email_count INTEGER DEFAULT 0",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_expiry_email_at TIMESTAMP",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS expiry_email_count INTEGER DEFAULT 0",
             ]:
                 try:
                     cursor.execute(col_sql)
@@ -352,7 +356,9 @@ def init_database():
                     last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     welcome_email_sent BOOLEAN DEFAULT 0,
                     last_reengagement_email_at TIMESTAMP,
-                    reengagement_email_count INTEGER DEFAULT 0
+                    reengagement_email_count INTEGER DEFAULT 0,
+                    last_expiry_email_at TIMESTAMP,
+                    expiry_email_count INTEGER DEFAULT 0
                 )
             """)
 
@@ -510,6 +516,8 @@ def init_database():
                 ("welcome_email_sent", "BOOLEAN DEFAULT 0"),
                 ("last_reengagement_email_at", "TIMESTAMP"),
                 ("reengagement_email_count", "INTEGER DEFAULT 0"),
+                ("last_expiry_email_at", "TIMESTAMP"),
+                ("expiry_email_count", "INTEGER DEFAULT 0"),
             ]:
                 try:
                     cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}")
@@ -1617,6 +1625,121 @@ def get_users_for_reengagement() -> List[dict]:
 
         rows = cursor.fetchall()
         return [_dict_from_row(row) for row in rows]
+
+
+def get_users_with_expired_subscriptions() -> List[dict]:
+    """
+    Get users with expired paid subscriptions who need reminder emails.
+
+    Criteria:
+    - Had a paid subscription (basic, pro, enterprise)
+    - Subscription has expired
+    - Haven't been sent an expiry email recently (based on schedule)
+
+    Schedule:
+    - Day 0 (expiry day): Send reminder
+    - Day 3: Send follow-up
+    - Day 7: Send follow-up
+    - Day 14+: Weekly reminders for up to 60 days
+    """
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+
+        if USE_POSTGRES:
+            cursor.execute("""
+                SELECT
+                    u.id, u.email, u.full_name, u.created_at,
+                    u.subscription_tier, u.subscription_expires_at,
+                    u.last_expiry_email_at, u.expiry_email_count,
+                    COALESCE(s.reports_used, 0) as reports_generated
+                FROM users u
+                LEFT JOIN (
+                    SELECT user_id, COUNT(*) as reports_used
+                    FROM user_reports
+                    GROUP BY user_id
+                ) s ON s.user_id = u.id
+                WHERE u.is_active = TRUE
+                  AND u.subscription_tier IN ('basic', 'pro', 'enterprise')
+                  AND u.subscription_expires_at < CURRENT_TIMESTAMP
+                  AND u.subscription_expires_at > CURRENT_TIMESTAMP - INTERVAL '60 days'
+                  AND (
+                      -- No email sent yet for this expiry
+                      u.last_expiry_email_at IS NULL
+                      OR u.last_expiry_email_at < u.subscription_expires_at
+                      OR (
+                          -- Day 0-3: daily
+                          u.subscription_expires_at > CURRENT_TIMESTAMP - INTERVAL '3 days'
+                          AND u.last_expiry_email_at < CURRENT_DATE
+                      )
+                      OR (
+                          -- Day 3-7: every 3 days
+                          u.subscription_expires_at BETWEEN CURRENT_TIMESTAMP - INTERVAL '7 days'
+                                                        AND CURRENT_TIMESTAMP - INTERVAL '3 days'
+                          AND u.last_expiry_email_at < CURRENT_DATE - INTERVAL '3 days'
+                      )
+                      OR (
+                          -- Day 7+: weekly
+                          u.subscription_expires_at < CURRENT_TIMESTAMP - INTERVAL '7 days'
+                          AND u.last_expiry_email_at < CURRENT_DATE - INTERVAL '7 days'
+                      )
+                  )
+                ORDER BY u.subscription_expires_at DESC
+            """)
+        else:
+            cursor.execute("""
+                SELECT
+                    u.id, u.email, u.full_name, u.created_at,
+                    u.subscription_tier, u.subscription_expires_at,
+                    u.last_expiry_email_at, u.expiry_email_count,
+                    COALESCE(s.reports_used, 0) as reports_generated
+                FROM users u
+                LEFT JOIN (
+                    SELECT user_id, COUNT(*) as reports_used
+                    FROM user_reports
+                    GROUP BY user_id
+                ) s ON s.user_id = u.id
+                WHERE u.is_active = 1
+                  AND u.subscription_tier IN ('basic', 'pro', 'enterprise')
+                  AND u.subscription_expires_at < datetime('now')
+                  AND u.subscription_expires_at > datetime('now', '-60 days')
+                  AND (
+                      u.last_expiry_email_at IS NULL
+                      OR u.last_expiry_email_at < u.subscription_expires_at
+                      OR (
+                          u.subscription_expires_at > datetime('now', '-3 days')
+                          AND u.last_expiry_email_at < date('now')
+                      )
+                      OR (
+                          u.subscription_expires_at BETWEEN datetime('now', '-7 days')
+                                                        AND datetime('now', '-3 days')
+                          AND u.last_expiry_email_at < date('now', '-3 days')
+                      )
+                      OR (
+                          u.subscription_expires_at < datetime('now', '-7 days')
+                          AND u.last_expiry_email_at < date('now', '-7 days')
+                      )
+                  )
+                ORDER BY u.subscription_expires_at DESC
+            """)
+
+        rows = cursor.fetchall()
+        return [_dict_from_row(row) for row in rows]
+
+
+def update_expiry_email_sent(user_id: int) -> bool:
+    """Update user's expiry email tracking after sending an email."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(
+            f"""UPDATE users SET
+                last_expiry_email_at = CURRENT_TIMESTAMP,
+                expiry_email_count = COALESCE(expiry_email_count, 0) + 1
+            WHERE id = {p}""",
+            (user_id,)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
 
 
 def get_featured_reports(tickers: List[str]) -> List[dict]:

@@ -570,23 +570,26 @@ python scripts/weekly_new_users.py --format csv --output new_users.csv
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `scripts/send_reengagement_emails.py` | Send re-engagement emails | `--dry-run --limit N` |
+| `scripts/send_reengagement_emails.py` | Re-engagement emails for inactive free users | `--dry-run --limit N` |
+| `scripts/send_expiry_emails.py` | Expiry reminders for lapsed paid subscribers | `--dry-run --limit N` |
 
 ```bash
-# Dry run (see what would be sent)
+# Re-engagement emails (dry run)
 python scripts/send_reengagement_emails.py --dry-run
 
-# Send to first 10 eligible users
-python scripts/send_reengagement_emails.py --limit 10
+# Expiry reminder emails (dry run)
+python scripts/send_expiry_emails.py --dry-run
 
 # Full run (all eligible users)
 python scripts/send_reengagement_emails.py
+python scripts/send_expiry_emails.py
 ```
 
 **Cron Setup (Render):**
 ```bash
 # Run daily at 10 AM IST (4:30 AM UTC)
 0 4 * * * cd /app/backend && python scripts/send_reengagement_emails.py
+0 5 * * * cd /app/backend && python scripts/send_expiry_emails.py
 ```
 
 ### Data Sync Scripts

@@ -250,6 +250,107 @@ def send_purchase_email(
 
 
 # =============================================================================
+# SUBSCRIPTION EXPIRY EMAILS
+# =============================================================================
+
+def send_subscription_expiry_email(
+    user_email: str,
+    first_name: str,
+    plan_name: str,
+    days_since_expiry: int,
+    reports_generated: int = 0
+) -> bool:
+    """
+    Send subscription expiry reminder email.
+    Different messaging based on how long ago it expired.
+    """
+
+    # Determine urgency and messaging based on days since expiry
+    if days_since_expiry == 0:
+        subject = f"Your {plan_name} subscription expires today"
+        headline = "Your subscription expires today"
+        message = """
+            <p>Just a heads up — your Permabullish subscription expires today.</p>
+            <p>To keep your uninterrupted access to AI-powered research reports, renew now.</p>
+        """
+        cta_text = "Renew Now"
+    elif days_since_expiry <= 3:
+        subject = f"Your {plan_name} subscription has expired"
+        headline = "Your subscription has expired"
+        message = f"""
+            <p>Your Permabullish {plan_name} subscription has expired.</p>
+            <p>You've generated <strong>{reports_generated} reports</strong> during your subscription.
+            Don't lose momentum — renew now to continue your research.</p>
+        """
+        cta_text = "Renew Now"
+    elif days_since_expiry <= 7:
+        subject = "We miss you at Permabullish"
+        headline = "Your AI research awaits"
+        message = f"""
+            <p>It's been a few days since your {plan_name} subscription ended.</p>
+            <p>The markets keep moving, and there are always new opportunities to analyze.
+            Come back and let AI do the heavy lifting on your stock research.</p>
+        """
+        cta_text = "Reactivate Now"
+    else:
+        subject = "Come back to Permabullish"
+        headline = "Ready to resume your research?"
+        message = f"""
+            <p>Your {plan_name} subscription ended a while ago, but your account is still here waiting for you.</p>
+            <p>When you're ready to dive back into AI-powered stock research, we'll be here.</p>
+            <p><strong>As a returning member, you'll get:</strong></p>
+            <ul>
+                <li>Fresh AI analysis on any stock</li>
+                <li>Updated market insights</li>
+                <li>Your watchlist, right where you left it</li>
+            </ul>
+        """
+        cta_text = "Reactivate My Account"
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+    <div class="container">
+        {get_header()}
+
+        <div class="content">
+            <h2>Hi {first_name},</h2>
+
+            <h3 style="color: #1e3a5f;">{headline}</h3>
+
+            {message}
+
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{BASE_URL}/pricing.html" class="button">{cta_text}</a>
+            </p>
+
+            <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h4 style="margin: 0 0 10px 0; color: #1e3a5f;">Why renew?</h4>
+                <ul style="margin: 0; padding-left: 20px; color: #666;">
+                    <li>AI-generated equity research in seconds</li>
+                    <li>Coverage of 3000+ Indian stocks</li>
+                    <li>Target prices, risk analysis, and more</li>
+                    <li>Plans starting at just ₹625/month</li>
+                </ul>
+            </div>
+
+            <p>Questions? Just reply to this email.</p>
+
+            <p>The Permabullish Team</p>
+        </div>
+
+        {FOOTER}
+    </div>
+    </body>
+    </html>
+    """
+
+    return send_email(user_email, subject, html)
+
+
+# =============================================================================
 # RE-ENGAGEMENT EMAILS (5 Templates + Weekly)
 # =============================================================================
 
