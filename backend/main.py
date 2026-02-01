@@ -17,6 +17,11 @@ from pathlib import Path
 from authlib.integrations.starlette_client import OAuth
 from starlette.middleware.sessions import SessionMiddleware
 
+# Rate limiting
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 import database as db
 import auth
 from yahoo_finance import fetch_stock_data, search_stocks
@@ -52,6 +57,11 @@ app.add_middleware(
 
 # Session middleware for OAuth state management
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
+# Rate limiting setup
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure OAuth
 oauth = OAuth()
@@ -259,8 +269,9 @@ async def admin_get_user_info(email: str, secret: str = ""):
 
 # Auth Routes
 @app.post("/api/auth/register", response_model=TokenResponse)
-async def register(user_data: UserRegister):
-    """Register a new user."""
+@limiter.limit("3/minute")
+async def register(request: Request, user_data: UserRegister):
+    """Register a new user. Rate limited: 3/minute."""
     success, message, user = auth.register_user(
         email=user_data.email,
         password=user_data.password,
@@ -288,8 +299,9 @@ async def register(user_data: UserRegister):
 
 
 @app.post("/api/auth/login", response_model=TokenResponse)
-async def login(credentials: UserLogin):
-    """Login and get access token."""
+@limiter.limit("5/minute")
+async def login(request: Request, credentials: UserLogin):
+    """Login and get access token. Rate limited: 5/minute."""
     success, message, token = auth.authenticate_user(
         email=credentials.email,
         password=credentials.password
@@ -455,6 +467,7 @@ async def get_stock_info(
 
 # Report Generation Routes (Stock Research)
 @app.post("/api/reports/generate")
+@limiter.limit("10/hour")
 async def generate_report(
     request: Request,
     report_request: GenerateReportRequest,
