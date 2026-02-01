@@ -396,6 +396,14 @@ async def google_callback(request: Request):
     """Handle Google OAuth callback."""
     logger.info(f"OAuth callback received. FRONTEND_URL: {FRONTEND_URL}")
 
+    # Debug: Check if session cookie is present
+    session_cookie = request.cookies.get("session")
+    logger.info(f"Session cookie present: {session_cookie is not None}")
+    if request.session:
+        logger.info(f"Session keys: {list(request.session.keys())}")
+    else:
+        logger.warning("Session is empty or not available")
+
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         logger.error("Google OAuth not configured")
         raise HTTPException(
