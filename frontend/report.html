@@ -16,23 +16,29 @@
             background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
         }
         /* Mobile: nav 48px + info bar ~44px + bottom bar 48px = 140px */
+        /* Use dvh (dynamic viewport height) with vh fallback for mobile browser compatibility */
         #reportFrame {
             width: 100%;
             height: calc(100vh - 140px);
+            height: calc(100dvh - 140px); /* Modern browsers - accounts for mobile address bar */
+            min-height: 300px; /* Fallback minimum */
             border: none;
         }
         /* Desktop: nav 64px + info bar 60px + bottom bar 52px = 176px */
         @media (min-width: 640px) {
             #reportFrame {
                 height: calc(100vh - 176px);
+                height: calc(100dvh - 176px);
             }
         }
         #reportFrame.no-info-bar {
             height: calc(100vh - 96px);
+            height: calc(100dvh - 96px);
         }
         @media (min-width: 640px) {
             #reportFrame.no-info-bar {
                 height: calc(100vh - 116px);
+                height: calc(100dvh - 116px);
             }
         }
         @media print {
@@ -337,16 +343,29 @@
             }
         }
 
+        // Helper to get actual viewport height (handles mobile browser address bar)
+        function getViewportHeight() {
+            return window.innerHeight;
+        }
+
+        function setIframeHeight(extraOffset = 0) {
+            const isMobile = window.innerWidth < 640;
+            const baseOffset = isMobile ? 140 : 176;
+            const totalOffset = baseOffset + extraOffset;
+            const iframe = document.getElementById('reportFrame');
+            // Use actual viewport height for reliable mobile sizing
+            const height = Math.max(300, getViewportHeight() - totalOffset);
+            iframe.style.height = `${height}px`;
+        }
+
         function showGuestNudge() {
             document.getElementById('guestNudge').classList.remove('hidden');
             // Adjust report frame position and height when nudge is shown
             const isMobile = window.innerWidth < 640;
             const nudgeHeight = 36;
             document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '80px' : '100px';
-            // Also adjust iframe height (mobile: 140 + 36, desktop: 176 + 36) - includes bottom bar
-            document.getElementById('reportFrame').style.height = isMobile
-                ? `calc(100vh - ${140 + nudgeHeight}px)`
-                : `calc(100vh - ${176 + nudgeHeight}px)`;
+            // Use actual viewport height calculation
+            setIframeHeight(nudgeHeight);
         }
 
         // Initialize page
@@ -374,6 +393,16 @@
             }
 
             loadReport(reportId);
+        });
+
+        // Handle viewport resize (orientation change, keyboard show/hide)
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const nudgeVisible = !document.getElementById('guestNudge').classList.contains('hidden');
+                setIframeHeight(nudgeVisible ? 36 : 0);
+            }, 100);
         });
 
         function getHeaders() {
@@ -452,6 +481,9 @@
                 document.getElementById('reportContainer').classList.remove('hidden');
                 document.getElementById('reportInfoBar').classList.remove('hidden');
                 document.getElementById('bottomBar').classList.remove('hidden');
+
+                // Set proper iframe height for mobile
+                setIframeHeight(0);
 
                 // Track report view
                 if (window.analytics) {
@@ -820,10 +852,8 @@
             document.getElementById('guestNudge').classList.add('hidden');
             const isMobile = window.innerWidth < 640;
             document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '44px' : '60px';
-            // Restore iframe height (mobile: 140px, desktop: 176px) - includes bottom bar
-            document.getElementById('reportFrame').style.height = isMobile
-                ? 'calc(100vh - 140px)'
-                : 'calc(100vh - 176px)';
+            // Restore iframe height using actual viewport
+            setIframeHeight(0);
 
             // Track dismissal count in localStorage
             try {
