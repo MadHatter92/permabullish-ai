@@ -157,11 +157,60 @@ services:
       - key: RESEND_API_KEY
         sync: false
 
-  # TODO: Add monthly Screener scrape cron job in Phase 4
-  # - type: cron
-  #   name: permabullish-screener-scrape
-  #   schedule: "0 2 1 * *"
-  #   startCommand: python scripts/scrape_screener.py
+  # Re-engagement Emails (daily at 10 AM IST / 4:30 AM UTC)
+  - type: cron
+    name: permabullish-reengagement-emails
+    runtime: python
+    plan: starter
+    schedule: "30 4 * * *"
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/send_reengagement_emails.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: permabullish-db
+          property: connectionString
+      - key: RESEND_API_KEY
+        sync: false
+
+  # Expiry Reminder Emails (daily at 10:30 AM IST / 5 AM UTC)
+  - type: cron
+    name: permabullish-expiry-emails
+    runtime: python
+    plan: starter
+    schedule: "0 5 * * *"
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/send_expiry_emails.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: permabullish-db
+          property: connectionString
+      - key: RESEND_API_KEY
+        sync: false
+
+  # Monthly Fundamentals Sync (1st of month at midnight UTC)
+  - type: cron
+    name: permabullish-fundamentals-sync
+    runtime: python
+    plan: starter
+    schedule: "0 0 1 * *"
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/fundamentals_sync.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: permabullish-db
+          property: connectionString
 
 databases:
   # Production Database
