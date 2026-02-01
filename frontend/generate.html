@@ -326,14 +326,14 @@
         // Language selection
         function selectLanguage(lang) {
             selectedLanguage = lang;
-            // Update button styles
+            // Update button styles - use inline styles for reliable highlighting
             document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.remove('bg-[#1e3a5f]', 'text-white');
-                btn.classList.add('bg-white', 'text-gray-600');
+                btn.style.backgroundColor = '#ffffff';
+                btn.style.color = '#4b5563';
             });
             const activeBtn = document.getElementById('lang-' + lang);
-            activeBtn.classList.remove('bg-white', 'text-gray-600');
-            activeBtn.classList.add('bg-[#1e3a5f]', 'text-white');
+            activeBtn.style.backgroundColor = '#1e3a5f';
+            activeBtn.style.color = '#ffffff';
         }
 
         // Initialize page
