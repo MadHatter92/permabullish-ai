@@ -93,10 +93,35 @@ def parse_quarter_label(label: str) -> Optional[str]:
         return label
 
 
-def generate_ai_analysis(stock_data: Dict[str, Any]) -> Dict[str, Any]:
+LANGUAGE_INSTRUCTIONS = {
+    'en': '',
+    'hi': '''
+LANGUAGE INSTRUCTION - HINDI (हिंदी):
+Generate the ENTIRE report in Hindi language using Devanagari script.
+- Keep these terms in English: company names, ticker symbols, P/E, P/B, ROE, ROCE, CAGR, YoY, QoQ, EPS, NPA, CASA, ARPU, EBITDA, FII, DII, IPO, M&A, and all financial abbreviations
+- Keep numbers, percentages, and currency symbols (₹, %) in standard format
+- Write in natural, conversational Hindi that a retail investor would understand
+- Example: "Reliance Industries भारत की सबसे मूल्यवान कंपनी है जो energy, telecom और retail में diversified business model के साथ काम करती है।"
+''',
+    'gu': '''
+LANGUAGE INSTRUCTION - GUJARATI (ગુજરાતી):
+Generate the ENTIRE report in Gujarati language using Gujarati script.
+- Keep these terms in English: company names, ticker symbols, P/E, P/B, ROE, ROCE, CAGR, YoY, QoQ, EPS, NPA, CASA, ARPU, EBITDA, FII, DII, IPO, M&A, and all financial abbreviations
+- Keep numbers, percentages, and currency symbols (₹, %) in standard format
+- Write in natural, conversational Gujarati that a retail investor would understand
+- Example: "HDFC Bank ભારતની સૌથી મોટી private sector bank છે જે consistent growth અને strong asset quality માટે જાણીતી છે।"
+'''
+}
+
+
+def generate_ai_analysis(stock_data: Dict[str, Any], language: str = 'en') -> Dict[str, Any]:
     """
     Use Claude to generate investment analysis based on stock data.
     Returns structured analysis for the report.
+
+    Args:
+        stock_data: Dictionary containing stock information
+        language: Language code - 'en' (English), 'hi' (Hindi), 'gu' (Gujarati)
     """
     if not ANTHROPIC_API_KEY:
         return generate_fallback_analysis(stock_data)
@@ -106,7 +131,11 @@ def generate_ai_analysis(stock_data: Dict[str, Any]) -> Dict[str, Any]:
     # Prepare data summary for Claude
     data_summary = prepare_data_summary(stock_data)
 
-    prompt = f"""You are a HIGHLY OPINIONATED senior equity research analyst at a top investment bank. You have strong convictions and are not afraid to make bold calls. Your reputation is built on taking clear, decisive stances - not wishy-washy "hold" recommendations.
+    # Get language-specific instructions
+    lang_instruction = LANGUAGE_INSTRUCTIONS.get(language, '')
+
+    prompt = f"""You are a HIGHLY OPINIONATED senior equity research analyst at a top investment bank.
+{lang_instruction} You have strong convictions and are not afraid to make bold calls. Your reputation is built on taking clear, decisive stances - not wishy-washy "hold" recommendations.
 
 You're also known for your ENGAGING writing style. You open every report with a hook that grabs attention - either an anecdote, a recent company event described in everyday terms, or a clever analogy comparing the company to something relatable.
 
@@ -492,8 +521,14 @@ def _generate_shareholding_section(analysis: Dict[str, Any], stock_data: Dict[st
     '''
 
 
-def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any]) -> str:
-    """Generate the complete HTML report."""
+def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any], language: str = 'en') -> str:
+    """Generate the complete HTML report.
+
+    Args:
+        stock_data: Dictionary containing stock information
+        analysis: AI-generated analysis
+        language: Language code - 'en' (English), 'hi' (Hindi), 'gu' (Gujarati)
+    """
 
     basic = stock_data.get("basic_info", {})
     price = stock_data.get("price_info", {})
@@ -564,15 +599,32 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any]) -
 
     report_date = datetime.now().strftime("%B %d, %Y")
 
+    # Language-specific settings
+    html_lang = {'en': 'en', 'hi': 'hi', 'gu': 'gu'}.get(language, 'en')
+
+    # Extra fonts for Hindi/Gujarati
+    extra_fonts = ''
+    if language == 'hi':
+        extra_fonts = '&family=Noto+Sans+Devanagari:wght@400;500;600;700'
+    elif language == 'gu':
+        extra_fonts = '&family=Noto+Sans+Gujarati:wght@400;500;600;700'
+
+    # Font family based on language
+    font_family = {
+        'en': "'DM Sans', 'Inter', system-ui, -apple-system, sans-serif",
+        'hi': "'Noto Sans Devanagari', 'DM Sans', 'Inter', system-ui, sans-serif",
+        'gu': "'Noto Sans Gujarati', 'DM Sans', 'Inter', system-ui, sans-serif"
+    }.get(language, "'DM Sans', 'Inter', system-ui, -apple-system, sans-serif")
+
     html = f'''<!DOCTYPE html>
-<html lang="en">
+<html lang="{html_lang}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{basic.get("company_name", "Company")} - Equity Research Report | Permabullish</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600{extra_fonts}&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {{
@@ -602,10 +654,10 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any]) -
         }}
 
         body {{
-            font-family: 'DM Sans', 'Inter', system-ui, -apple-system, sans-serif;
+            font-family: {font_family};
             background: var(--bg-light);
             color: var(--text-primary);
-            line-height: 1.6;
+            line-height: 1.7;
         }}
 
         .font-display {{

@@ -80,6 +80,7 @@ class CachedReport(BaseModel):
     recommendation: str
     report_html: str
     report_data: Optional[str]
+    language: str = 'en'
     generated_at: str
     is_outdated: bool = False
 
@@ -232,9 +233,25 @@ def init_database():
                     input_tokens INTEGER DEFAULT 0,
                     output_tokens INTEGER DEFAULT 0,
                     total_tokens INTEGER DEFAULT 0,
+                    language VARCHAR(10) DEFAULT 'en',
                     generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(ticker, exchange)
+                    UNIQUE(ticker, exchange, language)
                 )
+            """)
+
+            # Migration: Add language column if it doesn't exist (for existing databases)
+            cursor.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                                   WHERE table_name='report_cache' AND column_name='language') THEN
+                        ALTER TABLE report_cache ADD COLUMN language VARCHAR(10) DEFAULT 'en';
+                        -- Drop old constraint and add new one
+                        ALTER TABLE report_cache DROP CONSTRAINT IF EXISTS report_cache_ticker_exchange_key;
+                        ALTER TABLE report_cache ADD CONSTRAINT report_cache_ticker_exchange_language_key
+                            UNIQUE(ticker, exchange, language);
+                    END IF;
+                END $$;
             """)
 
             # User reports - links users to cached reports with user-specific data
@@ -427,10 +444,17 @@ def init_database():
                     input_tokens INTEGER DEFAULT 0,
                     output_tokens INTEGER DEFAULT 0,
                     total_tokens INTEGER DEFAULT 0,
+                    language TEXT DEFAULT 'en',
                     generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(ticker, exchange)
+                    UNIQUE(ticker, exchange, language)
                 )
             """)
+
+            # Migration: Add language column if it doesn't exist (for existing databases)
+            try:
+                cursor.execute("ALTER TABLE report_cache ADD COLUMN language TEXT DEFAULT 'en'")
+            except:
+                pass  # Column already exists
 
             # User reports - links users to cached reports with user-specific data
             cursor.execute("""
@@ -1171,15 +1195,15 @@ def search_mf_funds(query: str, limit: int = 20) -> List[dict]:
 REPORT_FRESHNESS_DAYS = 15
 
 
-def get_cached_report(ticker: str, exchange: str) -> Optional[dict]:
-    """Get a cached report by ticker and exchange."""
+def get_cached_report(ticker: str, exchange: str, language: str = 'en') -> Optional[dict]:
+    """Get a cached report by ticker, exchange, and language."""
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
         p = placeholder()
         cursor.execute(f"""
             SELECT * FROM report_cache
-            WHERE ticker = {p} AND exchange = {p}
-        """, (ticker.upper(), exchange.upper()))
+            WHERE ticker = {p} AND exchange = {p} AND (language = {p} OR language IS NULL)
+        """, (ticker.upper(), exchange.upper(), language))
         row = cursor.fetchone()
         if row:
             result = _dict_from_row(row)
@@ -1190,6 +1214,8 @@ def get_cached_report(ticker: str, exchange: str) -> Optional[dict]:
                 if isinstance(generated, str):
                     generated = datetime.fromisoformat(generated.replace('Z', '+00:00').replace(' ', 'T'))
                 result['is_outdated'] = (datetime.now() - generated.replace(tzinfo=None)) > timedelta(days=REPORT_FRESHNESS_DAYS)
+            # Ensure language is returned
+            result['language'] = result.get('language', 'en')
             return result
         return None
 
@@ -1206,7 +1232,8 @@ def save_cached_report(
     report_data: str = None,
     input_tokens: int = 0,
     output_tokens: int = 0,
-    total_tokens: int = 0
+    total_tokens: int = 0,
+    language: str = 'en'
 ) -> int:
     """Save or update a cached report. Returns the report cache ID."""
     with get_db_connection() as conn:
@@ -1214,9 +1241,9 @@ def save_cached_report(
         if USE_POSTGRES:
             cursor.execute("""
                 INSERT INTO report_cache
-                (ticker, exchange, company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens, generated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-                ON CONFLICT (ticker, exchange)
+                (ticker, exchange, company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens, language, generated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (ticker, exchange, language)
                 DO UPDATE SET
                     company_name = EXCLUDED.company_name,
                     sector = EXCLUDED.sector,
@@ -1230,7 +1257,7 @@ def save_cached_report(
                     total_tokens = EXCLUDED.total_tokens,
                     generated_at = CURRENT_TIMESTAMP
                 RETURNING id
-            """, (ticker.upper(), exchange.upper(), company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens))
+            """, (ticker.upper(), exchange.upper(), company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens, language))
             result = cursor.fetchone()
             conn.commit()
             return result['id']
@@ -1238,9 +1265,9 @@ def save_cached_report(
             # SQLite: try insert, if conflict, update and get id
             cursor.execute("""
                 INSERT INTO report_cache
-                (ticker, exchange, company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens, generated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT (ticker, exchange)
+                (ticker, exchange, company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens, language, generated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT (ticker, exchange, language)
                 DO UPDATE SET
                     company_name = excluded.company_name,
                     sector = excluded.sector,
@@ -1253,10 +1280,10 @@ def save_cached_report(
                     output_tokens = excluded.output_tokens,
                     total_tokens = excluded.total_tokens,
                     generated_at = CURRENT_TIMESTAMP
-            """, (ticker.upper(), exchange.upper(), company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens))
+            """, (ticker.upper(), exchange.upper(), company_name, sector, current_price, ai_target_price, recommendation, report_html, report_data, input_tokens, output_tokens, total_tokens, language))
             conn.commit()
             # Get the id
-            cursor.execute("SELECT id FROM report_cache WHERE ticker = ? AND exchange = ?", (ticker.upper(), exchange.upper()))
+            cursor.execute("SELECT id FROM report_cache WHERE ticker = ? AND exchange = ? AND language = ?", (ticker.upper(), exchange.upper(), language))
             row = cursor.fetchone()
             return row['id'] if row else cursor.lastrowid
 
@@ -1321,6 +1348,7 @@ def get_user_report_history(user_id: int, limit: int = 50) -> List[dict]:
                 rc.current_price,
                 rc.ai_target_price,
                 rc.recommendation,
+                rc.language,
                 rc.generated_at,
                 ur.user_target_price,
                 ur.first_viewed_at,
@@ -1335,6 +1363,8 @@ def get_user_report_history(user_id: int, limit: int = 50) -> List[dict]:
         results = []
         for row in rows:
             item = _dict_from_row(row)
+            # Ensure language has a default
+            item['language'] = item.get('language', 'en')
             # Calculate freshness
             if item.get('generated_at'):
                 from datetime import datetime, timedelta
@@ -1394,6 +1424,8 @@ def get_cached_report_by_id(report_cache_id: int) -> Optional[dict]:
                 if isinstance(generated, str):
                     generated = datetime.fromisoformat(generated.replace('Z', '+00:00').replace(' ', 'T'))
                 result['is_outdated'] = (datetime.now() - generated.replace(tzinfo=None)) > timedelta(days=REPORT_FRESHNESS_DAYS)
+            # Ensure language is returned
+            result['language'] = result.get('language', 'en')
             return result
         return None
 

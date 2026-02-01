@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Preview - Hindi & Gujarati Reports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1e3a5f;
+            --primary-light: #243b53;
+            --primary-dark: #102a43;
+            --secondary: #38a169;
+            --accent: #e8913a;
+            --danger: #e53e3e;
+            --bg-light: #f7fafc;
+            --bg-card: #ffffff;
+            --text-primary: #1a202c;
+            --text-secondary: #4a5568;
+            --text-muted: #718096;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-primary);
+            line-height: 1.7;
+            padding: 2rem;
+        }
+
+        .hindi-text {
+            font-family: 'Noto Sans Devanagari', 'DM Sans', sans-serif;
+        }
+
+        .gujarati-text {
+            font-family: 'Noto Sans Gujarati', 'DM Sans', sans-serif;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .page-title {
+            font-family: 'DM Serif Display', Georgia, serif;
+            font-size: 2rem;
+            color: var(--primary);
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .language-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .toggle-btn {
+            padding: 0.75rem 2rem;
+            border: 2px solid var(--primary);
+            background: white;
+            color: var(--primary);
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .toggle-btn:hover {
+            background: var(--primary-light);
+            color: white;
+        }
+
+        .report-section {
+            display: none;
+        }
+
+        .report-section.active {
+            display: block;
+        }
+
+        .report-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .report-header {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            color: white;
+            padding: 2rem;
+        }
+
+        .company-name {
+            font-family: 'DM Serif Display', Georgia, serif;
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .ticker {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .recommendation-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+
+        .recommendation-badge.buy {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .report-body {
+            padding: 2rem;
+        }
+
+        .section-title {
+            font-family: 'DM Serif Display', Georgia, serif;
+            font-size: 1.25rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section-content {
+            margin-bottom: 2rem;
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .bullet-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .bullet-list li {
+            padding: 0.75rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .bullet-list li:last-child {
+            border-bottom: none;
+        }
+
+        .bullet-list li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .bullet-list.green li::before {
+            color: var(--secondary);
+        }
+
+        .bullet-list.red li::before {
+            color: var(--danger);
+        }
+
+        .target-box {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+
+        .target-price {
+            font-family: 'DM Serif Display', Georgia, serif;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upside {
+            background: var(--secondary);
+            display: inline-block;
+            padding: 0.25rem 1rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .language-label {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="page-title">Multi-Language Report Preview</h1>
+
+        <div class="language-toggle">
+            <button class="toggle-btn active" onclick="showLanguage('hindi')">Hindi (हिंदी)</button>
+            <button class="toggle-btn" onclick="showLanguage('gujarati')">Gujarati (ગુજરાતી)</button>
+            <button class="toggle-btn" onclick="showLanguage('english')">English</button>
+        </div>
+
+        <!-- HINDI REPORT -->
+        <div id="hindi-report" class="report-section active">
+            <p class="language-label">Hindi Report Preview</p>
+            <div class="report-card">
+                <div class="report-header">
+                    <h1 class="company-name">Reliance Industries Limited</h1>
+                    <p class="ticker">NSE: RELIANCE</p>
+                    <span class="recommendation-badge buy hindi-text">निवेश सिफारिश: BUY</span>
+                </div>
+                <div class="report-body hindi-text">
+                    <h2 class="section-title">कार्यकारी सारांश</h2>
+                    <div class="section-content">
+                        <p>Reliance Industries भारत की सबसे मूल्यवान कंपनी है जो energy, telecom और retail में diversified business model के साथ काम करती है। Jio की subscriber growth मजबूत बनी हुई है और Retail segment में 25% YoY growth देखने को मिली है।</p>
+                    </div>
+
+                    <h2 class="section-title">मजबूत पक्ष</h2>
+                    <ul class="bullet-list green">
+                        <li>Jio के पास 450 million+ subscribers हैं जो ARPU में लगातार सुधार दिखा रहे हैं</li>
+                        <li>Retail business भारत का सबसे बड़ा organized retailer बन चुका है</li>
+                        <li>New Energy में $10 billion का investment plan है</li>
+                        <li>Strong balance sheet जिसमें debt-to-equity ratio सिर्फ 0.4x है</li>
+                    </ul>
+
+                    <h2 class="section-title">कमजोर पक्ष</h2>
+                    <ul class="bullet-list red">
+                        <li>Oil-to-chemicals business में margin pressure है</li>
+                        <li>Telecom में competitive intensity बढ़ रही है</li>
+                        <li>High valuation - P/E ratio 25x पर trade कर रहा है</li>
+                    </ul>
+
+                    <h2 class="section-title">AI का निष्कर्ष</h2>
+                    <div class="section-content">
+                        <p>Current price ₹2,450 पर Reliance एक solid long-term investment है। Promoter holding 50.3% पर stable है और FII holding में पिछली quarter में बढ़ोतरी हुई है।</p>
+                    </div>
+
+                    <div class="target-box">
+                        <div class="target-price">AI Target: ₹2,850</div>
+                        <span class="upside">16% Upside</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GUJARATI REPORT -->
+        <div id="gujarati-report" class="report-section">
+            <p class="language-label">Gujarati Report Preview</p>
+            <div class="report-card">
+                <div class="report-header">
+                    <h1 class="company-name">HDFC Bank Limited</h1>
+                    <p class="ticker">NSE: HDFCBANK</p>
+                    <span class="recommendation-badge buy gujarati-text">રોકાણ ભલામણ: BUY</span>
+                </div>
+                <div class="report-body gujarati-text">
+                    <h2 class="section-title">કાર્યકારી સારાંશ</h2>
+                    <div class="section-content">
+                        <p>HDFC Bank ભારતની સૌથી મોટી private sector bank છે જે consistent growth અને strong asset quality માટે જાણીતી છે। HDFC Limited સાથે merger પછી bank હવે deposits અને advances બંનેમાં market leader છે।</p>
+                    </div>
+
+                    <h2 class="section-title">મજબૂત પાસાઓ</h2>
+                    <ul class="bullet-list green">
+                        <li>Net Interest Margin 4.1% પર industry-leading છે</li>
+                        <li>Gross NPA માત્ર 1.3% છે જે peers કરતાં ઘણું સારું છે</li>
+                        <li>Deposit growth 20% YoY છે અને CASA ratio 42% છે</li>
+                        <li>ROE consistently 16-17% range માં છે</li>
+                    </ul>
+
+                    <h2 class="section-title">નબળા પાસાઓ</h2>
+                    <ul class="bullet-list red">
+                        <li>Merger integration માં short-term challenges છે</li>
+                        <li>Credit cost થોડો વધ્યો છે</li>
+                        <li>Stock P/B ratio 2.8x પર premium valuation પર trade થાય છે</li>
+                    </ul>
+
+                    <h2 class="section-title">AI નું તારણ</h2>
+                    <div class="section-content">
+                        <p>Current price ₹1,650 પર HDFC Bank long-term investors માટે excellent choice છે। Management quality અને execution track record outstanding છે।</p>
+                    </div>
+
+                    <div class="target-box">
+                        <div class="target-price">AI Target: ₹1,950</div>
+                        <span class="upside">18% Upside</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ENGLISH REPORT (for comparison) -->
+        <div id="english-report" class="report-section">
+            <p class="language-label">English Report Preview (Current)</p>
+            <div class="report-card">
+                <div class="report-header">
+                    <h1 class="company-name">Tata Consultancy Services</h1>
+                    <p class="ticker">NSE: TCS</p>
+                    <span class="recommendation-badge buy">Recommendation: BUY</span>
+                </div>
+                <div class="report-body">
+                    <h2 class="section-title">Executive Summary</h2>
+                    <div class="section-content">
+                        <p>Tata Consultancy Services remains a compelling investment with strong fundamentals. The company's diversified client base across BFSI, retail, and manufacturing sectors provides resilience. Recent deal wins worth $10B+ in Q3 indicate robust demand.</p>
+                    </div>
+
+                    <h2 class="section-title">Bull Case</h2>
+                    <ul class="bullet-list green">
+                        <li>Industry-leading margins at 25% with consistent execution</li>
+                        <li>Strong deal pipeline with $10B+ in Q3 wins</li>
+                        <li>Diversified client base reduces concentration risk</li>
+                        <li>Consistent dividend payouts with 1.5% yield</li>
+                    </ul>
+
+                    <h2 class="section-title">Bear Case</h2>
+                    <ul class="bullet-list red">
+                        <li>Global IT spending slowdown could impact growth</li>
+                        <li>Currency fluctuations affect profitability</li>
+                        <li>Premium valuation at 28x P/E leaves limited margin of safety</li>
+                    </ul>
+
+                    <h2 class="section-title">AI Conclusion</h2>
+                    <div class="section-content">
+                        <p>At current price of ₹3,600, TCS offers a solid long-term investment opportunity. The company's execution track record and market leadership position justify the premium valuation.</p>
+                    </div>
+
+                    <div class="target-box">
+                        <div class="target-price">AI Target: ₹4,250</div>
+                        <span class="upside">18% Upside</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showLanguage(lang) {
+            // Hide all sections
+            document.querySelectorAll('.report-section').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            // Remove active from all buttons
+            document.querySelectorAll('.toggle-btn').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            // Show selected section
+            document.getElementById(lang + '-report').classList.add('active');
+
+            // Activate button
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

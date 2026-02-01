@@ -115,6 +115,7 @@ class GenerateReportRequest(BaseModel):
     symbol: str
     exchange: str = "NSE"
     force_regenerate: bool = False  # Force regeneration even if cached
+    language: str = "en"  # Language: 'en' (English), 'hi' (Hindi), 'gu' (Gujarati)
 
 
 class WatchlistAddRequest(BaseModel):
@@ -498,9 +499,14 @@ async def generate_report(
     """Generate or retrieve a cached equity research report."""
     ticker = report_request.symbol.upper()
     exchange = report_request.exchange.upper()
+    language = report_request.language.lower() if report_request.language else 'en'
 
-    # Check for cached report first
-    cached_report = db.get_cached_report(ticker, exchange)
+    # Validate language
+    if language not in ['en', 'hi', 'gu']:
+        language = 'en'
+
+    # Check for cached report first (language-specific)
+    cached_report = db.get_cached_report(ticker, exchange, language)
     user_id = current_user["id"] if current_user else None
     is_anonymous = current_user is None
 
@@ -547,11 +553,11 @@ async def generate_report(
                 detail=f"Stock {ticker} not found on {exchange}"
             )
 
-        # Generate AI analysis
-        analysis = generate_ai_analysis(stock_data)
+        # Generate AI analysis (in selected language)
+        analysis = generate_ai_analysis(stock_data, language)
 
-        # Generate HTML report
-        report_html = generate_report_html(stock_data, analysis)
+        # Generate HTML report (with language-specific fonts)
+        report_html = generate_report_html(stock_data, analysis, language)
 
         # Extract key info for storage
         basic = stock_data.get("basic_info", {})
@@ -560,7 +566,7 @@ async def generate_report(
         # Extract token usage if available
         token_usage = analysis.get("_token_usage", {})
 
-        # Save to cache (shared across all users)
+        # Save to cache (shared across all users, per language)
         report_cache_id = db.save_cached_report(
             ticker=ticker,
             exchange=exchange,
@@ -573,7 +579,8 @@ async def generate_report(
             report_data=json.dumps({"stock_data": stock_data, "analysis": analysis}),
             input_tokens=token_usage.get("input_tokens", 0),
             output_tokens=token_usage.get("output_tokens", 0),
-            total_tokens=token_usage.get("total_tokens", 0)
+            total_tokens=token_usage.get("total_tokens", 0),
+            language=language
         )
 
         # Increment usage
@@ -604,7 +611,8 @@ async def generate_report(
         "current_price": cached_report.get("current_price", 0),
         "generated_at": str(cached_report.get("generated_at", "")),
         "is_outdated": cached_report.get("is_outdated", False),
-        "generated_new": generated_new
+        "generated_new": generated_new,
+        "language": cached_report.get("language", "en")
     }
 
 
