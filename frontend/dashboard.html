@@ -191,6 +191,41 @@
             </div>
         </div>
 
+        <!-- Free User Upgrade Nudge (shown for free tier users) -->
+        <div id="freeUpgradeNudge" class="hidden mb-6">
+            <div id="nudgeNormal" class="bg-gradient-to-r from-[#1e3a5f] to-[#2d4a6f] rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-[#3d5a7f]">
+                <div class="flex items-start sm:items-center space-x-4">
+                    <div class="bg-[#e8913a]/20 rounded-full p-2.5 flex-shrink-0">
+                        <svg class="w-6 h-6 text-[#e8913a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-white font-semibold text-sm sm:text-base" id="nudgeTitle">Unlock More Research Power</p>
+                        <p class="text-gray-300 text-xs sm:text-sm mt-1" id="nudgeText">Get 50 reports/month with Basic. Your free reports don't reset - upgrade for monthly refresh.</p>
+                        <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-400">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                                Monthly reset
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                                10x more reports
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                                From Rs 625/mo
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <a href="pricing.html" class="bg-[#e8913a] hover:bg-[#d97f2a] text-white px-5 py-2.5 rounded-lg font-semibold transition-all text-sm whitespace-nowrap shadow-md flex items-center gap-2">
+                    View Plans
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </a>
+            </div>
+        </div>
+
         <!-- Tabs -->
         <div class="border-b border-gray-200 mb-6">
             <nav class="flex space-x-8">
@@ -456,6 +491,26 @@
                     upgradeBanner.classList.remove('hidden');
                     document.getElementById('upgradeBannerText').textContent =
                         `Only ${status.reports_remaining} free report${status.reports_remaining > 1 ? 's' : ''} left! Upgrade for more.`;
+                }
+
+                // Show upgrade nudge for free users (below stats)
+                const freeUpgradeNudge = document.getElementById('freeUpgradeNudge');
+                if (status.tier === 'free' && status.reports_remaining > 0) {
+                    freeUpgradeNudge.classList.remove('hidden');
+
+                    // Calculate usage percentage
+                    const usagePercent = (status.reports_used / status.reports_limit) * 100;
+                    const nudgeTitle = document.getElementById('nudgeTitle');
+                    const nudgeText = document.getElementById('nudgeText');
+
+                    if (usagePercent >= 60) {
+                        // More urgent messaging when 60%+ used
+                        nudgeTitle.textContent = `Only ${status.reports_remaining} Free Reports Left`;
+                        nudgeText.textContent = "Your free reports are limited and don't reset. Upgrade now for 50 reports every month.";
+                    }
+                } else if (status.tier !== 'free') {
+                    // Hide nudge for paid users
+                    freeUpgradeNudge.classList.add('hidden');
                 }
 
             } catch (error) {
