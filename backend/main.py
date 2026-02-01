@@ -34,7 +34,11 @@ import share_card
 app = FastAPI(
     title="Permabullish API",
     description="AI-powered equity research reports for Indian stocks",
-    version="2.0.0"
+    version="2.0.0",
+    # Disable Swagger UI in production (security)
+    docs_url=None if ENVIRONMENT == "production" else "/docs",
+    redoc_url=None if ENVIRONMENT == "production" else "/redoc",
+    openapi_url=None if ENVIRONMENT == "production" else "/openapi.json",
 )
 
 # CORS middleware for frontend
