@@ -151,6 +151,16 @@ async def health_check():
     }
 
 
+@app.get("/api/sentry-test")
+async def sentry_test(secret: str = ""):
+    """Test endpoint to verify Sentry is working. Requires admin secret."""
+    admin_secret = os.getenv("ADMIN_SECRET", "")
+    if not admin_secret or secret != admin_secret:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+    # This will trigger a Sentry error
+    raise Exception("Sentry test error - if you see this in Sentry, it's working!")
+
+
 # Admin endpoint to reset usage (for testing)
 @app.post("/api/admin/reset-usage/{email}")
 async def reset_user_usage(email: str, secret: str = ""):
