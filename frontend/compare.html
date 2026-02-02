@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en" style="scroll-behavior: smooth;">
+<head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-75Y271369Q"></script>
+    <script src="analytics.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare Stocks - Permabullish</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        .gradient-header {
+            background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
+        }
+        .search-results {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        body {
+            font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
+        }
+        .font-display {
+            font-family: 'DM Serif Display', Georgia, serif;
+        }
+        a, button, input, [class*="bg-white"], [class*="rounded"] {
+            transition: all 0.2s ease-out;
+        }
+        .bg-white.rounded-xl:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        .winner-a { background: linear-gradient(to right, #dcfce7, transparent); }
+        .winner-b { background: linear-gradient(to left, #dcfce7, transparent); }
+        .verdict-banner {
+            background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.5); }
+        }
+        .verdict-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="gradient-header text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-12 sm:h-16">
+                <a href="index.html" class="flex items-center space-x-1 text-white hover:text-[#e8913a] transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span class="text-sm sm:text-base font-display">Perma<span class="text-[#e8913a]">bullish</span></span>
+                </a>
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <span class="text-[10px] sm:text-xs text-[#9fb3c8]">
+                        <span id="reportsRemaining">-</span> left
+                    </span>
+                    <div id="authSection"></div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 fade-in">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-2xl sm:text-3xl font-display font-bold text-gray-900 mb-2">Compare Stocks</h1>
+            <p class="text-gray-600 text-sm sm:text-base">Get AI-powered head-to-head analysis</p>
+        </div>
+
+        <!-- Stock Selection -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-start">
+                <!-- Stock A -->
+                <div class="relative">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Stock A</label>
+                    <input type="text" id="searchA" placeholder="Search company or symbol..."
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e8913a] focus:border-[#e8913a] outline-none"
+                        autocomplete="off">
+                    <div id="resultsA" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg search-results"></div>
+                    <div id="selectedA" class="hidden mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span id="tickerA" class="font-bold text-[#e8913a]"></span>
+                                <span id="nameA" class="text-sm text-gray-600 ml-2"></span>
+                            </div>
+                            <button onclick="clearStock('A')" class="text-gray-400 hover:text-red-500">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <p id="priceA" class="text-lg font-semibold text-gray-900 mt-1"></p>
+                    </div>
+                </div>
+
+                <!-- VS Divider -->
+                <div class="hidden md:flex items-center justify-center h-full pt-8">
+                    <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                        <span class="text-gray-500 font-bold text-sm">VS</span>
+                    </div>
+                </div>
+                <div class="md:hidden flex items-center justify-center">
+                    <span class="text-gray-400 font-medium">VS</span>
+                </div>
+
+                <!-- Stock B -->
+                <div class="relative">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Stock B</label>
+                    <input type="text" id="searchB" placeholder="Search company or symbol..."
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e8913a] focus:border-[#e8913a] outline-none"
+                        autocomplete="off">
+                    <div id="resultsB" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg search-results"></div>
+                    <div id="selectedB" class="hidden mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span id="tickerB" class="font-bold text-purple-600"></span>
+                                <span id="nameB" class="text-sm text-gray-600 ml-2"></span>
+                            </div>
+                            <button onclick="clearStock('B')" class="text-gray-400 hover:text-red-500">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <p id="priceB" class="text-lg font-semibold text-gray-900 mt-1"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compare Button -->
+            <div class="mt-6 text-center">
+                <button id="compareBtn" onclick="compareStocks()" disabled
+                    class="px-8 py-3 bg-[#e8913a] hover:bg-[#d97316] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all focus:ring-4 focus:ring-[#fdecd4]">
+                    <span id="compareBtnText">Select Two Stocks to Compare</span>
+                </button>
+                <p class="text-xs text-gray-500 mt-2">Uses 1 report credit</p>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-[#e8913a] mx-auto mb-6"></div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Comparing Stocks</h3>
+                <p id="loadingText" class="text-gray-500">Analyzing both companies...</p>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden bg-red-50 border border-red-200 rounded-xl p-6">
+            <div class="flex items-start space-x-3">
+                <svg class="w-6 h-6 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                    <h3 class="font-semibold text-red-800">Error</h3>
+                    <p id="errorText" class="text-red-600 mt-1">Something went wrong</p>
+                    <button onclick="resetComparison()" class="mt-3 text-sm text-red-700 underline hover:no-underline">Try again</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Results -->
+        <div id="resultsSection" class="hidden space-y-6">
+            <!-- AI Verdict Banner -->
+            <div id="verdictBanner" class="verdict-banner verdict-glow rounded-xl p-6 text-white">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-yellow-300" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-emerald-200 uppercase tracking-wide">AI Verdict</p>
+                        <h2 id="verdictTitle" class="text-2xl sm:text-3xl font-bold"></h2>
+                    </div>
+                    <div id="convictionBadge" class="ml-auto px-3 py-1 rounded-full text-sm font-semibold"></div>
+                </div>
+                <p id="verdictOneLiner" class="text-lg text-emerald-100 leading-relaxed"></p>
+                <p id="verdictReasoning" class="mt-3 text-sm text-emerald-200"></p>
+            </div>
+
+            <!-- Key Differentiators -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-4 border-b border-gray-100">
+                    <h3 class="font-semibold text-gray-900">Factor-by-Factor Comparison</h3>
+                </div>
+                <div id="differentiators" class="divide-y divide-gray-100">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+
+            <!-- Metrics Comparison Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-4 border-b border-gray-100">
+                    <h3 class="font-semibold text-gray-900">Metrics Comparison</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Metric</th>
+                                <th id="thStockA" class="px-4 py-3 text-center text-xs font-medium text-[#e8913a] uppercase">Stock A</th>
+                                <th id="thStockB" class="px-4 py-3 text-center text-xs font-medium text-purple-600 uppercase">Stock B</th>
+                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Winner</th>
+                            </tr>
+                        </thead>
+                        <tbody id="metricsTable" class="divide-y divide-gray-100">
+                            <!-- Filled by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Bull & Bear Cases Side by Side -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Stock A Cases -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b border-blue-100 bg-blue-50">
+                        <h3 id="casesHeaderA" class="font-semibold text-gray-900"></h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-green-700 mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                Bull Case
+                            </h4>
+                            <ul id="bullCaseA" class="space-y-2 text-sm text-gray-600"></ul>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-medium text-red-700 mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                Bear Case
+                            </h4>
+                            <ul id="bearCaseA" class="space-y-2 text-sm text-gray-600"></ul>
+                        </div>
+                    </div>
+                    <div class="p-4 border-t border-gray-100 bg-gray-50">
+                        <a id="reportLinkA" href="#" class="text-sm text-[#e8913a] hover:underline font-medium">View Full Report</a>
+                    </div>
+                </div>
+
+                <!-- Stock B Cases -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b border-purple-100 bg-purple-50">
+                        <h3 id="casesHeaderB" class="font-semibold text-gray-900"></h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-green-700 mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                Bull Case
+                            </h4>
+                            <ul id="bullCaseB" class="space-y-2 text-sm text-gray-600"></ul>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-medium text-red-700 mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                Bear Case
+                            </h4>
+                            <ul id="bearCaseB" class="space-y-2 text-sm text-gray-600"></ul>
+                        </div>
+                    </div>
+                    <div class="p-4 border-t border-gray-100 bg-gray-50">
+                        <a id="reportLinkB" href="#" class="text-sm text-purple-600 hover:underline font-medium">View Full Report</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Who Should Buy Which -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="font-semibold text-gray-900 mb-4">Who Should Buy Which?</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <p class="font-medium text-blue-900 mb-1" id="buyAHeader">Buy Stock A if...</p>
+                        <p id="whoShouldBuyA" class="text-sm text-blue-700"></p>
+                    </div>
+                    <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <p class="font-medium text-purple-900 mb-1" id="buyBHeader">Buy Stock B if...</p>
+                        <p id="whoShouldBuyB" class="text-sm text-purple-700"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Share Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="font-semibold text-gray-900 mb-4">Share This Comparison</h3>
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="shareWhatsApp()" class="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        WhatsApp
+                    </button>
+                    <button onclick="shareTelegram()" class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                        Telegram
+                    </button>
+                    <button onclick="copyLink()" class="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        Copy Link
+                    </button>
+                </div>
+            </div>
+
+            <!-- Compare Another -->
+            <div class="text-center">
+                <button onclick="resetComparison()" class="text-[#e8913a] hover:underline font-medium">
+                    Compare Different Stocks
+                </button>
+            </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <footer class="mt-12 pb-6 text-center">
+            <p class="text-xs text-gray-400 leading-relaxed max-w-2xl mx-auto">
+                <span class="font-medium">Disclaimer:</span> This is not financial advice. All information is for educational purposes only. We do not guarantee accuracy or completeness. Always do your own research and consult a qualified financial advisor before making investment decisions.
+            </p>
+        </footer>
+    </main>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg z-50">
+        <span id="toastText">Link copied!</span>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        let stockA = null;
+        let stockB = null;
+        let comparisonResult = null;
+        let searchTimeoutA = null;
+        let searchTimeoutB = null;
+
+        const token = localStorage.getItem('token');
+        const isLoggedIn = !!token;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateAuthUI();
+            updateUsageDisplay();
+            setupSearch('A');
+            setupSearch('B');
+        });
+
+        function updateAuthUI() {
+            const authSection = document.getElementById('authSection');
+            if (isLoggedIn) {
+                authSection.innerHTML = `
+                    <a href="dashboard.html" class="hidden sm:inline text-xs sm:text-sm text-[#9fb3c8] hover:text-white">Dashboard</a>
+                    <span class="hidden sm:inline text-[#334e68]">|</span>
+                    <button onclick="logout()" class="text-xs sm:text-sm bg-white/10 hover:bg-white/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all">Logout</button>
+                `;
+            } else {
+                authSection.innerHTML = `
+                    <a href="index.html" class="text-xs sm:text-sm bg-[#e8913a] hover:bg-[#d97316] px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all">Sign In</a>
+                `;
+            }
+        }
+
+        async function updateUsageDisplay() {
+            const remainingEl = document.getElementById('reportsRemaining');
+            try {
+                const endpoint = isLoggedIn ? '/subscription/status' : '/usage/anonymous';
+                const response = await apiCall(endpoint);
+                if (response.ok) {
+                    const data = await response.json();
+                    remainingEl.textContent = data.reports_remaining;
+                }
+            } catch (e) {
+                remainingEl.textContent = '-';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        }
+
+        async function apiCall(endpoint, options = {}) {
+            const headers = { 'Content-Type': 'application/json', ...options.headers };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            return fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+        }
+
+        function setupSearch(side) {
+            const input = document.getElementById('search' + side);
+            const results = document.getElementById('results' + side);
+
+            input.addEventListener('input', (e) => {
+                const timeout = side === 'A' ? searchTimeoutA : searchTimeoutB;
+                if (timeout) clearTimeout(timeout);
+
+                const query = e.target.value.trim();
+                if (query.length < 1) {
+                    results.classList.add('hidden');
+                    return;
+                }
+
+                const newTimeout = setTimeout(() => searchStocks(query, side), 300);
+                if (side === 'A') searchTimeoutA = newTimeout;
+                else searchTimeoutB = newTimeout;
+            });
+
+            input.addEventListener('focus', () => {
+                if (results.children.length > 0) results.classList.remove('hidden');
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#searchA') && !e.target.closest('#resultsA')) {
+                document.getElementById('resultsA').classList.add('hidden');
+            }
+            if (!e.target.closest('#searchB') && !e.target.closest('#resultsB')) {
+                document.getElementById('resultsB').classList.add('hidden');
+            }
+        });
+
+        async function searchStocks(query, side) {
+            const results = document.getElementById('results' + side);
+            try {
+                const response = await apiCall(`/stocks/search?q=${encodeURIComponent(query)}`);
+                const stocks = await response.json();
+
+                if (stocks.length === 0) {
+                    results.innerHTML = `<div class="p-4 text-center text-gray-500">No stocks found</div>`;
+                } else {
+                    results.innerHTML = stocks.map(stock => `
+                        <div onclick="selectStock('${stock.symbol}', '${stock.name}', '${side}')"
+                            class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0">
+                            <p class="font-medium text-gray-900">${stock.name}</p>
+                            <p class="text-sm text-gray-500">${stock.symbol} | ${stock.sector}</p>
+                        </div>
+                    `).join('');
+                }
+                results.classList.remove('hidden');
+            } catch (error) {
+                results.innerHTML = `<div class="p-4 text-center text-red-500">Search failed</div>`;
+                results.classList.remove('hidden');
+            }
+        }
+
+        async function selectStock(symbol, name, side) {
+            document.getElementById('results' + side).classList.add('hidden');
+            document.getElementById('search' + side).value = '';
+
+            // Fetch stock info
+            try {
+                const response = await apiCall(`/stocks/${symbol}?exchange=NSE`);
+                const data = await response.json();
+
+                const stock = {
+                    symbol: data.symbol || symbol,
+                    name: data.company_name || name,
+                    exchange: 'NSE',
+                    price: data.current_price || 0
+                };
+
+                if (side === 'A') stockA = stock;
+                else stockB = stock;
+
+                document.getElementById('ticker' + side).textContent = stock.symbol;
+                document.getElementById('name' + side).textContent = stock.name;
+                document.getElementById('price' + side).textContent = `₹${stock.price?.toLocaleString('en-IN', {maximumFractionDigits: 2}) || '0'}`;
+                document.getElementById('selected' + side).classList.remove('hidden');
+
+                updateCompareButton();
+            } catch (error) {
+                console.error('Failed to fetch stock info:', error);
+            }
+        }
+
+        function clearStock(side) {
+            if (side === 'A') stockA = null;
+            else stockB = null;
+            document.getElementById('selected' + side).classList.add('hidden');
+            updateCompareButton();
+        }
+
+        function updateCompareButton() {
+            const btn = document.getElementById('compareBtn');
+            const text = document.getElementById('compareBtnText');
+
+            if (stockA && stockB) {
+                if (stockA.symbol === stockB.symbol) {
+                    btn.disabled = true;
+                    text.textContent = 'Select Two Different Stocks';
+                } else {
+                    btn.disabled = false;
+                    text.textContent = `Compare ${stockA.symbol} vs ${stockB.symbol}`;
+                }
+            } else {
+                btn.disabled = true;
+                text.textContent = 'Select Two Stocks to Compare';
+            }
+        }
+
+        async function compareStocks() {
+            if (!stockA || !stockB) return;
+
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+
+            try {
+                const response = await apiCall('/reports/compare', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        stock_a: stockA.symbol,
+                        stock_b: stockB.symbol,
+                        exchange_a: stockA.exchange,
+                        exchange_b: stockB.exchange,
+                        language: 'en'
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Comparison failed');
+                }
+
+                comparisonResult = await response.json();
+                displayResults(comparisonResult);
+                updateUsageDisplay();
+
+            } catch (error) {
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('errorState').classList.remove('hidden');
+                document.getElementById('errorText').textContent = error.message;
+            }
+        }
+
+        function displayResults(data) {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+
+            const comparison = data.ai_comparison;
+            const sa = data.stock_a;
+            const sb = data.stock_b;
+
+            // Verdict banner
+            const winnerName = comparison.verdict === 'STOCK_A' ? sa.ticker :
+                              comparison.verdict === 'STOCK_B' ? sb.ticker : 'Either Stock';
+            document.getElementById('verdictTitle').textContent = `${winnerName} Wins`;
+            document.getElementById('verdictOneLiner').textContent = comparison.one_line_verdict;
+            document.getElementById('verdictReasoning').textContent = comparison.reasoning;
+
+            const badge = document.getElementById('convictionBadge');
+            badge.textContent = comparison.conviction + ' Conviction';
+            badge.className = 'ml-auto px-3 py-1 rounded-full text-sm font-semibold ' +
+                (comparison.conviction === 'HIGH' ? 'bg-emerald-200 text-emerald-900' :
+                 comparison.conviction === 'MEDIUM' ? 'bg-yellow-200 text-yellow-900' : 'bg-gray-200 text-gray-900');
+
+            // Table headers
+            document.getElementById('thStockA').textContent = sa.ticker;
+            document.getElementById('thStockB').textContent = sb.ticker;
+
+            // Key differentiators
+            const diffContainer = document.getElementById('differentiators');
+            diffContainer.innerHTML = comparison.key_differentiators.map(d => {
+                const winnerClass = d.winner === 'STOCK_A' ? 'winner-a' : d.winner === 'STOCK_B' ? 'winner-b' : '';
+                const winnerText = d.winner === 'STOCK_A' ? sa.ticker : d.winner === 'STOCK_B' ? sb.ticker : 'Tie';
+                return `
+                    <div class="p-4 ${winnerClass}">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-medium text-gray-900">${d.factor}</span>
+                            <span class="text-sm font-semibold ${d.winner === 'TIE' ? 'text-gray-500' : 'text-green-600'}">${winnerText}</span>
+                        </div>
+                        <p class="text-sm text-gray-600">${d.explanation}</p>
+                    </div>
+                `;
+            }).join('');
+
+            // Metrics table
+            const metrics = [
+                { label: 'P/E Ratio', keyA: sa.metrics.pe, keyB: sb.metrics.pe, format: 'x', lowerBetter: true },
+                { label: 'P/B Ratio', keyA: sa.metrics.pb, keyB: sb.metrics.pb, format: 'x', lowerBetter: true },
+                { label: 'ROE', keyA: sa.metrics.roe, keyB: sb.metrics.roe, format: '%' },
+                { label: 'Profit Margin', keyA: sa.metrics.profit_margin, keyB: sb.metrics.profit_margin, format: '%' },
+                { label: 'Revenue Growth', keyA: sa.metrics.revenue_growth, keyB: sb.metrics.revenue_growth, format: '%' },
+                { label: 'Debt/Equity', keyA: sa.metrics.debt_to_equity, keyB: sb.metrics.debt_to_equity, format: '', lowerBetter: true },
+            ];
+
+            document.getElementById('metricsTable').innerHTML = metrics.map(m => {
+                const valA = m.keyA || 0;
+                const valB = m.keyB || 0;
+                let winner = 'TIE';
+                if (valA !== 0 && valB !== 0) {
+                    if (m.lowerBetter) winner = valA < valB ? 'A' : valB < valA ? 'B' : 'TIE';
+                    else winner = valA > valB ? 'A' : valB > valA ? 'B' : 'TIE';
+                }
+                const winnerBg = winner === 'A' ? 'bg-green-100' : winner === 'B' ? 'bg-green-100' : '';
+                return `
+                    <tr>
+                        <td class="px-4 py-3 text-sm text-gray-900">${m.label}</td>
+                        <td class="px-4 py-3 text-sm text-center ${winner === 'A' ? 'bg-green-100 font-semibold' : ''}">${valA?.toFixed(1)}${m.format}</td>
+                        <td class="px-4 py-3 text-sm text-center ${winner === 'B' ? 'bg-green-100 font-semibold' : ''}">${valB?.toFixed(1)}${m.format}</td>
+                        <td class="px-4 py-3 text-sm text-center font-medium ${winner === 'TIE' ? 'text-gray-500' : 'text-green-600'}">${winner === 'A' ? sa.ticker : winner === 'B' ? sb.ticker : 'Tie'}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Bull/Bear cases
+            document.getElementById('casesHeaderA').textContent = sa.company_name;
+            document.getElementById('casesHeaderB').textContent = sb.company_name;
+            document.getElementById('bullCaseA').innerHTML = (sa.bull_case || []).map(p => `<li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">+</span>${p}</li>`).join('');
+            document.getElementById('bearCaseA').innerHTML = (sa.bear_case || []).map(p => `<li class="flex items-start gap-2"><span class="text-red-500 mt-0.5">-</span>${p}</li>`).join('');
+            document.getElementById('bullCaseB').innerHTML = (sb.bull_case || []).map(p => `<li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">+</span>${p}</li>`).join('');
+            document.getElementById('bearCaseB').innerHTML = (sb.bear_case || []).map(p => `<li class="flex items-start gap-2"><span class="text-red-500 mt-0.5">-</span>${p}</li>`).join('');
+
+            // Report links
+            if (sa.report_cache_id) {
+                document.getElementById('reportLinkA').href = `report.html?id=${sa.report_cache_id}`;
+                document.getElementById('reportLinkA').classList.remove('hidden');
+            } else {
+                document.getElementById('reportLinkA').href = `generate.html?ticker=${sa.ticker}`;
+                document.getElementById('reportLinkA').textContent = 'Generate Full Report';
+            }
+            if (sb.report_cache_id) {
+                document.getElementById('reportLinkB').href = `report.html?id=${sb.report_cache_id}`;
+                document.getElementById('reportLinkB').classList.remove('hidden');
+            } else {
+                document.getElementById('reportLinkB').href = `generate.html?ticker=${sb.ticker}`;
+                document.getElementById('reportLinkB').textContent = 'Generate Full Report';
+            }
+
+            // Who should buy
+            document.getElementById('buyAHeader').textContent = `Buy ${sa.ticker} if...`;
+            document.getElementById('buyBHeader').textContent = `Buy ${sb.ticker} if...`;
+            document.getElementById('whoShouldBuyA').textContent = comparison.who_should_buy_a;
+            document.getElementById('whoShouldBuyB').textContent = comparison.who_should_buy_b;
+        }
+
+        function resetComparison() {
+            stockA = null;
+            stockB = null;
+            comparisonResult = null;
+            document.getElementById('selectedA').classList.add('hidden');
+            document.getElementById('selectedB').classList.add('hidden');
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            updateCompareButton();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function getShareText() {
+            if (!comparisonResult) return '';
+            const sa = comparisonResult.stock_a;
+            const sb = comparisonResult.stock_b;
+            const verdict = comparisonResult.ai_comparison.one_line_verdict;
+            return `${sa.ticker} vs ${sb.ticker} Comparison\n\n${verdict}\n\nFull comparison on Permabullish:`;
+        }
+
+        function getShareUrl() {
+            if (!comparisonResult) return window.location.href;
+            const sa = comparisonResult.stock_a;
+            const sb = comparisonResult.stock_b;
+            return `${window.location.origin}/compare.html?a=${sa.ticker}&b=${sb.ticker}`;
+        }
+
+        function shareWhatsApp() {
+            const text = encodeURIComponent(getShareText() + '\n' + getShareUrl());
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        function shareTelegram() {
+            const text = encodeURIComponent(getShareText());
+            const url = encodeURIComponent(getShareUrl());
+            window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank');
+        }
+
+        function copyLink() {
+            navigator.clipboard.writeText(getShareUrl()).then(() => showToast('Link copied!'));
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastText').textContent = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
+        // Handle URL params for pre-selected stocks
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramA = urlParams.get('a');
+        const paramB = urlParams.get('b');
+        if (paramA) {
+            setTimeout(() => selectStock(paramA, paramA, 'A'), 100);
+        }
+        if (paramB) {
+            setTimeout(() => selectStock(paramB, paramB, 'B'), 200);
+        }
+    </script>
+</body>
+</html>

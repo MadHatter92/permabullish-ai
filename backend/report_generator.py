@@ -524,6 +524,205 @@ def _generate_shareholding_section(analysis: Dict[str, Any], stock_data: Dict[st
     '''
 
 
+def generate_comparison_analysis(
+    stock_a_data: Dict[str, Any],
+    stock_b_data: Dict[str, Any],
+    stock_a_analysis: Dict[str, Any],
+    stock_b_analysis: Dict[str, Any],
+    language: str = 'en'
+) -> Dict[str, Any]:
+    """
+    Generate AI comparison analysis between two stocks.
+
+    Args:
+        stock_a_data: Stock data for first stock
+        stock_b_data: Stock data for second stock
+        stock_a_analysis: Existing AI analysis for stock A (from cached report or fresh)
+        stock_b_analysis: Existing AI analysis for stock B (from cached report or fresh)
+        language: Language code
+
+    Returns:
+        Comparison analysis with verdict, reasoning, and key differentiators
+    """
+    if not ANTHROPIC_API_KEY:
+        return _generate_fallback_comparison(stock_a_data, stock_b_data, stock_a_analysis, stock_b_analysis)
+
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+    # Prepare summaries for both stocks
+    summary_a = _prepare_comparison_summary(stock_a_data, stock_a_analysis, "A")
+    summary_b = _prepare_comparison_summary(stock_b_data, stock_b_analysis, "B")
+
+    # Get language instruction
+    lang_instruction = LANGUAGE_INSTRUCTIONS.get(language, '')
+
+    prompt = f"""You are a senior equity research analyst making a HEAD-TO-HEAD comparison between two Indian stocks.
+{lang_instruction}
+
+An investor wants to know: "I have money to invest in ONE of these stocks. Which should I choose?"
+
+STOCK A DATA:
+{json.dumps(summary_a, indent=2)}
+
+STOCK B DATA:
+{json.dumps(summary_b, indent=2)}
+
+YOUR TASK: Make a CLEAR RECOMMENDATION. The investor can only pick ONE stock. You MUST pick a winner.
+
+COMPARISON FRAMEWORK - Evaluate across these 4 factors:
+1. **Valuation**: Which stock offers better value? Compare PE, PB, PEG ratios relative to growth.
+2. **Growth**: Which has better revenue/profit growth trajectory? Consider recent quarterly trends.
+3. **Quality**: Which has better fundamentals? ROE, ROCE, margins, debt levels.
+4. **Risk**: Which has lower risk? Volatility, sector headwinds, execution risks.
+
+Return your analysis in this JSON format:
+{{
+    "verdict": "STOCK_A" or "STOCK_B" or "EITHER",
+    "verdict_stock": "<ticker of winning stock or 'Either'>",
+    "conviction": "HIGH" or "MEDIUM" or "LOW",
+    "one_line_verdict": "<1 sentence explaining why this stock wins, with a key number. E.g., 'Pick Reliance because it trades at 25% discount to TCS while offering superior growth optionality.'>",
+    "reasoning": "<2-3 sentences with specific numbers comparing the two. Be decisive.>",
+    "key_differentiators": [
+        {{
+            "factor": "Valuation",
+            "winner": "STOCK_A" or "STOCK_B" or "TIE",
+            "explanation": "<1 sentence with numbers>"
+        }},
+        {{
+            "factor": "Growth",
+            "winner": "STOCK_A" or "STOCK_B" or "TIE",
+            "explanation": "<1 sentence with numbers>"
+        }},
+        {{
+            "factor": "Quality",
+            "winner": "STOCK_A" or "STOCK_B" or "TIE",
+            "explanation": "<1 sentence with numbers>"
+        }},
+        {{
+            "factor": "Risk",
+            "winner": "STOCK_A" or "STOCK_B" or "TIE",
+            "explanation": "<1 sentence explaining risk profile>"
+        }}
+    ],
+    "who_should_buy_a": "<1 sentence describing the ideal investor for Stock A. E.g., 'Best for growth-focused investors willing to pay premium for market leadership.'>",
+    "who_should_buy_b": "<1 sentence describing the ideal investor for Stock B. E.g., 'Best for value investors seeking steady dividends and lower volatility.'>"
+}}
+
+IMPORTANT:
+- You MUST pick a winner. Only use "EITHER" if the stocks are truly equivalent across all factors.
+- Use specific numbers (PE ratios, growth rates, margins) to justify your verdict.
+- The one_line_verdict should be memorable and quotable.
+
+Return ONLY valid JSON, no other text."""
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1500,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+
+        response_text = response.content[0].text.strip()
+
+        # Handle markdown code blocks
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0]
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0]
+
+        comparison = json.loads(response_text)
+
+        # Add token usage
+        comparison["_token_usage"] = {
+            "input_tokens": response.usage.input_tokens,
+            "output_tokens": response.usage.output_tokens,
+            "total_tokens": response.usage.input_tokens + response.usage.output_tokens,
+            "model": "claude-sonnet-4-20250514"
+        }
+
+        return comparison
+
+    except Exception as e:
+        print(f"Error generating comparison analysis: {str(e)}")
+        return _generate_fallback_comparison(stock_a_data, stock_b_data, stock_a_analysis, stock_b_analysis)
+
+
+def _prepare_comparison_summary(stock_data: Dict[str, Any], analysis: Dict[str, Any], label: str) -> Dict[str, Any]:
+    """Prepare a summary of stock data and analysis for comparison."""
+    basic = stock_data.get("basic_info", {})
+    price = stock_data.get("price_info", {})
+    valuation = stock_data.get("valuation", {})
+    financials = stock_data.get("financials", {})
+    returns = stock_data.get("returns", {})
+    balance = stock_data.get("balance_sheet", {})
+
+    return {
+        "label": label,
+        "ticker": basic.get("ticker", ""),
+        "company_name": basic.get("company_name", ""),
+        "sector": basic.get("sector", ""),
+        "current_price": price.get("current_price", 0),
+        "market_cap": valuation.get("market_cap", 0),
+        "pe_ratio": valuation.get("pe_ratio", 0),
+        "pb_ratio": valuation.get("pb_ratio", 0),
+        "peg_ratio": valuation.get("peg_ratio", 0),
+        "ev_to_ebitda": valuation.get("ev_to_ebitda", 0),
+        "revenue_growth": financials.get("revenue_growth", 0),
+        "profit_margin": financials.get("profit_margin", 0),
+        "operating_margin": financials.get("operating_margin", 0),
+        "roe": returns.get("roe", 0),
+        "roce": returns.get("roce", 0),
+        "debt_to_equity": balance.get("debt_to_equity", 0),
+        "recommendation": analysis.get("recommendation", "HOLD"),
+        "target_price": analysis.get("target_price", 0),
+        "conviction_level": analysis.get("conviction_level", "MEDIUM"),
+        "bull_case": analysis.get("bull_case", [])[:3],
+        "bear_case": analysis.get("bear_case", [])[:3],
+    }
+
+
+def _generate_fallback_comparison(
+    stock_a_data: Dict[str, Any],
+    stock_b_data: Dict[str, Any],
+    stock_a_analysis: Dict[str, Any],
+    stock_b_analysis: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Generate basic comparison when AI is unavailable."""
+    basic_a = stock_a_data.get("basic_info", {})
+    basic_b = stock_b_data.get("basic_info", {})
+    valuation_a = stock_a_data.get("valuation", {})
+    valuation_b = stock_b_data.get("valuation", {})
+
+    pe_a = valuation_a.get("pe_ratio", 0) or 0
+    pe_b = valuation_b.get("pe_ratio", 0) or 0
+
+    # Simple logic: lower PE wins for valuation
+    if pe_a > 0 and pe_b > 0:
+        verdict = "STOCK_A" if pe_a < pe_b else "STOCK_B"
+        verdict_stock = basic_a.get("ticker", "A") if pe_a < pe_b else basic_b.get("ticker", "B")
+    else:
+        verdict = "EITHER"
+        verdict_stock = "Either"
+
+    return {
+        "verdict": verdict,
+        "verdict_stock": verdict_stock,
+        "conviction": "LOW",
+        "one_line_verdict": f"Based on available data, {verdict_stock} appears to offer relatively better value.",
+        "reasoning": "This comparison is based on limited data analysis. Please review the individual reports for detailed analysis.",
+        "key_differentiators": [
+            {"factor": "Valuation", "winner": verdict, "explanation": f"PE comparison: {pe_a:.1f}x vs {pe_b:.1f}x"},
+            {"factor": "Growth", "winner": "TIE", "explanation": "Insufficient data for comparison"},
+            {"factor": "Quality", "winner": "TIE", "explanation": "Insufficient data for comparison"},
+            {"factor": "Risk", "winner": "TIE", "explanation": "Insufficient data for comparison"}
+        ],
+        "who_should_buy_a": f"Investors interested in {basic_a.get('sector', 'this sector')}",
+        "who_should_buy_b": f"Investors interested in {basic_b.get('sector', 'this sector')}"
+    }
+
+
 def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any], language: str = 'en') -> str:
     """Generate the complete HTML report.
 

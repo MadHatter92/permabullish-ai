@@ -367,6 +367,8 @@
             if (isLoggedIn) {
                 const user = JSON.parse(localStorage.getItem('user') || '{}');
                 authSection.innerHTML = `
+                    <a href="compare.html" class="hidden sm:inline text-xs sm:text-sm text-[#9fb3c8] hover:text-white">Compare</a>
+                    <span class="hidden sm:inline text-[#334e68]">|</span>
                     <a href="dashboard.html" class="hidden sm:inline text-xs sm:text-sm text-[#9fb3c8] hover:text-white">Dashboard</a>
                     <span class="hidden sm:inline text-[#334e68]">|</span>
                     <button onclick="logout()" class="text-xs sm:text-sm bg-white/10 hover:bg-white/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all">
@@ -375,6 +377,7 @@
                 `;
             } else {
                 authSection.innerHTML = `
+                    <a href="compare.html" class="hidden sm:inline text-xs sm:text-sm text-[#9fb3c8] hover:text-white mr-2">Compare</a>
                     <a href="index.html" class="text-xs sm:text-sm bg-[#e8913a] hover:bg-[#d97316] px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all">
                         Sign In
                     </a>

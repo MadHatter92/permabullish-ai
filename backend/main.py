@@ -33,7 +33,7 @@ from slowapi.errors import RateLimitExceeded
 import database as db
 import auth
 from yahoo_finance import fetch_stock_data, search_stocks
-from report_generator import generate_ai_analysis, generate_report_html
+from report_generator import generate_ai_analysis, generate_report_html, generate_comparison_analysis
 from config import (
     SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
     GOOGLE_REDIRECT_URI, FRONTEND_URL, CORS_ORIGINS, ENVIRONMENT,
@@ -136,6 +136,14 @@ class WatchlistAddRequest(BaseModel):
     ticker: str
     exchange: str = "NSE"
     company_name: Optional[str] = None
+
+
+class CompareRequest(BaseModel):
+    stock_a: str
+    stock_b: str
+    exchange_a: str = "NSE"
+    exchange_b: str = "NSE"
+    language: str = "en"
 
 
 class UserTargetPriceRequest(BaseModel):
@@ -656,6 +664,222 @@ async def generate_report(
         "is_outdated": cached_report.get("is_outdated", False),
         "generated_new": generated_new,
         "language": cached_report.get("language", "en")
+    }
+
+
+@app.post("/api/reports/compare")
+@limiter.limit("10/hour")
+async def compare_stocks(
+    request: Request,
+    compare_request: CompareRequest,
+    current_user: Optional[dict] = Depends(auth.get_optional_current_user)
+):
+    """Compare two stocks side-by-side with AI analysis."""
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+
+    ticker_a = compare_request.stock_a.upper()
+    ticker_b = compare_request.stock_b.upper()
+    exchange_a = compare_request.exchange_a.upper()
+    exchange_b = compare_request.exchange_b.upper()
+    language = compare_request.language.lower() if compare_request.language else 'en'
+
+    logger.info(f"Compare request: {ticker_a}/{exchange_a} vs {ticker_b}/{exchange_b}, language={language}")
+
+    # Validate: can't compare same stock
+    if ticker_a == ticker_b and exchange_a == exchange_b:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot compare a stock with itself. Please select two different stocks."
+        )
+
+    # Check usage limits (comparison costs 1 credit)
+    user_id = current_user["id"] if current_user else None
+    is_anonymous = current_user is None
+
+    if current_user:
+        if not db.can_generate_report(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Monthly report limit reached. Limit resets on the 1st of next month."
+            )
+    else:
+        identifier = get_client_identifier(request)
+        if not db.can_anonymous_generate(identifier):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Free report limit reached (3 reports). Please sign in for more reports."
+            )
+
+    # Fetch stock data for both stocks in parallel
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_a = executor.submit(fetch_stock_data, ticker_a, exchange_a)
+        future_b = executor.submit(fetch_stock_data, ticker_b, exchange_b)
+        stock_data_a = future_a.result()
+        stock_data_b = future_b.result()
+
+    if not stock_data_a:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Stock {ticker_a} not found on {exchange_a}"
+        )
+
+    if not stock_data_b:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Stock {ticker_b} not found on {exchange_b}"
+        )
+
+    # Check for cached reports and get analysis
+    cached_a = db.get_cached_report(ticker_a, exchange_a, language)
+    cached_b = db.get_cached_report(ticker_b, exchange_b, language)
+
+    # Get or generate analysis for stock A
+    if cached_a and not cached_a.get('is_outdated', False):
+        try:
+            report_data_a = json.loads(cached_a.get('report_data', '{}'))
+            analysis_a = report_data_a.get('analysis', {})
+        except json.JSONDecodeError:
+            analysis_a = generate_ai_analysis(stock_data_a, language)
+    else:
+        analysis_a = generate_ai_analysis(stock_data_a, language)
+
+    # Get or generate analysis for stock B
+    if cached_b and not cached_b.get('is_outdated', False):
+        try:
+            report_data_b = json.loads(cached_b.get('report_data', '{}'))
+            analysis_b = report_data_b.get('analysis', {})
+        except json.JSONDecodeError:
+            analysis_b = generate_ai_analysis(stock_data_b, language)
+    else:
+        analysis_b = generate_ai_analysis(stock_data_b, language)
+
+    # Generate AI comparison
+    ai_comparison = generate_comparison_analysis(
+        stock_data_a, stock_data_b,
+        analysis_a, analysis_b,
+        language
+    )
+
+    # Deduct 1 credit
+    if is_anonymous:
+        db.increment_anonymous_usage(get_client_identifier(request))
+    else:
+        db.increment_usage(user_id)
+        db.update_user_activity(user_id)
+
+    # Extract key info for response
+    basic_a = stock_data_a.get("basic_info", {})
+    basic_b = stock_data_b.get("basic_info", {})
+    price_a = stock_data_a.get("price_info", {})
+    price_b = stock_data_b.get("price_info", {})
+    valuation_a = stock_data_a.get("valuation", {})
+    valuation_b = stock_data_b.get("valuation", {})
+    financials_a = stock_data_a.get("financials", {})
+    financials_b = stock_data_b.get("financials", {})
+    returns_a = stock_data_a.get("returns", {})
+    returns_b = stock_data_b.get("returns", {})
+    balance_a = stock_data_a.get("balance_sheet", {})
+    balance_b = stock_data_b.get("balance_sheet", {})
+
+    # Build metrics comparison
+    def determine_better(val_a, val_b, lower_is_better=False):
+        if val_a is None or val_b is None or val_a == 0 or val_b == 0:
+            return "N/A"
+        if lower_is_better:
+            return "A" if val_a < val_b else "B" if val_b < val_a else "TIE"
+        return "A" if val_a > val_b else "B" if val_b > val_a else "TIE"
+
+    metrics_comparison = {
+        "valuation": {
+            "pe_ratio": {
+                "stock_a": valuation_a.get("pe_ratio", 0),
+                "stock_b": valuation_b.get("pe_ratio", 0),
+                "better": determine_better(valuation_a.get("pe_ratio"), valuation_b.get("pe_ratio"), lower_is_better=True)
+            },
+            "pb_ratio": {
+                "stock_a": valuation_a.get("pb_ratio", 0),
+                "stock_b": valuation_b.get("pb_ratio", 0),
+                "better": determine_better(valuation_a.get("pb_ratio"), valuation_b.get("pb_ratio"), lower_is_better=True)
+            },
+            "ev_to_ebitda": {
+                "stock_a": valuation_a.get("ev_to_ebitda", 0),
+                "stock_b": valuation_b.get("ev_to_ebitda", 0),
+                "better": determine_better(valuation_a.get("ev_to_ebitda"), valuation_b.get("ev_to_ebitda"), lower_is_better=True)
+            }
+        },
+        "growth": {
+            "revenue_growth": {
+                "stock_a": financials_a.get("revenue_growth", 0),
+                "stock_b": financials_b.get("revenue_growth", 0),
+                "better": determine_better(financials_a.get("revenue_growth"), financials_b.get("revenue_growth"))
+            }
+        },
+        "quality": {
+            "roe": {
+                "stock_a": returns_a.get("roe", 0),
+                "stock_b": returns_b.get("roe", 0),
+                "better": determine_better(returns_a.get("roe"), returns_b.get("roe"))
+            },
+            "profit_margin": {
+                "stock_a": financials_a.get("profit_margin", 0),
+                "stock_b": financials_b.get("profit_margin", 0),
+                "better": determine_better(financials_a.get("profit_margin"), financials_b.get("profit_margin"))
+            },
+            "debt_to_equity": {
+                "stock_a": balance_a.get("debt_to_equity", 0),
+                "stock_b": balance_b.get("debt_to_equity", 0),
+                "better": determine_better(balance_a.get("debt_to_equity"), balance_b.get("debt_to_equity"), lower_is_better=True)
+            }
+        }
+    }
+
+    return {
+        "stock_a": {
+            "ticker": ticker_a,
+            "exchange": exchange_a,
+            "company_name": basic_a.get("company_name", ticker_a),
+            "sector": basic_a.get("sector", ""),
+            "current_price": price_a.get("current_price", 0),
+            "recommendation": analysis_a.get("recommendation", "HOLD"),
+            "target_price": analysis_a.get("target_price", 0),
+            "bull_case": analysis_a.get("bull_case", []),
+            "bear_case": analysis_a.get("bear_case", []),
+            "metrics": {
+                "pe": valuation_a.get("pe_ratio", 0),
+                "pb": valuation_a.get("pb_ratio", 0),
+                "roe": (returns_a.get("roe", 0) or 0) * 100,
+                "profit_margin": (financials_a.get("profit_margin", 0) or 0) * 100,
+                "debt_to_equity": balance_a.get("debt_to_equity", 0),
+                "revenue_growth": (financials_a.get("revenue_growth", 0) or 0) * 100,
+                "market_cap": valuation_a.get("market_cap", 0)
+            },
+            "report_cache_id": cached_a.get("id") if cached_a else None
+        },
+        "stock_b": {
+            "ticker": ticker_b,
+            "exchange": exchange_b,
+            "company_name": basic_b.get("company_name", ticker_b),
+            "sector": basic_b.get("sector", ""),
+            "current_price": price_b.get("current_price", 0),
+            "recommendation": analysis_b.get("recommendation", "HOLD"),
+            "target_price": analysis_b.get("target_price", 0),
+            "bull_case": analysis_b.get("bull_case", []),
+            "bear_case": analysis_b.get("bear_case", []),
+            "metrics": {
+                "pe": valuation_b.get("pe_ratio", 0),
+                "pb": valuation_b.get("pb_ratio", 0),
+                "roe": (returns_b.get("roe", 0) or 0) * 100,
+                "profit_margin": (financials_b.get("profit_margin", 0) or 0) * 100,
+                "debt_to_equity": balance_b.get("debt_to_equity", 0),
+                "revenue_growth": (financials_b.get("revenue_growth", 0) or 0) * 100,
+                "market_cap": valuation_b.get("market_cap", 0)
+            },
+            "report_cache_id": cached_b.get("id") if cached_b else None
+        },
+        "ai_comparison": ai_comparison,
+        "metrics_comparison": metrics_comparison,
+        "language": language
     }
 
 
