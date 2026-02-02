@@ -409,7 +409,7 @@ def generate_comparison_share_html(
     title = f"{ticker_a} vs {ticker_b}: {winner_text} Wins ({conviction})"
     description = one_line_verdict if one_line_verdict else f"AI-powered comparison between {ticker_a} and {ticker_b}"
     image_url = f"{api_base}/comparisons/{comparison_id}/og-image"
-    compare_url = f"{frontend_url}/compare.html?a={ticker_a}&b={ticker_b}"
+    compare_url = f"{frontend_url}/compare.html?id={comparison_id}"
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
