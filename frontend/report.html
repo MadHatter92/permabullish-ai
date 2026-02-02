@@ -368,8 +368,33 @@
             setIframeHeight(nudgeHeight);
         }
 
+        // Detect in-app browsers that have iframe issues
+        function isProblematicWebView() {
+            const ua = navigator.userAgent || '';
+            // Telegram, Instagram, Facebook, LinkedIn in-app browsers
+            return /Telegram|Instagram|FBAN|FBAV|LinkedIn/i.test(ua);
+        }
+
         // Initialize page
         document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const reportId = urlParams.get('id');
+
+            if (!reportId) {
+                showError();
+                return;
+            }
+
+            // For problematic in-app browsers, redirect to direct view endpoint
+            if (isProblematicWebView()) {
+                // Redirect to the direct view endpoint (no iframe needed)
+                const apiHost = API_BASE.includes('localhost')
+                    ? 'http://localhost:8000/api'
+                    : 'https://api.permabullish.com/api';
+                window.location.href = `${apiHost}/reports/${reportId}/view`;
+                return;
+            }
+
             // Update back link based on auth status
             if (isLoggedIn) {
                 document.getElementById('backLink').href = 'dashboard.html';
@@ -382,14 +407,6 @@
                         showGuestNudge();
                     }, 1500);
                 }
-            }
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const reportId = urlParams.get('id');
-
-            if (!reportId) {
-                showError();
-                return;
             }
 
             loadReport(reportId);

@@ -738,6 +738,99 @@ async def get_report_html(
     return HTMLResponse(content=report["report_html"])
 
 
+@app.get("/api/reports/{report_cache_id}/view", response_class=HTMLResponse)
+async def get_report_direct_view(report_cache_id: int):
+    """
+    Direct report view for in-app browsers (Telegram, Instagram, etc.)
+    that have issues with iframes. Returns full HTML page with report embedded.
+    """
+    report = db.get_cached_report_by_id(report_cache_id)
+
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found"
+        )
+
+    report_html = report.get("report_html", "")
+    company_name = report.get("company_name", report.get("ticker", "Report"))
+    ticker = report.get("ticker", "")
+
+    # Wrap report in a minimal standalone page with back navigation
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{company_name} ({ticker}) - Permabullish</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }}
+        .nav {{
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .nav a {{
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }}
+        .nav-title {{
+            font-weight: 600;
+            font-size: 14px;
+        }}
+        .btn {{
+            background: #e8913a;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }}
+        .report-content {{
+            padding: 0;
+        }}
+        .footer {{
+            text-align: center;
+            padding: 20px;
+            background: #f3f4f6;
+            font-size: 12px;
+            color: #6b7280;
+        }}
+        .footer a {{
+            color: #e8913a;
+            text-decoration: none;
+        }}
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <span class="nav-title">{ticker} Report</span>
+        <a href="{FRONTEND_URL}/generate.html" class="btn">Try Permabullish</a>
+    </nav>
+    <div class="report-content">
+        {report_html}
+    </div>
+    <div class="footer">
+        <p>AI-powered stock research by <a href="{FRONTEND_URL}">Permabullish</a></p>
+        <p style="margin-top: 8px;">Not financial advice. For educational purposes only.</p>
+    </div>
+</body>
+</html>"""
+
+    return HTMLResponse(content=html)
+
+
 # ============================================
 # Share Card Generation
 # ============================================
