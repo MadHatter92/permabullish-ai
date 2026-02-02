@@ -1,15 +1,15 @@
 # Permabullish 7-Day Launch Plan
 
-**Start Date:** February 1, 2026 (Saturday)
-**Status:** Soft launch complete (Telegram community)
+**Start Date:** February 2, 2026 (Sunday)
+**Status:** Soft launch TODAY
 
 ---
 
-## Day 1 - Saturday, Feb 1
+## Day 1 - Sunday, Feb 2
 ### Theme: Soft Launch & Observe
 
 **Morning:**
-- [x] Soft launch announcement in Telegram community
+- [ ] Soft launch announcement in Telegram community
 - [ ] Monitor for bugs, user feedback, questions
 - [ ] Reply to every message personally
 
@@ -28,24 +28,25 @@
 
 ---
 
-## Day 2 - Sunday, Feb 2
-### Theme: Twitter Launch + Content Seeding
+## Day 2 - Monday, Feb 3
+### Theme: Market Open + Twitter Launch
 
-**Morning:**
+**Pre-Market (8:30 AM):**
+- [ ] Generate reports on stocks in the news
 - [ ] Post first Twitter thread: "I built an AI stock researcher for Indian markets"
   - Hook: The problem with traditional research
   - Show the product (screenshots/video)
   - Share a sample report link
   - CTA: Try it free at permabullish.com
 
-**Afternoon:**
-- [ ] Share 2-3 interesting AI insights as standalone tweets
-- [ ] Engage with replies on Telegram
-- [ ] Generate reports for any stocks users request
+**During Market Hours:**
+- [ ] React to any major market moves with AI analysis
+- [ ] Engage with FinTwit discussions, offer AI perspective
+- [ ] Share in Telegram: "Morning report on [stock]"
 
 **Evening:**
 - [ ] Instagram Story: Behind-the-scenes of building the product
-- [ ] Cross-post best performing tweet to Telegram
+- [ ] Telegram: Share day's most interesting AI insight
 - [ ] Check GA4: Where is traffic coming from?
 
 **Content to Create:**
@@ -54,31 +55,7 @@
 
 ---
 
-## Day 3 - Monday, Feb 3
-### Theme: Market Open - Real-Time Value
-
-**Pre-Market (8:30 AM):**
-- [ ] Generate reports on stocks in the news
-- [ ] Tweet: "Markets open today. Here's what AI thinks about [trending stock]"
-- [ ] Share in Telegram: "Morning report on [stock]"
-
-**During Market Hours:**
-- [ ] React to any major market moves with AI analysis
-- [ ] Engage with FinTwit discussions, offer AI perspective
-- [ ] Answer questions in Telegram
-
-**Evening:**
-- [ ] Instagram Reel: "AI analyzed [stock] in 30 seconds - here's the verdict"
-- [ ] Telegram: Share day's most interesting AI insight
-- [ ] Collect feedback: What stocks do users want analyzed?
-
-**Content to Create:**
-- 1 short video (screen recording of report generation)
-- Market reaction tweets
-
----
-
-## Day 4 - Tuesday, Feb 4
+## Day 3 - Tuesday, Feb 4
 ### Theme: YouTube Demo Video
 
 **Morning:**
@@ -106,7 +83,7 @@
 
 ---
 
-## Day 5 - Wednesday, Feb 5
+## Day 4 - Wednesday, Feb 5
 ### Theme: Instagram Push + User Stories
 
 **Morning:**
@@ -114,7 +91,7 @@
   - Slide 1: Hook
   - Slides 2-5: Examples from real reports (shareholding changes, valuation flags, etc.)
   - Slide 6: CTA - Try Permabullish
-- [ ] Post Instagram Reel from Day 3 footage (if not posted)
+- [ ] Post Instagram Reel (screen recording of report generation)
 
 **Afternoon:**
 - [ ] DM 5-10 active Telegram users asking for feedback/testimonials
@@ -132,7 +109,7 @@
 
 ---
 
-## Day 6 - Thursday, Feb 6
+## Day 5 - Thursday, Feb 6
 ### Theme: Deep Dive Content
 
 **Morning:**
@@ -158,7 +135,7 @@
 
 ---
 
-## Day 7 - Friday, Feb 7
+## Day 6 - Friday, Feb 7
 ### Theme: Week 1 Wrap + Weekend Setup
 
 **Morning:**
@@ -185,6 +162,29 @@
 - Week 1 recap post (all platforms)
 - Email newsletter #1
 - Analytics summary for yourself
+
+---
+
+## Day 7 - Saturday, Feb 8
+### Theme: Weekend Engagement + Planning
+
+**Morning:**
+- [ ] Share a "weekend read" report on an interesting stock
+- [ ] Engage with any weekend social media activity
+
+**Afternoon:**
+- [ ] Plan Week 2 content calendar
+- [ ] Batch create content for next week
+- [ ] Review and respond to all feedback received
+
+**Evening:**
+- [ ] Relax! You've completed Week 1
+- [ ] Final analytics review
+- [ ] Set goals for Week 2
+
+**Content to Create:**
+- Week 2 content calendar
+- 2-3 pre-scheduled posts for next week
 
 ---
 
