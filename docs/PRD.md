@@ -429,9 +429,79 @@ CREATE TABLE user_comparisons (
 
 ---
 
-## 10. Design System
+## 10. Infrastructure & Capacity
 
-### 10.1 Brand Colors
+### 10.1 Current Infrastructure (Render)
+
+| Component | Plan | Specs | Cost |
+|-----------|------|-------|------|
+| **API Server** | Starter | 512MB RAM, 0.5 CPU, 2 Gunicorn workers | $7/mo |
+| **Database** | Basic 256MB | PostgreSQL 15, ~20 connections | $6/mo |
+| **Frontend** | Static | CDN-served static files | Free |
+| **Cron Jobs** | Included | 5 scheduled jobs | Included |
+| **Total** | - | - | ~$13/mo + Claude API |
+
+### 10.2 Rate Limits
+
+| Endpoint | Limit | Purpose |
+|----------|-------|---------|
+| Register | 3/minute | Prevent spam signups |
+| Login | 5/minute | Prevent brute force |
+| Report Generation | 10/hour | Protect Claude API costs |
+| Comparison | 10/hour | Protect Claude API costs |
+
+### 10.3 Capacity Estimates
+
+| Metric | Current Capacity |
+|--------|------------------|
+| Concurrent users (browsing) | ~50-100 |
+| Concurrent report generations | 2-4 (worker limited) |
+| Database connections | ~20 max |
+| Daily active users (comfortable) | 100-200 |
+| Reports per day (sustainable) | ~500 |
+
+### 10.4 Bottlenecks (Priority Order)
+
+1. **Claude API (Primary Bottleneck)**
+   - Each report takes 15-45 seconds to generate
+   - Anthropic rate limits vary by API tier
+   - Cost: ~₹3-5 per report in tokens
+   - Solution: Report caching reduces repeat calls
+
+2. **Worker Count (2 workers)**
+   - Only 2 requests processed simultaneously
+   - Other requests queue up
+   - Long report generations block workers
+
+3. **Database Connections (~20)**
+   - Sufficient for current scale
+   - May need pooling at higher load
+
+### 10.5 Scaling Path
+
+| Trigger | Upgrade | Cost | Benefit |
+|---------|---------|------|---------|
+| >100 concurrent users | API → Standard | $25/mo | 2GB RAM, 1 CPU, 4 workers |
+| >500 concurrent users | API → Pro | $85/mo | 4GB RAM, 2 CPU, 8 workers |
+| DB connection limits | DB → Basic 1GB | $15/mo | More connections, storage |
+| High Claude API costs | Batch processing | - | Queue reports, process off-peak |
+| Global users | Multi-region | Variable | Add Singapore/EU regions |
+
+### 10.6 Cost Projections
+
+| Users/Month | Reports/Month | Claude API Cost | Infra Cost | Total |
+|-------------|---------------|-----------------|------------|-------|
+| 100 | 500 | ~₹2,000 | ~₹1,100 | ~₹3,100 |
+| 500 | 2,500 | ~₹10,000 | ~₹2,000 | ~₹12,000 |
+| 1,000 | 5,000 | ~₹20,000 | ~₹7,000 | ~₹27,000 |
+
+*Note: Claude API is the dominant cost factor. Report caching significantly reduces actual API calls.*
+
+---
+
+## 11. Design System
+
+### 11.1 Brand Colors
 
 **Primary Palette:**
 | Name | Hex | Usage |
@@ -449,7 +519,7 @@ CREATE TABLE user_comparisons (
 | Navy 300 | `#9fb3c8` | Secondary text |
 | Navy 400 | `#829ab1` | Muted text |
 
-### 10.2 Typography
+### 11.2 Typography
 
 | Style | Font | Weight | Size |
 |-------|------|--------|------|
@@ -458,7 +528,7 @@ CREATE TABLE user_comparisons (
 | Body | DM Sans / Inter | Regular | 14-16px |
 | Caption | Inter | Regular | 12px |
 
-### 10.3 Component Patterns
+### 11.3 Component Patterns
 
 **Cards:**
 ```css
@@ -486,7 +556,7 @@ hover: background #334e68;
 
 ---
 
-## 11. Future Considerations (Not in Initial Scope)
+## 12. Future Considerations (Not in Initial Scope)
 
 - **Chat with AI:** Ask follow-up questions about a stock
 - **Portfolio tracking:** Track holdings and performance
@@ -497,7 +567,7 @@ hover: background #334e68;
 
 ---
 
-## 12. Success Metrics
+## 13. Success Metrics
 
 | Metric | Target |
 |--------|--------|
@@ -509,7 +579,7 @@ hover: background #334e68;
 
 ---
 
-## 13. Contact
+## 14. Contact
 
 **Product:** Permabullish
 **Enterprise inquiries:** mail@mayaskara.com
