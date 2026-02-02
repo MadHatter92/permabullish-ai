@@ -838,19 +838,94 @@ async def get_report_direct_view(report_cache_id: int):
             color: #e8913a;
             text-decoration: none;
         }}
+        .cta-section {{
+            background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
+            padding: 24px 16px;
+            text-align: center;
+            color: white;
+        }}
+        .cta-section h3 {{
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }}
+        .cta-section p {{
+            font-size: 14px;
+            color: #9fb3c8;
+            margin-bottom: 16px;
+        }}
+        .cta-buttons {{
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 300px;
+            margin: 0 auto;
+        }}
+        .btn-primary {{
+            background: #e8913a;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 600;
+            text-align: center;
+        }}
+        .btn-secondary {{
+            background: rgba(255,255,255,0.1);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }}
+        .bottom-bar {{
+            position: sticky;
+            bottom: 0;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }}
+        .bottom-bar a {{
+            text-decoration: none;
+            font-size: 14px;
+        }}
+        .bottom-link {{
+            color: #6b7280;
+        }}
     </style>
 </head>
 <body>
     <nav class="nav">
-        <span class="nav-title">{ticker} Report</span>
-        <a href="{FRONTEND_URL}/generate.html" class="btn">Try Permabullish</a>
+        <a href="{FRONTEND_URL}" style="font-weight: 600; font-size: 14px;">Permabullish</a>
+        <a href="{FRONTEND_URL}/generate.html" class="btn">Try Free</a>
     </nav>
     <div class="report-content">
         {report_html}
     </div>
+    <div class="cta-section">
+        <h3>Like this report?</h3>
+        <p>Get AI-powered research on 3000+ Indian stocks</p>
+        <div class="cta-buttons">
+            <a href="{FRONTEND_URL}" class="btn-primary">Sign In with Google</a>
+            <a href="{FRONTEND_URL}/generate.html" class="btn-secondary">Try as Guest</a>
+        </div>
+    </div>
     <div class="footer">
         <p>AI-powered stock research by <a href="{FRONTEND_URL}">Permabullish</a></p>
+        <p style="margin-top: 4px;">Available in English, हिंदी & ગુજરાતી</p>
         <p style="margin-top: 8px;">Not financial advice. For educational purposes only.</p>
+    </div>
+    <div class="bottom-bar">
+        <a href="{FRONTEND_URL}" class="bottom-link">Home</a>
+        <a href="{FRONTEND_URL}/generate.html" class="btn" style="padding: 8px 16px; font-size: 13px;">Generate Report</a>
     </div>
 </body>
 </html>"""
