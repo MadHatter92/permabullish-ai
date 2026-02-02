@@ -1,9 +1,9 @@
 # Permabullish - AI Stock Researcher
 ## Product Requirements Document (PRD)
 
-**Version:** 2.2
-**Date:** January 30, 2026
-**Status:** Phase 1 Complete, Phase 2 & 3 Complete, Phase 5 Partially Complete
+**Version:** 2.3
+**Date:** February 2, 2026
+**Status:** Phase 1-4 Complete, Phase 7 Complete, Phase 5 Partially Complete
 
 ---
 
@@ -127,8 +127,32 @@ The product operates on a subscription model with tiered access, allowing users 
 - Cached reports are shared across all users for efficiency
 
 **Languages:**
-- Phase 1: English only
-- Phase 2: Hindi, Gujarati (dropdown selection)
+- English, Hindi, Gujarati (toggle selection on generate page)
+
+### 5.5 Stock Comparison Tool
+
+**Purpose:** Compare two stocks side-by-side with AI-powered verdict on which to invest in.
+
+**Comparison Contents:**
+- AI Verdict (which stock wins + conviction level)
+- One-line verdict summary
+- Key differentiators (Valuation, Growth, Quality, Risk)
+- Metrics comparison table with winner highlights
+- "Who should buy which" guidance
+- Links to full individual reports
+
+**Features:**
+- Dual stock selector with search
+- Language support (EN, Hindi, Gujarati)
+- Cached comparisons (view history in dashboard)
+- Social sharing with OG image previews
+- Costs 1 report credit per comparison
+
+**UI Elements:**
+- Verdict banner with trophy icon
+- Color-coded metrics table (green = winner)
+- Sticky bottom share bar
+- Mobile responsive layout
 
 ### 5.2 User Dashboard
 
@@ -268,6 +292,13 @@ The product operates on a subscription model with tiered access, allowing users 
 - `GET /api/reports/cached/{ticker}` - Get cached report if exists
 - Reports cached by ticker, shared across users
 
+**Comparisons:**
+- `POST /api/reports/compare` - Generate stock comparison
+- `GET /api/comparisons` - Get user's comparison history
+- `GET /api/comparisons/{id}` - Get specific comparison
+- `GET /api/comparisons/{id}/og-image` - OG image for sharing
+- `GET /api/comparisons/{id}/share` - Share page with OG meta tags
+
 **Watchlist:**
 - `GET /api/watchlist` - Get user's watchlist
 - `POST /api/watchlist` - Add stock to watchlist
@@ -369,6 +400,30 @@ CREATE TABLE screener_data (
     data JSONB,
     scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(ticker, exchange)
+);
+
+-- Comparison Cache (shared across users)
+CREATE TABLE comparison_cache (
+    id SERIAL PRIMARY KEY,
+    ticker_a VARCHAR(20) NOT NULL,
+    ticker_b VARCHAR(20) NOT NULL,
+    exchange_a VARCHAR(10) NOT NULL,
+    exchange_b VARCHAR(10) NOT NULL,
+    language VARCHAR(5) DEFAULT 'en',
+    comparison_data JSONB,
+    verdict VARCHAR(20),
+    conviction VARCHAR(20),
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(ticker_a, ticker_b, exchange_a, exchange_b, language)
+);
+
+-- User Comparison Access (tracks which comparisons user has viewed)
+CREATE TABLE user_comparisons (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    comparison_cache_id INTEGER REFERENCES comparison_cache(id),
+    first_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 

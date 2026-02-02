@@ -1,8 +1,8 @@
 # Permabullish - Product Roadmap
 ## AI Stock Researcher
 
-**Version:** 3.0
-**Last Updated:** January 31, 2026
+**Version:** 3.1
+**Last Updated:** February 2, 2026
 
 ---
 
@@ -511,6 +511,85 @@ Add Hindi and Gujarati language support for reports.
 
 ---
 
+## Phase 7.6: Stock Comparison Tool
+**Status:** ✅ COMPLETE
+**Completed:** February 2, 2026
+**Priority:** High
+
+### Objective
+Add a stock comparison feature where users can compare two stocks side-by-side with AI-powered verdict.
+
+### 7.6.1 Backend - Comparison API ✅
+
+- [x] Added `CompareRequest` Pydantic model
+- [x] Created `POST /api/reports/compare` endpoint
+- [x] Fetches stock data for both stocks in parallel
+- [x] Checks for cached comparisons by ticker pair + language
+- [x] Added `generate_comparison_analysis()` to `report_generator.py`
+- [x] AI compares stocks across: Valuation, Growth, Quality, Risk
+- [x] Returns verdict (STOCK_A, STOCK_B, or EITHER) with conviction level
+- [x] Deducts 1 report credit per comparison
+
+### 7.6.2 Backend - Comparison Caching ✅
+
+- [x] Created `comparison_cache` table for shared comparisons
+- [x] Created `user_comparisons` table linking users to comparisons
+- [x] Added `save_comparison()` and `get_cached_comparison()` functions
+- [x] Added `GET /api/comparisons` endpoint for user history
+- [x] Added `GET /api/comparisons/{id}` endpoint for specific comparison
+
+### 7.6.3 Backend - Social Sharing ✅
+
+- [x] Added `generate_comparison_share_card()` to `share_card.py`
+- [x] Creates 1200x630 PNG with verdict, tickers, and conviction
+- [x] Dynamic ticker badge positioning (handles long ticker names)
+- [x] Added `GET /api/comparisons/{id}/og-image` endpoint
+- [x] Added `GET /api/comparisons/{id}/share` page with OG meta tags
+
+### 7.6.4 Frontend - compare.html ✅
+
+- [x] Created comparison page with dual stock search
+- [x] Language selector (EN, Hindi, Gujarati)
+- [x] "Compare Now" button with loading state
+- [x] Verdict banner with trophy icon and conviction badge
+- [x] Metrics comparison table with winner highlighting
+- [x] Sticky bottom share bar (WhatsApp, Telegram, X, Copy)
+- [x] Mobile responsive layout
+
+### 7.6.5 Dashboard Integration ✅
+
+- [x] Added "Comparisons" tab between Reports and Watchlist
+- [x] Shows comparison history with ticker pairs and verdicts
+- [x] Clicking comparison loads cached result (via `?id=` parameter)
+- [x] Added `loadCachedComparison()` function
+
+### 7.6.6 UX Improvements ✅
+
+- [x] Wake Lock API prevents screen sleep during generation
+- [x] Fixed WhatsApp/Telegram share links (were opening blank)
+- [x] Shortened comparison page (removed Bull/Bear Cases, "Who Should Buy")
+- [x] Navigation links added from dashboard and generate pages
+
+### Deliverables
+- ✅ Full stock comparison feature
+- ✅ Multi-language support (EN, Hindi, Gujarati)
+- ✅ Comparison caching and history
+- ✅ Social sharing with OG images
+- ✅ Mobile-optimized UI
+
+### New Files
+- `frontend/compare.html` - Comparison page UI
+
+### Modified Files
+- `backend/main.py` - Comparison endpoints
+- `backend/report_generator.py` - AI comparison function
+- `backend/database.py` - Comparison caching functions
+- `backend/share_card.py` - Comparison OG image generation
+- `frontend/dashboard.html` - Comparisons tab
+- `frontend/generate.html` - Wake Lock API, compare link
+
+---
+
 ## Phase 7.5: Security & Best Practices
 **Status:** 🔄 IN PROGRESS
 **Priority:** High
@@ -587,7 +666,7 @@ Add Hindi and Gujarati language support for reports.
 - [ ] **Price alerts:** Notify when stock hits target
 - [ ] **Report alerts:** Notify when report is outdated
 - [ ] **Portfolio tracking:** Track holdings and returns
-- [ ] **Comparison reports:** Compare multiple stocks
+- [x] **Comparison reports:** Compare two stocks side-by-side ✅ (Phase 7.6)
 - [ ] **API access:** Programmatic access for Enterprise
 - [ ] **Mobile app:** Native iOS/Android
 - [ ] **International stocks:** US, UK markets
@@ -609,6 +688,7 @@ Add Hindi and Gujarati language support for reports.
 | 6 | ~~Landing Page~~ Mobile UX | Pending |
 | 7 | Multi-Language | ✅ Complete |
 | 7.5 | Security & Best Practices | 🔄 In Progress |
+| 7.6 | Stock Comparison Tool | ✅ Complete |
 | 8 | Future Features | Backlog |
 
 ---
@@ -689,10 +769,12 @@ python scripts/fundamentals_sync.py --test --symbol TCS
 
 ### Key Files
 - `backend/main.py` - FastAPI application
-- `backend/share_card.py` - Social sharing image generator
+- `backend/report_generator.py` - AI report and comparison generation
+- `backend/share_card.py` - Social sharing image generator (reports + comparisons)
 - `backend/cashfree.py` - Payment integration
 - `backend/email_service.py` - Email templates and sending (Resend)
 - `backend/config.py` - Subscription tiers, email config, and settings
+- `frontend/compare.html` - Stock comparison page
 - `frontend/config.js` - Frontend configuration and payment form URLs
 - `docs/ADMIN_GUIDE.md` - Enterprise user management guide
 
