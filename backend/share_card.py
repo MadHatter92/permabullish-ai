@@ -367,12 +367,21 @@ def generate_comparison_share_card(
     draw.text((60, 520), 'AI-Powered Stock Research', fill=COLORS['gray'], font=font_small)
     draw.text((60, 560), 'permabullish.com', fill=COLORS['orange'], font=font_medium)
 
-    # Ticker badges on right side
-    draw.rounded_rectangle([900, 520, 1000, 580], radius=10, fill='#3b82f6')  # Blue for A
-    draw.text((920, 535), ticker_a, fill=COLORS['white'], font=font_small)
+    # Ticker badges on right side (dynamic width based on text)
+    bbox_a = draw.textbbox((0, 0), ticker_a, font=font_small)
+    badge_a_width = bbox_a[2] - bbox_a[0] + 30
+    bbox_b = draw.textbbox((0, 0), ticker_b, font=font_small)
+    badge_b_width = bbox_b[2] - bbox_b[0] + 30
 
-    draw.rounded_rectangle([1020, 520, 1140, 580], radius=10, fill='#8b5cf6')  # Purple for B
-    draw.text((1040, 535), ticker_b, fill=COLORS['white'], font=font_small)
+    # Position badges from right edge
+    badge_b_x = width - 60 - badge_b_width
+    badge_a_x = badge_b_x - 10 - badge_a_width
+
+    draw.rounded_rectangle([badge_a_x, 520, badge_a_x + badge_a_width, 580], radius=10, fill='#3b82f6')  # Blue for A
+    draw.text((badge_a_x + 15, 535), ticker_a, fill=COLORS['white'], font=font_small)
+
+    draw.rounded_rectangle([badge_b_x, 520, badge_b_x + badge_b_width, 580], radius=10, fill='#8b5cf6')  # Purple for B
+    draw.text((badge_b_x + 15, 535), ticker_b, fill=COLORS['white'], font=font_small)
 
     # Convert to bytes
     buffer = BytesIO()
