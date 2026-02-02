@@ -840,7 +840,8 @@ async def compare_stocks(
         }
     }
 
-    return {
+    # Build the response
+    response_data = {
         "stock_a": {
             "ticker": ticker_a,
             "exchange": exchange_a,
@@ -888,6 +889,29 @@ async def compare_stocks(
         "language": language
     }
 
+    # Save the comparison to database
+    comparison_cache_id = db.save_comparison(
+        ticker_a=ticker_a,
+        exchange_a=exchange_a,
+        ticker_b=ticker_b,
+        exchange_b=exchange_b,
+        verdict=ai_comparison.get("verdict", "EITHER"),
+        verdict_stock=ai_comparison.get("verdict_stock", ""),
+        conviction=ai_comparison.get("conviction", "MEDIUM"),
+        one_line_verdict=ai_comparison.get("one_line_verdict", ""),
+        comparison_data=response_data,
+        language=language
+    )
+
+    # Link user to comparison if authenticated
+    if user_id:
+        db.link_user_to_comparison(user_id, comparison_cache_id)
+
+    # Add comparison_cache_id to response
+    response_data["comparison_cache_id"] = comparison_cache_id
+
+    return response_data
+
 
 @app.get("/api/reports")
 async def get_user_reports(
@@ -897,6 +921,36 @@ async def get_user_reports(
     """Get report history for authenticated user (with freshness info)."""
     reports = db.get_user_report_history(current_user["id"], limit=limit)
     return reports
+
+
+@app.get("/api/comparisons")
+async def get_user_comparisons(
+    limit: int = 50,
+    current_user: dict = Depends(auth.get_current_user)
+):
+    """Get comparison history for authenticated user."""
+    comparisons = db.get_user_comparison_history(current_user["id"], limit=limit)
+    return comparisons
+
+
+@app.get("/api/comparisons/{comparison_id}")
+async def get_comparison_by_id(
+    comparison_id: int,
+    current_user: Optional[dict] = Depends(auth.get_optional_current_user)
+):
+    """Get a specific comparison by ID."""
+    comparison = db.get_comparison_by_id(comparison_id)
+    if not comparison:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comparison not found"
+        )
+
+    # Link user to comparison if authenticated
+    if current_user:
+        db.link_user_to_comparison(current_user["id"], comparison_id)
+
+    return comparison
 
 
 @app.get("/api/reports/featured")
@@ -1222,6 +1276,72 @@ async def get_report_share_page(report_cache_id: int):
         recommendation=report.get("recommendation", "HOLD"),
         current_price=report.get("current_price"),
         target_price=report.get("ai_target_price"),
+        api_base=api_base,
+        frontend_url=FRONTEND_URL,
+    )
+
+    return HTMLResponse(content=html)
+
+
+# ============================================
+# Comparison Share Card Generation
+# ============================================
+
+@app.get("/api/comparisons/{comparison_id}/og-image")
+async def get_comparison_og_image(comparison_id: int):
+    """Generate and return Open Graph image for comparison social sharing."""
+    comparison = db.get_comparison_by_id(comparison_id)
+
+    if not comparison:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comparison not found"
+        )
+
+    # Generate share card image
+    image_bytes = share_card.generate_comparison_share_card(
+        ticker_a=comparison.get("ticker_a", ""),
+        ticker_b=comparison.get("ticker_b", ""),
+        verdict=comparison.get("verdict", "EITHER"),
+        verdict_stock=comparison.get("verdict_stock", ""),
+        conviction=comparison.get("conviction", "MEDIUM"),
+        one_line_verdict=comparison.get("one_line_verdict", ""),
+    )
+
+    return Response(
+        content=image_bytes,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=86400",  # Cache for 24 hours
+        }
+    )
+
+
+@app.get("/api/comparisons/{comparison_id}/share", response_class=HTMLResponse)
+async def get_comparison_share_page(comparison_id: int):
+    """Return HTML page with OG meta tags for comparison social sharing. Redirects to comparison page."""
+    comparison = db.get_comparison_by_id(comparison_id)
+
+    if not comparison:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comparison not found"
+        )
+
+    # Determine API base URL
+    if ENVIRONMENT == "production":
+        api_base = "https://api.permabullish.com/api"
+    else:
+        api_base = "https://permabullish-api.onrender.com/api"
+
+    html = share_card.generate_comparison_share_html(
+        comparison_id=comparison_id,
+        ticker_a=comparison.get("ticker_a", ""),
+        ticker_b=comparison.get("ticker_b", ""),
+        verdict=comparison.get("verdict", "EITHER"),
+        verdict_stock=comparison.get("verdict_stock", ""),
+        conviction=comparison.get("conviction", "MEDIUM"),
+        one_line_verdict=comparison.get("one_line_verdict", ""),
         api_base=api_base,
         frontend_url=FRONTEND_URL,
     )

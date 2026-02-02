@@ -331,6 +331,40 @@ def init_database():
                 CREATE INDEX IF NOT EXISTS idx_fundamentals_symbol ON stock_fundamentals(symbol)
             """)
 
+            # Comparison cache - stores comparison results
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS comparison_cache (
+                    id SERIAL PRIMARY KEY,
+                    ticker_a VARCHAR(20) NOT NULL,
+                    exchange_a VARCHAR(10) NOT NULL,
+                    ticker_b VARCHAR(20) NOT NULL,
+                    exchange_b VARCHAR(10) NOT NULL,
+                    language VARCHAR(10) DEFAULT 'en',
+                    verdict VARCHAR(20),
+                    verdict_stock VARCHAR(20),
+                    conviction VARCHAR(20),
+                    one_line_verdict TEXT,
+                    comparison_data JSONB,
+                    input_tokens INTEGER DEFAULT 0,
+                    output_tokens INTEGER DEFAULT 0,
+                    total_tokens INTEGER DEFAULT 0,
+                    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(ticker_a, exchange_a, ticker_b, exchange_b, language)
+                )
+            """)
+
+            # User comparisons - links users to cached comparisons
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_comparisons (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    comparison_cache_id INTEGER NOT NULL REFERENCES comparison_cache(id),
+                    first_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, comparison_cache_id)
+                )
+            """)
+
             # Add subscription_expires_at column if not exists (migration)
             try:
                 cursor.execute("""
@@ -531,6 +565,42 @@ def init_database():
                     source_url TEXT,
                     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Comparison cache - stores comparison results
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS comparison_cache (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ticker_a TEXT NOT NULL,
+                    exchange_a TEXT NOT NULL,
+                    ticker_b TEXT NOT NULL,
+                    exchange_b TEXT NOT NULL,
+                    language TEXT DEFAULT 'en',
+                    verdict TEXT,
+                    verdict_stock TEXT,
+                    conviction TEXT,
+                    one_line_verdict TEXT,
+                    comparison_data TEXT,
+                    input_tokens INTEGER DEFAULT 0,
+                    output_tokens INTEGER DEFAULT 0,
+                    total_tokens INTEGER DEFAULT 0,
+                    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(ticker_a, exchange_a, ticker_b, exchange_b, language)
+                )
+            """)
+
+            # User comparisons - links users to cached comparisons
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_comparisons (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    comparison_cache_id INTEGER NOT NULL,
+                    first_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id),
+                    FOREIGN KEY (comparison_cache_id) REFERENCES comparison_cache(id),
+                    UNIQUE(user_id, comparison_cache_id)
                 )
             """)
 
@@ -1881,6 +1951,209 @@ def is_fundamentals_fresh(symbol: str, max_age_days: int = 45) -> bool:
             """, (symbol.upper(),))
 
         return cursor.fetchone() is not None
+
+
+# ============================================
+# Comparison Cache Operations
+# ============================================
+
+def get_cached_comparison(
+    ticker_a: str, exchange_a: str,
+    ticker_b: str, exchange_b: str,
+    language: str = 'en'
+) -> Optional[dict]:
+    """Get a cached comparison if it exists and is fresh (less than 7 days old)."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+
+        if USE_POSTGRES:
+            cursor.execute(f"""
+                SELECT * FROM comparison_cache
+                WHERE ticker_a = {p} AND exchange_a = {p}
+                  AND ticker_b = {p} AND exchange_b = {p}
+                  AND language = {p}
+                  AND generated_at > CURRENT_TIMESTAMP - INTERVAL '7 days'
+            """, (ticker_a.upper(), exchange_a.upper(), ticker_b.upper(), exchange_b.upper(), language))
+        else:
+            cursor.execute(f"""
+                SELECT * FROM comparison_cache
+                WHERE ticker_a = {p} AND exchange_a = {p}
+                  AND ticker_b = {p} AND exchange_b = {p}
+                  AND language = {p}
+                  AND generated_at > datetime('now', '-7 days')
+            """, (ticker_a.upper(), exchange_a.upper(), ticker_b.upper(), exchange_b.upper(), language))
+
+        row = cursor.fetchone()
+        if row:
+            result = _dict_from_row(row)
+            # Parse comparison_data if it's a string (SQLite)
+            if result.get('comparison_data') and isinstance(result['comparison_data'], str):
+                try:
+                    result['comparison_data'] = json.loads(result['comparison_data'])
+                except:
+                    pass
+            return result
+        return None
+
+
+def save_comparison(
+    ticker_a: str, exchange_a: str,
+    ticker_b: str, exchange_b: str,
+    verdict: str,
+    verdict_stock: str,
+    conviction: str,
+    one_line_verdict: str,
+    comparison_data: dict,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    total_tokens: int = 0,
+    language: str = 'en'
+) -> int:
+    """Save or update a cached comparison. Returns the comparison cache ID."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        comparison_json = json.dumps(comparison_data) if comparison_data else None
+
+        if USE_POSTGRES:
+            cursor.execute("""
+                INSERT INTO comparison_cache
+                (ticker_a, exchange_a, ticker_b, exchange_b, language, verdict, verdict_stock, conviction, one_line_verdict, comparison_data, input_tokens, output_tokens, total_tokens, generated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (ticker_a, exchange_a, ticker_b, exchange_b, language)
+                DO UPDATE SET
+                    verdict = EXCLUDED.verdict,
+                    verdict_stock = EXCLUDED.verdict_stock,
+                    conviction = EXCLUDED.conviction,
+                    one_line_verdict = EXCLUDED.one_line_verdict,
+                    comparison_data = EXCLUDED.comparison_data,
+                    input_tokens = EXCLUDED.input_tokens,
+                    output_tokens = EXCLUDED.output_tokens,
+                    total_tokens = EXCLUDED.total_tokens,
+                    generated_at = CURRENT_TIMESTAMP
+                RETURNING id
+            """, (ticker_a.upper(), exchange_a.upper(), ticker_b.upper(), exchange_b.upper(), language,
+                  verdict, verdict_stock, conviction, one_line_verdict, comparison_json,
+                  input_tokens, output_tokens, total_tokens))
+            result = cursor.fetchone()
+            conn.commit()
+            return result['id']
+        else:
+            cursor.execute("""
+                INSERT INTO comparison_cache
+                (ticker_a, exchange_a, ticker_b, exchange_b, language, verdict, verdict_stock, conviction, one_line_verdict, comparison_data, input_tokens, output_tokens, total_tokens, generated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT (ticker_a, exchange_a, ticker_b, exchange_b, language)
+                DO UPDATE SET
+                    verdict = excluded.verdict,
+                    verdict_stock = excluded.verdict_stock,
+                    conviction = excluded.conviction,
+                    one_line_verdict = excluded.one_line_verdict,
+                    comparison_data = excluded.comparison_data,
+                    input_tokens = excluded.input_tokens,
+                    output_tokens = excluded.output_tokens,
+                    total_tokens = excluded.total_tokens,
+                    generated_at = CURRENT_TIMESTAMP
+            """, (ticker_a.upper(), exchange_a.upper(), ticker_b.upper(), exchange_b.upper(), language,
+                  verdict, verdict_stock, conviction, one_line_verdict, comparison_json,
+                  input_tokens, output_tokens, total_tokens))
+            conn.commit()
+            cursor.execute("""
+                SELECT id FROM comparison_cache
+                WHERE ticker_a = ? AND exchange_a = ? AND ticker_b = ? AND exchange_b = ? AND language = ?
+            """, (ticker_a.upper(), exchange_a.upper(), ticker_b.upper(), exchange_b.upper(), language))
+            row = cursor.fetchone()
+            return row['id'] if row else cursor.lastrowid
+
+
+def get_comparison_by_id(comparison_id: int) -> Optional[dict]:
+    """Get a comparison by its ID."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"SELECT * FROM comparison_cache WHERE id = {p}", (comparison_id,))
+        row = cursor.fetchone()
+        if row:
+            result = _dict_from_row(row)
+            if result.get('comparison_data') and isinstance(result['comparison_data'], str):
+                try:
+                    result['comparison_data'] = json.loads(result['comparison_data'])
+                except:
+                    pass
+            return result
+        return None
+
+
+def link_user_to_comparison(user_id: int, comparison_cache_id: int) -> int:
+    """Link a user to a cached comparison (tracks viewing). Returns user_comparison id."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        if USE_POSTGRES:
+            cursor.execute("""
+                INSERT INTO user_comparisons (user_id, comparison_cache_id, first_viewed_at, last_viewed_at)
+                VALUES (%s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT (user_id, comparison_cache_id)
+                DO UPDATE SET last_viewed_at = CURRENT_TIMESTAMP
+                RETURNING id
+            """, (user_id, comparison_cache_id))
+            result = cursor.fetchone()
+            conn.commit()
+            return result['id']
+        else:
+            cursor.execute("""
+                INSERT INTO user_comparisons (user_id, comparison_cache_id, first_viewed_at, last_viewed_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT (user_id, comparison_cache_id)
+                DO UPDATE SET last_viewed_at = CURRENT_TIMESTAMP
+            """, (user_id, comparison_cache_id))
+            conn.commit()
+            cursor.execute("SELECT id FROM user_comparisons WHERE user_id = ? AND comparison_cache_id = ?",
+                          (user_id, comparison_cache_id))
+            row = cursor.fetchone()
+            return row['id'] if row else cursor.lastrowid
+
+
+def get_user_comparison_history(user_id: int, limit: int = 50) -> List[dict]:
+    """Get user's comparison history."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(f"""
+            SELECT
+                cc.id as comparison_cache_id,
+                cc.ticker_a,
+                cc.exchange_a,
+                cc.ticker_b,
+                cc.exchange_b,
+                cc.verdict,
+                cc.verdict_stock,
+                cc.conviction,
+                cc.one_line_verdict,
+                cc.language,
+                cc.generated_at,
+                uc.first_viewed_at,
+                uc.last_viewed_at
+            FROM user_comparisons uc
+            JOIN comparison_cache cc ON uc.comparison_cache_id = cc.id
+            WHERE uc.user_id = {p}
+            ORDER BY uc.last_viewed_at DESC
+            LIMIT {p}
+        """, (user_id, limit))
+        rows = cursor.fetchall()
+        results = []
+        for row in rows:
+            item = _dict_from_row(row)
+            item['language'] = item.get('language', 'en')
+            # Calculate freshness
+            if item.get('generated_at'):
+                from datetime import datetime, timedelta
+                generated = item['generated_at']
+                if isinstance(generated, str):
+                    generated = datetime.fromisoformat(generated.replace('Z', '+00:00').replace(' ', 'T'))
+                item['is_outdated'] = (datetime.now() - generated.replace(tzinfo=None)) > timedelta(days=7)
+                item['days_old'] = (datetime.now() - generated.replace(tzinfo=None)).days
+            results.append(item)
+        return results
 
 
 # Initialize database on module import

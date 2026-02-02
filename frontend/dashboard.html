@@ -241,7 +241,10 @@
         <div class="border-b border-gray-200 mb-6">
             <nav class="flex space-x-8">
                 <button onclick="showTab('reports')" id="tab-reports" class="tab-active pb-3 px-1 text-sm font-medium transition-all">
-                    Report History
+                    Reports
+                </button>
+                <button onclick="showTab('comparisons')" id="tab-comparisons" class="tab-inactive pb-3 px-1 text-sm font-medium transition-all hover:text-gray-700">
+                    Comparisons
                 </button>
                 <button onclick="showTab('watchlist')" id="tab-watchlist" class="tab-inactive pb-3 px-1 text-sm font-medium transition-all hover:text-gray-700">
                     Watchlist
@@ -277,6 +280,34 @@
 
             <div id="reportsList" class="hidden divide-y divide-gray-100">
                 <!-- Reports will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Comparisons Tab -->
+        <div id="panel-comparisons" class="hidden bg-white rounded-xl shadow-sm border border-gray-100">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-900">Stock Comparisons</h2>
+                <a href="compare.html" class="text-sm text-[#e8913a] hover:underline">+ New Comparison</a>
+            </div>
+
+            <div id="comparisonsLoading" class="p-8 text-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#e8913a] mx-auto"></div>
+                <p class="text-gray-500 mt-2">Loading comparisons...</p>
+            </div>
+
+            <div id="comparisonsEmpty" class="hidden p-8 text-center">
+                <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <h3 class="text-lg font-medium text-gray-900 mb-1">No comparisons yet</h3>
+                <p class="text-gray-500 mb-4">Compare two stocks side-by-side with AI analysis</p>
+                <a href="compare.html" class="inline-block bg-[#e8913a] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#d97316] transition-all">
+                    Compare Stocks
+                </a>
+            </div>
+
+            <div id="comparisonsList" class="hidden divide-y divide-gray-100">
+                <!-- Comparisons will be inserted here -->
             </div>
         </div>
 
@@ -389,15 +420,19 @@
 
             // Update tab styles
             document.getElementById('tab-reports').className = tab === 'reports' ? 'tab-active pb-3 px-1 text-sm font-medium transition-all' : 'tab-inactive pb-3 px-1 text-sm font-medium transition-all hover:text-gray-700';
+            document.getElementById('tab-comparisons').className = tab === 'comparisons' ? 'tab-active pb-3 px-1 text-sm font-medium transition-all' : 'tab-inactive pb-3 px-1 text-sm font-medium transition-all hover:text-gray-700';
             document.getElementById('tab-watchlist').className = tab === 'watchlist' ? 'tab-active pb-3 px-1 text-sm font-medium transition-all' : 'tab-inactive pb-3 px-1 text-sm font-medium transition-all hover:text-gray-700';
 
             // Show/hide panels
             document.getElementById('panel-reports').classList.toggle('hidden', tab !== 'reports');
+            document.getElementById('panel-comparisons').classList.toggle('hidden', tab !== 'comparisons');
             document.getElementById('panel-watchlist').classList.toggle('hidden', tab !== 'watchlist');
 
             // Load data for tab
             if (tab === 'watchlist') {
                 loadWatchlist();
+            } else if (tab === 'comparisons') {
+                loadComparisons();
             }
         }
 
@@ -636,6 +671,64 @@
             } catch (error) {
                 console.error('Failed to load reports:', error);
                 loadingEl.innerHTML = '<p class="text-red-500 p-4">Failed to load reports</p>';
+            }
+        }
+
+        let comparisonsLoaded = false;
+        async function loadComparisons() {
+            if (comparisonsLoaded) return;
+
+            const loadingEl = document.getElementById('comparisonsLoading');
+            const emptyEl = document.getElementById('comparisonsEmpty');
+            const listEl = document.getElementById('comparisonsList');
+
+            try {
+                const response = await apiCall('/comparisons');
+                const comparisons = await response.json();
+
+                loadingEl.classList.add('hidden');
+
+                if (comparisons.length === 0) {
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                listEl.innerHTML = comparisons.map(comp => `
+                    <div class="p-3 sm:p-4 hover:bg-gray-50 transition-all">
+                        <div class="flex flex-col gap-2 sm:gap-0 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="flex items-center space-x-3 min-w-0 flex-1">
+                                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-bold text-white text-sm bg-purple-500 flex-shrink-0">
+                                    VS
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <h3 class="font-medium text-gray-900 text-sm sm:text-base">${comp.ticker_a} vs ${comp.ticker_b}</h3>
+                                        ${comp.is_outdated ? '<span class="px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full whitespace-nowrap">Outdated</span>' : ''}
+                                        ${comp.language && comp.language !== 'en' ? '<span class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded ' + (comp.language === 'hi' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700') + '">' + (comp.language === 'hi' ? 'हिंदी' : 'ગુજરાતી') + '</span>' : ''}
+                                    </div>
+                                    <p class="text-xs sm:text-sm text-gray-500">Winner: <span class="font-medium ${comp.verdict === 'STOCK_A' ? 'text-blue-600' : comp.verdict === 'STOCK_B' ? 'text-purple-600' : 'text-gray-600'}">${comp.verdict_stock || 'Either'}</span> (${comp.conviction || 'Medium'}) | ${formatDate(comp.generated_at)}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-end pl-11 sm:pl-0">
+                                <div class="flex space-x-1 flex-shrink-0">
+                                    <a href="compare.html?a=${comp.ticker_a}&b=${comp.ticker_b}${comp.language && comp.language !== 'en' ? '&lang=' + comp.language : ''}" class="p-2 text-[#e8913a] hover:bg-[#fdecd4] rounded-lg transition-all" title="View Comparison">
+                                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                listEl.classList.remove('hidden');
+                comparisonsLoaded = true;
+
+            } catch (error) {
+                console.error('Failed to load comparisons:', error);
+                loadingEl.innerHTML = '<p class="text-red-500 p-4">Failed to load comparisons</p>';
             }
         }
 

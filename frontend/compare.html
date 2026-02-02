@@ -142,8 +142,27 @@
                 </div>
             </div>
 
+            <!-- Language Selector -->
+            <div class="flex items-center justify-center gap-3 mt-4">
+                <label class="text-sm text-gray-600">Language:</label>
+                <div class="flex rounded-lg border border-gray-200 overflow-hidden">
+                    <button type="button" onclick="selectLanguage('en')" id="lang-en"
+                        class="lang-btn px-3 py-1.5 text-sm font-medium bg-[#1e3a5f] text-white transition-all">
+                        EN
+                    </button>
+                    <button type="button" onclick="selectLanguage('hi')" id="lang-hi"
+                        class="lang-btn px-3 py-1.5 text-sm font-medium bg-white text-gray-600 hover:bg-gray-50 transition-all border-l border-gray-200">
+                        हिंदी
+                    </button>
+                    <button type="button" onclick="selectLanguage('gu')" id="lang-gu"
+                        class="lang-btn px-3 py-1.5 text-sm font-medium bg-white text-gray-600 hover:bg-gray-50 transition-all border-l border-gray-200">
+                        ગુજરાતી
+                    </button>
+                </div>
+            </div>
+
             <!-- Compare Button -->
-            <div class="mt-6 text-center">
+            <div class="mt-4 text-center">
                 <button id="compareBtn" onclick="compareStocks()" disabled
                     class="px-8 py-3 bg-[#e8913a] hover:bg-[#d97316] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all focus:ring-4 focus:ring-[#fdecd4]">
                     <span id="compareBtnText">Select Two Stocks to Compare</span>
@@ -297,25 +316,6 @@
                 </div>
             </div>
 
-            <!-- Share Section -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="font-semibold text-gray-900 mb-4">Share This Comparison</h3>
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="shareWhatsApp()" class="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                        WhatsApp
-                    </button>
-                    <button onclick="shareTelegram()" class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                        Telegram
-                    </button>
-                    <button onclick="copyLink()" class="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                        Copy Link
-                    </button>
-                </div>
-            </div>
-
             <!-- Compare Another -->
             <div class="text-center">
                 <button onclick="resetComparison()" class="text-[#e8913a] hover:underline font-medium">
@@ -332,8 +332,50 @@
         </footer>
     </main>
 
+    <!-- Bottom Action Bar (shown after comparison results) -->
+    <div id="bottomBar" class="hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40">
+        <div class="max-w-full mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3">
+            <div class="flex items-center justify-between gap-4">
+                <!-- Home Button -->
+                <a href="index.html" class="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 text-gray-600 hover:text-[#102a43] hover:bg-gray-100 rounded-lg transition-all text-sm">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span class="hidden sm:inline">Home</span>
+                </a>
+
+                <!-- Share Section -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <span class="text-xs sm:text-sm text-gray-500">Share</span>
+                    <div class="flex items-center gap-1.5 sm:gap-2">
+                        <!-- WhatsApp Share -->
+                        <a id="whatsappShareLink" href="#" target="_blank" rel="noopener" class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-full transition-all" title="Share on WhatsApp">
+                            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                        </a>
+                        <!-- Telegram Share -->
+                        <a id="telegramShareLink" href="#" target="_blank" rel="noopener" class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-[#0088cc] hover:bg-[#0077b5] text-white rounded-full transition-all" title="Share on Telegram">
+                            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                            </svg>
+                        </a>
+                        <!-- Copy Link -->
+                        <button onclick="copyLink()" class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full transition-all" title="Copy Link">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Disclaimer -->
+            <p class="text-[10px] text-gray-400 text-center mt-1.5 leading-tight">Not financial advice. For educational purposes only. <a href="mailto:mail@mayaskara.com" class="hover:text-gray-600 transition-colors">Contact Us</a></p>
+        </div>
+    </div>
+
     <!-- Toast -->
-    <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg z-50">
+    <div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg z-50">
         <span id="toastText">Link copied!</span>
     </div>
 
@@ -344,9 +386,23 @@
         let comparisonResult = null;
         let searchTimeoutA = null;
         let searchTimeoutB = null;
+        let selectedLanguage = 'en';
 
         const token = localStorage.getItem('token');
         const isLoggedIn = !!token;
+
+        // Language selection
+        function selectLanguage(lang) {
+            selectedLanguage = lang;
+            // Update button styles
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.style.backgroundColor = '#ffffff';
+                btn.style.color = '#4b5563';
+            });
+            const activeBtn = document.getElementById('lang-' + lang);
+            activeBtn.style.backgroundColor = '#1e3a5f';
+            activeBtn.style.color = '#ffffff';
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             updateAuthUI();
@@ -523,7 +579,7 @@
                         stock_b: stockB.symbol,
                         exchange_a: stockA.exchange,
                         exchange_b: stockB.exchange,
-                        language: 'en'
+                        language: selectedLanguage
                     })
                 });
 
@@ -546,6 +602,8 @@
         function displayResults(data) {
             document.getElementById('loadingState').classList.add('hidden');
             document.getElementById('resultsSection').classList.remove('hidden');
+            document.getElementById('bottomBar').classList.remove('hidden');
+            document.querySelector('main').classList.add('pb-24');
 
             const comparison = data.ai_comparison;
             const sa = data.stock_a;
@@ -642,6 +700,9 @@
             document.getElementById('buyBHeader').textContent = `Buy ${sb.ticker} if...`;
             document.getElementById('whoShouldBuyA').textContent = comparison.who_should_buy_a;
             document.getElementById('whoShouldBuyB').textContent = comparison.who_should_buy_b;
+
+            // Update share links in bottom bar
+            updateShareLinks();
         }
 
         function resetComparison() {
@@ -653,6 +714,8 @@
             document.getElementById('loadingState').classList.add('hidden');
             document.getElementById('errorState').classList.add('hidden');
             document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('bottomBar').classList.add('hidden');
+            document.querySelector('main').classList.remove('pb-24');
             updateCompareButton();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -667,20 +730,35 @@
 
         function getShareUrl() {
             if (!comparisonResult) return window.location.href;
+
+            // If we have a comparison_cache_id, use the share page URL for OG image support
+            if (comparisonResult.comparison_cache_id) {
+                return `${API_BASE}/comparisons/${comparisonResult.comparison_cache_id}/share`;
+            }
+
+            // Fallback to direct compare page URL
             const sa = comparisonResult.stock_a;
             const sb = comparisonResult.stock_b;
-            return `${window.location.origin}/compare.html?a=${sa.ticker}&b=${sb.ticker}`;
+            let url = `${window.location.origin}/compare.html?a=${sa.ticker}&b=${sb.ticker}`;
+            if (selectedLanguage !== 'en') {
+                url += `&lang=${selectedLanguage}`;
+            }
+            return url;
         }
 
-        function shareWhatsApp() {
-            const text = encodeURIComponent(getShareText() + '\n' + getShareUrl());
-            window.open(`https://wa.me/?text=${text}`, '_blank');
-        }
+        function updateShareLinks() {
+            if (!comparisonResult) return;
+            const shareUrl = getShareUrl();
+            const shareText = getShareText();
 
-        function shareTelegram() {
-            const text = encodeURIComponent(getShareText());
-            const url = encodeURIComponent(getShareUrl());
-            window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank');
+            // WhatsApp - uses wa.me with text parameter
+            const waText = encodeURIComponent(shareText + '\n' + shareUrl);
+            document.getElementById('whatsappShareLink').href = `https://wa.me/?text=${waText}`;
+
+            // Telegram - uses t.me/share/url
+            const tgUrl = encodeURIComponent(shareUrl);
+            const tgText = encodeURIComponent(shareText);
+            document.getElementById('telegramShareLink').href = `https://t.me/share/url?url=${tgUrl}&text=${tgText}`;
         }
 
         function copyLink() {
@@ -694,10 +772,15 @@
             setTimeout(() => toast.classList.add('hidden'), 3000);
         }
 
-        // Handle URL params for pre-selected stocks
+        // Handle URL params for pre-selected stocks and language
         const urlParams = new URLSearchParams(window.location.search);
         const paramA = urlParams.get('a');
         const paramB = urlParams.get('b');
+        const paramLang = urlParams.get('lang');
+
+        if (paramLang && ['en', 'hi', 'gu'].includes(paramLang)) {
+            selectLanguage(paramLang);
+        }
         if (paramA) {
             setTimeout(() => selectStock(paramA, paramA, 'A'), 100);
         }
