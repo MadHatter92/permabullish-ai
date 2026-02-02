@@ -776,6 +776,17 @@
                 document.getElementById('progressText').textContent = 'Generating research report...';
             }, 3000);
 
+            // Request wake lock to prevent screen from sleeping during generation
+            let wakeLock = null;
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake lock acquired');
+                }
+            } catch (err) {
+                console.log('Wake lock not available:', err.message);
+            }
+
             try {
                 // If there's a cached report and user clicked the button, they want a fresh report
                 const shouldRegenerate = forceRegenerate || (cachedReport !== null);
@@ -844,6 +855,11 @@
                     document.getElementById('errorText').textContent = error.message;
                 }
             } finally {
+                // Release wake lock
+                if (wakeLock) {
+                    wakeLock.release();
+                    console.log('Wake lock released');
+                }
                 // Refresh usage display after generation attempt
                 updateUsageDisplay();
             }

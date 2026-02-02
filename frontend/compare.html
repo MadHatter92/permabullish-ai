@@ -246,73 +246,21 @@
                 </div>
             </div>
 
-            <!-- Bull & Bear Cases Side by Side -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Stock A Cases -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="p-4 border-b border-blue-100 bg-blue-50">
-                        <h3 id="casesHeaderA" class="font-semibold text-gray-900"></h3>
-                    </div>
-                    <div class="p-4">
-                        <div class="mb-4">
-                            <h4 class="text-sm font-medium text-green-700 mb-2 flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                                Bull Case
-                            </h4>
-                            <ul id="bullCaseA" class="space-y-2 text-sm text-gray-600"></ul>
-                        </div>
-                        <div>
-                            <h4 class="text-sm font-medium text-red-700 mb-2 flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                                Bear Case
-                            </h4>
-                            <ul id="bearCaseA" class="space-y-2 text-sm text-gray-600"></ul>
-                        </div>
-                    </div>
-                    <div class="p-4 border-t border-gray-100 bg-gray-50">
-                        <a id="reportLinkA" href="#" class="text-sm text-[#e8913a] hover:underline font-medium">View Full Report</a>
-                    </div>
-                </div>
-
-                <!-- Stock B Cases -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="p-4 border-b border-purple-100 bg-purple-50">
-                        <h3 id="casesHeaderB" class="font-semibold text-gray-900"></h3>
-                    </div>
-                    <div class="p-4">
-                        <div class="mb-4">
-                            <h4 class="text-sm font-medium text-green-700 mb-2 flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                                Bull Case
-                            </h4>
-                            <ul id="bullCaseB" class="space-y-2 text-sm text-gray-600"></ul>
-                        </div>
-                        <div>
-                            <h4 class="text-sm font-medium text-red-700 mb-2 flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                                Bear Case
-                            </h4>
-                            <ul id="bearCaseB" class="space-y-2 text-sm text-gray-600"></ul>
-                        </div>
-                    </div>
-                    <div class="p-4 border-t border-gray-100 bg-gray-50">
-                        <a id="reportLinkB" href="#" class="text-sm text-purple-600 hover:underline font-medium">View Full Report</a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Who Should Buy Which -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="font-semibold text-gray-900 mb-4">Who Should Buy Which?</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <p class="font-medium text-blue-900 mb-1" id="buyAHeader">Buy Stock A if...</p>
-                        <p id="whoShouldBuyA" class="text-sm text-blue-700"></p>
-                    </div>
-                    <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                        <p class="font-medium text-purple-900 mb-1" id="buyBHeader">Buy Stock B if...</p>
-                        <p id="whoShouldBuyB" class="text-sm text-purple-700"></p>
-                    </div>
+            <!-- View Full Reports Links -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a id="reportLinkA" href="#" class="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span id="reportLinkAText">Full Report</span>
+                    </a>
+                    <a id="reportLinkB" href="#" class="flex items-center gap-2 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span id="reportLinkBText">Full Report</span>
+                    </a>
                 </div>
             </div>
 
@@ -571,6 +519,17 @@
             document.getElementById('errorState').classList.add('hidden');
             document.getElementById('resultsSection').classList.add('hidden');
 
+            // Request wake lock to prevent screen from sleeping during comparison
+            let wakeLock = null;
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake lock acquired');
+                }
+            } catch (err) {
+                console.log('Wake lock not available:', err.message);
+            }
+
             try {
                 const response = await apiCall('/reports/compare', {
                     method: 'POST',
@@ -596,6 +555,12 @@
                 document.getElementById('loadingState').classList.add('hidden');
                 document.getElementById('errorState').classList.remove('hidden');
                 document.getElementById('errorText').textContent = error.message;
+            } finally {
+                // Release wake lock
+                if (wakeLock) {
+                    wakeLock.release();
+                    console.log('Wake lock released');
+                }
             }
         }
 
@@ -671,35 +636,21 @@
                 `;
             }).join('');
 
-            // Bull/Bear cases
-            document.getElementById('casesHeaderA').textContent = sa.company_name;
-            document.getElementById('casesHeaderB').textContent = sb.company_name;
-            document.getElementById('bullCaseA').innerHTML = (sa.bull_case || []).map(p => `<li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">+</span>${p}</li>`).join('');
-            document.getElementById('bearCaseA').innerHTML = (sa.bear_case || []).map(p => `<li class="flex items-start gap-2"><span class="text-red-500 mt-0.5">-</span>${p}</li>`).join('');
-            document.getElementById('bullCaseB').innerHTML = (sb.bull_case || []).map(p => `<li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">+</span>${p}</li>`).join('');
-            document.getElementById('bearCaseB').innerHTML = (sb.bear_case || []).map(p => `<li class="flex items-start gap-2"><span class="text-red-500 mt-0.5">-</span>${p}</li>`).join('');
-
             // Report links
             if (sa.report_cache_id) {
                 document.getElementById('reportLinkA').href = `report.html?id=${sa.report_cache_id}`;
-                document.getElementById('reportLinkA').classList.remove('hidden');
+                document.getElementById('reportLinkAText').textContent = `${sa.ticker} Full Report`;
             } else {
                 document.getElementById('reportLinkA').href = `generate.html?ticker=${sa.ticker}`;
-                document.getElementById('reportLinkA').textContent = 'Generate Full Report';
+                document.getElementById('reportLinkAText').textContent = `Generate ${sa.ticker} Report`;
             }
             if (sb.report_cache_id) {
                 document.getElementById('reportLinkB').href = `report.html?id=${sb.report_cache_id}`;
-                document.getElementById('reportLinkB').classList.remove('hidden');
+                document.getElementById('reportLinkBText').textContent = `${sb.ticker} Full Report`;
             } else {
                 document.getElementById('reportLinkB').href = `generate.html?ticker=${sb.ticker}`;
-                document.getElementById('reportLinkB').textContent = 'Generate Full Report';
+                document.getElementById('reportLinkBText').textContent = `Generate ${sb.ticker} Report`;
             }
-
-            // Who should buy
-            document.getElementById('buyAHeader').textContent = `Buy ${sa.ticker} if...`;
-            document.getElementById('buyBHeader').textContent = `Buy ${sb.ticker} if...`;
-            document.getElementById('whoShouldBuyA').textContent = comparison.who_should_buy_a;
-            document.getElementById('whoShouldBuyB').textContent = comparison.who_should_buy_b;
 
             // Update share links in bottom bar
             updateShareLinks();
@@ -772,20 +723,61 @@
             setTimeout(() => toast.classList.add('hidden'), 3000);
         }
 
-        // Handle URL params for pre-selected stocks and language
+        // Load cached comparison by ID
+        async function loadCachedComparison(comparisonId) {
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('loadingText').textContent = 'Loading comparison...';
+
+            try {
+                const response = await apiCall(`/comparisons/${comparisonId}`);
+                if (!response.ok) {
+                    throw new Error('Comparison not found');
+                }
+
+                const cached = await response.json();
+
+                // The cached comparison has comparison_data which contains the full response
+                if (cached.comparison_data) {
+                    comparisonResult = cached.comparison_data;
+                    comparisonResult.comparison_cache_id = cached.id;
+
+                    // Set language from cached comparison
+                    if (cached.language && ['en', 'hi', 'gu'].includes(cached.language)) {
+                        selectLanguage(cached.language);
+                    }
+
+                    displayResults(comparisonResult);
+                } else {
+                    throw new Error('Invalid comparison data');
+                }
+            } catch (error) {
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('errorState').classList.remove('hidden');
+                document.getElementById('errorText').textContent = error.message;
+            }
+        }
+
+        // Handle URL params for pre-selected stocks, language, or cached comparison
         const urlParams = new URLSearchParams(window.location.search);
+        const paramId = urlParams.get('id');
         const paramA = urlParams.get('a');
         const paramB = urlParams.get('b');
         const paramLang = urlParams.get('lang');
 
-        if (paramLang && ['en', 'hi', 'gu'].includes(paramLang)) {
-            selectLanguage(paramLang);
-        }
-        if (paramA) {
-            setTimeout(() => selectStock(paramA, paramA, 'A'), 100);
-        }
-        if (paramB) {
-            setTimeout(() => selectStock(paramB, paramB, 'B'), 200);
+        if (paramId) {
+            // Load cached comparison by ID
+            loadCachedComparison(paramId);
+        } else {
+            // Normal flow: pre-select stocks if provided
+            if (paramLang && ['en', 'hi', 'gu'].includes(paramLang)) {
+                selectLanguage(paramLang);
+            }
+            if (paramA) {
+                setTimeout(() => selectStock(paramA, paramA, 'A'), 100);
+            }
+            if (paramB) {
+                setTimeout(() => selectStock(paramB, paramB, 'B'), 200);
+            }
         }
     </script>
 </body>
