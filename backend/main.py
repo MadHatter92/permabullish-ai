@@ -737,9 +737,12 @@ async def compare_stocks(
     # Get or generate analysis for stock A
     if cached_a and not cached_a.get('is_outdated', False):
         try:
-            report_data_a = json.loads(cached_a.get('report_data', '{}'))
-            analysis_a = report_data_a.get('analysis', {})
-        except json.JSONDecodeError:
+            report_data_a = cached_a.get('report_data', {})
+            # Handle both string and dict (depending on DB driver)
+            if isinstance(report_data_a, str):
+                report_data_a = json.loads(report_data_a)
+            analysis_a = report_data_a.get('analysis', {}) if report_data_a else {}
+        except (json.JSONDecodeError, TypeError):
             analysis_a = generate_ai_analysis(stock_data_a, language)
     else:
         analysis_a = generate_ai_analysis(stock_data_a, language)
@@ -747,9 +750,12 @@ async def compare_stocks(
     # Get or generate analysis for stock B
     if cached_b and not cached_b.get('is_outdated', False):
         try:
-            report_data_b = json.loads(cached_b.get('report_data', '{}'))
-            analysis_b = report_data_b.get('analysis', {})
-        except json.JSONDecodeError:
+            report_data_b = cached_b.get('report_data', {})
+            # Handle both string and dict (depending on DB driver)
+            if isinstance(report_data_b, str):
+                report_data_b = json.loads(report_data_b)
+            analysis_b = report_data_b.get('analysis', {}) if report_data_b else {}
+        except (json.JSONDecodeError, TypeError):
             analysis_b = generate_ai_analysis(stock_data_b, language)
     else:
         analysis_b = generate_ai_analysis(stock_data_b, language)
