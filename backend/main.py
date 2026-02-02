@@ -540,12 +540,16 @@ async def generate_report(
     exchange = report_request.exchange.upper()
     language = report_request.language.lower() if report_request.language else 'en'
 
+    logger.info(f"Generate report request: {ticker}/{exchange}, language={language} (raw: {report_request.language})")
+
     # Validate language
     if language not in ['en', 'hi', 'gu']:
+        logger.warning(f"Invalid language '{language}', defaulting to 'en'")
         language = 'en'
 
     # Check for cached report first (language-specific)
     cached_report = db.get_cached_report(ticker, exchange, language)
+    logger.info(f"Cached report found: {cached_report is not None}, cached language: {cached_report.get('language') if cached_report else 'N/A'}")
     user_id = current_user["id"] if current_user else None
     is_anonymous = current_user is None
 

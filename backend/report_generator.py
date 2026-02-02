@@ -123,6 +123,8 @@ def generate_ai_analysis(stock_data: Dict[str, Any], language: str = 'en') -> Di
         stock_data: Dictionary containing stock information
         language: Language code - 'en' (English), 'hi' (Hindi), 'gu' (Gujarati)
     """
+    print(f"[ReportGenerator] Generating analysis with language: {language}")
+
     if not ANTHROPIC_API_KEY:
         return generate_fallback_analysis(stock_data)
 
@@ -133,6 +135,7 @@ def generate_ai_analysis(stock_data: Dict[str, Any], language: str = 'en') -> Di
 
     # Get language-specific instructions
     lang_instruction = LANGUAGE_INSTRUCTIONS.get(language, '')
+    print(f"[ReportGenerator] Language instruction present: {bool(lang_instruction)}")
 
     prompt = f"""You are a HIGHLY OPINIONATED senior equity research analyst at a top investment bank.
 {lang_instruction} You have strong convictions and are not afraid to make bold calls. Your reputation is built on taking clear, decisive stances - not wishy-washy "hold" recommendations.
