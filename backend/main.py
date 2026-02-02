@@ -755,6 +755,19 @@ async def get_report_direct_view(report_cache_id: int):
     report_html = report.get("report_html", "")
     company_name = report.get("company_name", report.get("ticker", "Report"))
     ticker = report.get("ticker", "")
+    recommendation = report.get("recommendation", "HOLD").replace("_", " ").title()
+    current_price = report.get("current_price", 0)
+    target_price = report.get("ai_target_price", 0)
+
+    # Calculate upside for OG description
+    upside_text = ""
+    if current_price and target_price:
+        upside = ((target_price - current_price) / current_price) * 100
+        upside_text = f"+{upside:.0f}%" if upside >= 0 else f"{upside:.0f}%"
+
+    og_title = f"{ticker}: {recommendation} - {upside_text} Upside" if upside_text else f"{ticker}: {recommendation}"
+    og_description = f"AI-powered research report for {company_name}. Target: ₹{target_price:,.0f} | Current: ₹{current_price:,.0f}"
+    og_image = f"https://api.permabullish.com/api/reports/{report_cache_id}/og-image"
 
     # Wrap report in a minimal standalone page with back navigation
     html = f"""<!DOCTYPE html>
@@ -763,6 +776,20 @@ async def get_report_direct_view(report_cache_id: int):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{company_name} ({ticker}) - Permabullish</title>
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{og_title}">
+    <meta property="og:description" content="{og_description}">
+    <meta property="og:image" content="{og_image}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="Permabullish">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{og_title}">
+    <meta name="twitter:description" content="{og_description}">
+    <meta name="twitter:image" content="{og_image}">
+
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }}

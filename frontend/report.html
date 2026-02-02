@@ -759,7 +759,8 @@
 
         // Share functionality
         function getShareUrl() {
-            // Use API share endpoint for rich previews on WhatsApp/social
+            // Use API view endpoint for direct rendering in in-app browsers
+            // This bypasses iframe issues in Telegram, WhatsApp, etc.
             const reportId = new URLSearchParams(window.location.search).get('id');
             if (reportId) {
                 // Always use production custom domain for share URLs (consistency)
@@ -767,7 +768,7 @@
                 const apiHost = API_BASE.includes('localhost')
                     ? 'http://localhost:8000/api'
                     : 'https://api.permabullish.com/api';
-                return `${apiHost}/reports/${reportId}/share`;
+                return `${apiHost}/reports/${reportId}/view`;
             }
             return window.location.href;
         }
