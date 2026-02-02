@@ -682,19 +682,20 @@
         function getShareUrl() {
             if (!comparisonResult) return window.location.href;
 
-            // If we have a comparison_cache_id, use the share page URL for OG image support
+            // Always use the share page URL with comparison_cache_id for OG image support
             if (comparisonResult.comparison_cache_id) {
                 return `${API_BASE}/comparisons/${comparisonResult.comparison_cache_id}/share`;
             }
 
-            // Fallback to direct compare page URL
-            const sa = comparisonResult.stock_a;
-            const sb = comparisonResult.stock_b;
-            let url = `${window.location.origin}/compare.html?a=${sa.ticker}&b=${sb.ticker}`;
-            if (selectedLanguage !== 'en') {
-                url += `&lang=${selectedLanguage}`;
+            // Fallback: use the current URL with id parameter if available
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentId = urlParams.get('id');
+            if (currentId) {
+                return `${API_BASE}/comparisons/${currentId}/share`;
             }
-            return url;
+
+            // Last resort fallback (should rarely happen)
+            return window.location.href;
         }
 
         function updateShareLinks() {
