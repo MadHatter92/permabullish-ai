@@ -778,8 +778,10 @@
             const companyName = currentReport ? currentReport.company_name : 'Stock';
             const ticker = currentReport ? currentReport.ticker : '';
             const recommendation = currentReport ? currentReport.recommendation.replace('_', ' ').toUpperCase() : '';
+            const language = currentReport ? currentReport.language : 'en';
+            const langLabel = getLanguageLabel(language);
             const shareTitle = `Permabullish AI Research: ${companyName}`;
-            const shareText = `${companyName} - ${recommendation} - NOT FINANCIAL ADVICE`;
+            const shareText = `${companyName} - ${recommendation} ${langLabel} - NOT FINANCIAL ADVICE`;
 
             // Track share action
             if (window.analytics) {
@@ -825,12 +827,24 @@
             }, 3000);
         }
 
+        // Get language label in native script
+        function getLanguageLabel(langCode) {
+            const labels = {
+                'en': '',  // No label needed for English
+                'hi': '(हिंदी में)',
+                'gu': '(ગુજરાતીમાં)'
+            };
+            return labels[langCode] || '';
+        }
+
         function shareWhatsApp() {
             const shareUrl = getShareUrl();
             const companyName = currentReport ? currentReport.company_name : 'Stock';
             const ticker = currentReport ? currentReport.ticker : '';
             const recommendation = currentReport ? currentReport.recommendation.replace('_', ' ').toUpperCase() : '';
-            const text = `Permabullish AI Research: ${companyName} - ${recommendation} - NOT FINANCIAL ADVICE\n`;
+            const language = currentReport ? currentReport.language : 'en';
+            const langLabel = getLanguageLabel(language);
+            const text = `Permabullish AI Research: ${companyName} - ${recommendation} ${langLabel} - NOT FINANCIAL ADVICE\n`;
             const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + shareUrl)}`;
 
             // Track WhatsApp share
@@ -852,7 +866,9 @@
             const companyName = currentReport ? currentReport.company_name : 'Stock';
             const ticker = currentReport ? currentReport.ticker : '';
             const recommendation = currentReport ? currentReport.recommendation.replace('_', ' ').toUpperCase() : '';
-            const text = `Permabullish AI Research: ${companyName} - ${recommendation} - NOT FINANCIAL ADVICE`;
+            const language = currentReport ? currentReport.language : 'en';
+            const langLabel = getLanguageLabel(language);
+            const text = `Permabullish AI Research: ${companyName} - ${recommendation} ${langLabel} - NOT FINANCIAL ADVICE`;
             const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
 
             // Track Telegram share
