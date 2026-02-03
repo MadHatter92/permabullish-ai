@@ -330,10 +330,10 @@
                 iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                 if (!iframeDoc) return;
 
-                // Find the recommendation-box
-                const recBox = iframeDoc.querySelector('.recommendation-box');
-                if (!recBox) {
-                    console.log('Recommendation box not found, chart not injected');
+                // Find the header element (chart goes after it, outside its padding constraints)
+                const header = iframeDoc.querySelector('header.header');
+                if (!header) {
+                    console.log('Header not found, chart not injected');
                     return;
                 }
 
@@ -378,8 +378,8 @@
                     </style>
                 `;
 
-                // Insert after recommendation box
-                recBox.insertAdjacentHTML('afterend', chartHTML);
+                // Insert after header (full width, outside header's padding)
+                header.insertAdjacentHTML('afterend', chartHTML);
 
                 // Load Lightweight Charts into iframe
                 const script = iframeDoc.createElement('script');
