@@ -8,8 +8,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Report - Permabullish</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lightweight Charts for price chart -->
-    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -22,15 +20,15 @@
             font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
         }
 
-        /* Content wrapper - just holds content, page scrolls naturally */
+        /* Content wrapper */
         #reportFrameWrapper {
             padding-bottom: 60px; /* Space for fixed bottom bar */
         }
 
-        /* Iframe displays report content */
+        /* Iframe displays report content - tall enough for full report + chart */
         #reportFrame {
             width: 100%;
-            height: 4000px; /* Tall enough for most reports */
+            height: 5000px;
             border: none;
             display: block;
         }
@@ -38,7 +36,6 @@
         @media print {
             nav { display: none !important; }
             #reportContainer { padding-top: 0 !important; }
-            #chartSection { display: none !important; }
             #bottomBar { display: none !important; }
             #reportFrameWrapper { padding-bottom: 0; }
         }
@@ -259,47 +256,6 @@
     <!-- Report Container -->
     <div id="reportContainer" class="hidden pt-12 sm:pt-16">
         <div id="reportFrameWrapper" class="pt-[44px] sm:pt-[60px]">
-            <!-- Price Chart Section -->
-            <div id="chartSection" class="max-w-4xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
-                <div class="bg-[#102a43] rounded-xl overflow-hidden shadow-lg">
-                    <!-- Chart Header with Timeframe Toggles -->
-                    <div class="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-[#1e3a5f]">
-                        <div class="flex items-center gap-2">
-                            <span class="text-white/60 text-xs sm:text-sm">Price Chart</span>
-                            <span id="chartReturn" class="text-green-400 text-xs sm:text-sm font-medium">--</span>
-                        </div>
-                        <div id="chartTimeframes" class="flex items-center gap-0.5 sm:gap-1">
-                            <button onclick="loadChart('1m')" data-period="1m" class="chart-period-btn px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs text-white/60 hover:text-white hover:bg-white/10 rounded transition-all">1M</button>
-                            <button onclick="loadChart('3m')" data-period="3m" class="chart-period-btn px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs text-white/60 hover:text-white hover:bg-white/10 rounded transition-all">3M</button>
-                            <button onclick="loadChart('6m')" data-period="6m" class="chart-period-btn px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs text-white/60 hover:text-white hover:bg-white/10 rounded transition-all">6M</button>
-                            <button onclick="loadChart('1y')" data-period="1y" class="chart-period-btn px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs bg-[#e8913a] text-white rounded transition-all">1Y</button>
-                            <button onclick="loadChart('5y')" data-period="5y" class="chart-period-btn px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs text-white/60 hover:text-white hover:bg-white/10 rounded transition-all">5Y</button>
-                        </div>
-                    </div>
-                    <!-- Chart Container -->
-                    <div id="priceChart" class="w-full h-[160px] sm:h-[200px]"></div>
-                    <!-- Chart Loading State -->
-                    <div id="chartLoading" class="hidden w-full h-[160px] sm:h-[200px] flex items-center justify-center">
-                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[#e8913a]"></div>
-                    </div>
-                    <!-- Chart Error State -->
-                    <div id="chartError" class="hidden w-full h-[160px] sm:h-[200px] flex items-center justify-center">
-                        <span class="text-white/40 text-sm">Chart unavailable</span>
-                    </div>
-                    <!-- Chart Footer - Key Levels -->
-                    <div id="chartFooter" class="flex items-center justify-between px-3 sm:px-4 py-2 border-t border-[#1e3a5f] text-[10px] sm:text-xs">
-                        <div class="flex items-center gap-2 sm:gap-4">
-                            <span class="text-white/40">52W:</span>
-                            <span id="chart52Low" class="text-red-400">L --</span>
-                            <span id="chart52High" class="text-green-400">H --</span>
-                        </div>
-                        <div class="flex items-center gap-2 sm:gap-4">
-                            <span id="chartMA50" class="text-blue-400"><span class="hidden sm:inline">50D </span>--</span>
-                            <span id="chartMA200" class="text-purple-400"><span class="hidden sm:inline">200D </span>--</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
             <iframe id="reportFrame" sandbox="allow-scripts allow-same-origin"></iframe>
         </div>
     </div>
@@ -357,17 +313,96 @@
         const NUDGE_MAX_DISMISSALS = 5; // Stop showing after 5 dismissals
         const NUDGE_RESET_HOURS = 24; // Reset dismissal count after 24 hours
 
-        // Chart variables
+        // Chart variables (will be set in iframe context)
+        let iframeDoc = null;
         let priceChart = null;
         let priceSeries = null;
         let ma50Series = null;
         let ma200Series = null;
         let currentChartPeriod = '1y';
 
-        // Initialize chart
-        function initChart() {
-            const chartContainer = document.getElementById('priceChart');
-            if (!chartContainer || !window.LightweightCharts) return;
+        // Inject chart into iframe after report loads
+        function injectChartIntoIframe() {
+            const iframe = document.getElementById('reportFrame');
+            if (!iframe) return;
+
+            try {
+                iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                if (!iframeDoc) return;
+
+                // Find the recommendation-box
+                const recBox = iframeDoc.querySelector('.recommendation-box');
+                if (!recBox) {
+                    console.log('Recommendation box not found, chart not injected');
+                    return;
+                }
+
+                // Create chart container HTML
+                const chartHTML = `
+                    <div id="chartSection" style="margin: 1rem 0; background: #102a43; border-radius: 12px; overflow: hidden;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #1e3a5f;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="color: rgba(255,255,255,0.6); font-size: 12px;">Price Chart</span>
+                                <span id="chartReturn" style="color: #68d391; font-size: 12px; font-weight: 500;">--</span>
+                            </div>
+                            <div style="display: flex; gap: 4px;">
+                                <button onclick="window.parent.loadChart('1m')" data-period="1m" class="chart-period-btn" style="padding: 4px 8px; font-size: 10px; color: rgba(255,255,255,0.6); background: transparent; border: none; border-radius: 4px; cursor: pointer;">1M</button>
+                                <button onclick="window.parent.loadChart('3m')" data-period="3m" class="chart-period-btn" style="padding: 4px 8px; font-size: 10px; color: rgba(255,255,255,0.6); background: transparent; border: none; border-radius: 4px; cursor: pointer;">3M</button>
+                                <button onclick="window.parent.loadChart('6m')" data-period="6m" class="chart-period-btn" style="padding: 4px 8px; font-size: 10px; color: rgba(255,255,255,0.6); background: transparent; border: none; border-radius: 4px; cursor: pointer;">6M</button>
+                                <button onclick="window.parent.loadChart('1y')" data-period="1y" class="chart-period-btn" style="padding: 4px 8px; font-size: 10px; color: white; background: #e8913a; border: none; border-radius: 4px; cursor: pointer;">1Y</button>
+                                <button onclick="window.parent.loadChart('5y')" data-period="5y" class="chart-period-btn" style="padding: 4px 8px; font-size: 10px; color: rgba(255,255,255,0.6); background: transparent; border: none; border-radius: 4px; cursor: pointer;">5Y</button>
+                            </div>
+                        </div>
+                        <div id="priceChart" style="width: 100%; height: 180px;"></div>
+                        <div id="chartLoading" style="display: none; width: 100%; height: 180px; align-items: center; justify-content: center;">
+                            <div style="width: 24px; height: 24px; border: 2px solid transparent; border-top-color: #e8913a; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        </div>
+                        <div id="chartError" style="display: none; width: 100%; height: 180px; align-items: center; justify-content: center;">
+                            <span style="color: rgba(255,255,255,0.4); font-size: 14px;">Chart unavailable</span>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-top: 1px solid #1e3a5f; font-size: 10px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="color: rgba(255,255,255,0.4);">52W:</span>
+                                <span id="chart52Low" style="color: #fc8181;">L --</span>
+                                <span id="chart52High" style="color: #68d391;">H --</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span id="chartMA50" style="color: #60a5fa;">50D --</span>
+                                <span id="chartMA200" style="color: #a78bfa;">200D --</span>
+                            </div>
+                        </div>
+                    </div>
+                    <style>
+                        @keyframes spin { to { transform: rotate(360deg); } }
+                        .chart-period-btn:hover { background: rgba(255,255,255,0.1) !important; color: white !important; }
+                    </style>
+                `;
+
+                // Insert after recommendation box
+                recBox.insertAdjacentHTML('afterend', chartHTML);
+
+                // Load Lightweight Charts into iframe
+                const script = iframeDoc.createElement('script');
+                script.src = 'https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js';
+                script.onload = () => {
+                    initChartInIframe();
+                    loadChart('1y');
+                };
+                iframeDoc.head.appendChild(script);
+
+            } catch (e) {
+                console.error('Failed to inject chart into iframe:', e);
+            }
+        }
+
+        // Initialize chart inside iframe
+        function initChartInIframe() {
+            if (!iframeDoc) return;
+
+            const iframe = document.getElementById('reportFrame');
+            const chartContainer = iframeDoc.getElementById('priceChart');
+            const LightweightCharts = iframe.contentWindow.LightweightCharts;
+            if (!chartContainer || !LightweightCharts) return;
 
             priceChart = LightweightCharts.createChart(chartContainer, {
                 layout: {
@@ -377,9 +412,6 @@
                 grid: {
                     vertLines: { color: '#1e3a5f' },
                     horzLines: { color: '#1e3a5f' },
-                },
-                crosshair: {
-                    mode: LightweightCharts.CrosshairMode.Normal,
                 },
                 rightPriceScale: {
                     borderColor: '#1e3a5f',
@@ -393,7 +425,6 @@
                 },
             });
 
-            // Add area series for price
             priceSeries = priceChart.addAreaSeries({
                 topColor: 'rgba(232, 145, 58, 0.4)',
                 bottomColor: 'rgba(232, 145, 58, 0.0)',
@@ -401,14 +432,12 @@
                 lineWidth: 2,
             });
 
-            // Add 50-day MA line
             ma50Series = priceChart.addLineSeries({
                 color: '#60a5fa',
                 lineWidth: 1,
-                lineStyle: 2, // Dashed
+                lineStyle: 2,
             });
 
-            // Add 200-day MA line
             ma200Series = priceChart.addLineSeries({
                 color: '#a78bfa',
                 lineWidth: 1,
@@ -429,25 +458,30 @@
 
         // Load chart data
         async function loadChart(period = '1y') {
-            if (!currentReport) return;
+            if (!currentReport || !iframeDoc) return;
 
             currentChartPeriod = period;
 
-            // Update active button
-            document.querySelectorAll('.chart-period-btn').forEach(btn => {
-                if (btn.dataset.period === period) {
-                    btn.classList.remove('text-white/60', 'hover:text-white', 'hover:bg-white/10');
-                    btn.classList.add('bg-[#e8913a]', 'text-white');
+            // Update active button in iframe
+            iframeDoc.querySelectorAll('.chart-period-btn').forEach(btn => {
+                const btnPeriod = btn.getAttribute('data-period');
+                if (btnPeriod === period) {
+                    btn.style.background = '#e8913a';
+                    btn.style.color = 'white';
                 } else {
-                    btn.classList.remove('bg-[#e8913a]', 'text-white');
-                    btn.classList.add('text-white/60', 'hover:text-white', 'hover:bg-white/10');
+                    btn.style.background = 'transparent';
+                    btn.style.color = 'rgba(255,255,255,0.6)';
                 }
             });
 
             // Show loading state
-            document.getElementById('priceChart').classList.add('hidden');
-            document.getElementById('chartError').classList.add('hidden');
-            document.getElementById('chartLoading').classList.remove('hidden');
+            const chartEl = iframeDoc.getElementById('priceChart');
+            const loadingEl = iframeDoc.getElementById('chartLoading');
+            const errorEl = iframeDoc.getElementById('chartError');
+
+            if (chartEl) chartEl.style.display = 'none';
+            if (errorEl) errorEl.style.display = 'none';
+            if (loadingEl) loadingEl.style.display = 'flex';
 
             try {
                 const exchange = currentReport.exchange || 'NSE';
@@ -464,19 +498,17 @@
 
             } catch (error) {
                 console.error('Failed to load chart:', error);
-                document.getElementById('chartLoading').classList.add('hidden');
-                document.getElementById('chartError').classList.remove('hidden');
+                if (loadingEl) loadingEl.style.display = 'none';
+                if (errorEl) errorEl.style.display = 'flex';
             }
         }
 
         // Render chart with data
         function renderChart(data) {
-            if (!priceChart || !data.price_data) return;
+            if (!priceChart || !data.price_data || !iframeDoc) return;
 
-            // Set price data
             priceSeries.setData(data.price_data);
 
-            // Set moving averages (if available)
             if (data.ma50 && data.ma50.length > 0) {
                 ma50Series.setData(data.ma50);
             } else {
@@ -489,51 +521,45 @@
                 ma200Series.setData([]);
             }
 
-            // Fit content
             priceChart.timeScale().fitContent();
-
-            // Update footer stats
             updateChartFooter(data.stats);
 
-            // Hide loading, show chart
-            document.getElementById('chartLoading').classList.add('hidden');
-            document.getElementById('priceChart').classList.remove('hidden');
+            const loadingEl = iframeDoc.getElementById('chartLoading');
+            const chartEl = iframeDoc.getElementById('priceChart');
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (chartEl) chartEl.style.display = 'block';
         }
 
         // Update chart footer with stats
         function updateChartFooter(stats) {
-            if (!stats) return;
+            if (!stats || !iframeDoc) return;
 
-            // Period return
-            const returnEl = document.getElementById('chartReturn');
-            if (stats.period_return !== null && stats.period_return !== undefined) {
+            const returnEl = iframeDoc.getElementById('chartReturn');
+            if (returnEl && stats.period_return !== null && stats.period_return !== undefined) {
                 const returnVal = stats.period_return;
                 const sign = returnVal >= 0 ? '+' : '';
                 returnEl.textContent = `${sign}${returnVal.toFixed(1)}% (${currentChartPeriod.toUpperCase()})`;
-                returnEl.className = returnVal >= 0
-                    ? 'text-green-400 text-xs sm:text-sm font-medium'
-                    : 'text-red-400 text-xs sm:text-sm font-medium';
+                returnEl.style.color = returnVal >= 0 ? '#68d391' : '#fc8181';
             }
 
-            // 52-week high/low
-            if (stats.week52_low) {
-                document.getElementById('chart52Low').textContent = `L ₹${stats.week52_low.toLocaleString('en-IN')}`;
-            }
-            if (stats.week52_high) {
-                document.getElementById('chart52High').textContent = `H ₹${stats.week52_high.toLocaleString('en-IN')}`;
+            const lowEl = iframeDoc.getElementById('chart52Low');
+            if (lowEl && stats.week52_low) {
+                lowEl.textContent = `L ₹${stats.week52_low.toLocaleString('en-IN')}`;
             }
 
-            // Moving averages
-            if (stats.ma50) {
-                document.getElementById('chartMA50').innerHTML = `<span class="hidden sm:inline">50D </span>₹${stats.ma50.toLocaleString('en-IN')}`;
-            } else {
-                document.getElementById('chartMA50').innerHTML = `<span class="hidden sm:inline">50D </span>--`;
+            const highEl = iframeDoc.getElementById('chart52High');
+            if (highEl && stats.week52_high) {
+                highEl.textContent = `H ₹${stats.week52_high.toLocaleString('en-IN')}`;
             }
 
-            if (stats.ma200) {
-                document.getElementById('chartMA200').innerHTML = `<span class="hidden sm:inline">200D </span>₹${stats.ma200.toLocaleString('en-IN')}`;
-            } else {
-                document.getElementById('chartMA200').innerHTML = `<span class="hidden sm:inline">200D </span>--`;
+            const ma50El = iframeDoc.getElementById('chartMA50');
+            if (ma50El) {
+                ma50El.textContent = stats.ma50 ? `50D ₹${stats.ma50.toLocaleString('en-IN')}` : '50D --';
+            }
+
+            const ma200El = iframeDoc.getElementById('chartMA200');
+            if (ma200El) {
+                ma200El.textContent = stats.ma200 ? `200D ₹${stats.ma200.toLocaleString('en-IN')}` : '200D --';
             }
         }
 
@@ -695,9 +721,13 @@
                 document.getElementById('reportInfoBar').classList.remove('hidden');
                 document.getElementById('bottomBar').classList.remove('hidden');
 
-                // Initialize and load chart (async, non-blocking)
-                initChart();
-                loadChart('1y');
+                // Inject chart into iframe once content loads
+                iframe.onload = () => {
+                    // Small delay to ensure DOM is ready
+                    setTimeout(() => {
+                        injectChartIntoIframe();
+                    }, 100);
+                };
 
                 // Track report view
                 if (window.analytics) {
