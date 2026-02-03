@@ -224,19 +224,23 @@ class TickertapeProvider(StockDataProvider):
 
         # Try Tickertape's autocomplete API first (returns JSON)
         try:
-            api_url = f"https://www.tickertape.in/api/search?text={symbol}&types=stock"
+            api_url = f"https://api.tickertape.in/search?text={symbol}"
             response = self.session.get(api_url, timeout=10)
 
             if response.status_code == 200:
                 data = response.json()
-                stocks = data.get("data", {}).get("stocks", [])
-                for stock in stocks:
-                    if stock.get("ticker", "").upper() == symbol:
-                        slug = stock.get("slug")
-                        if slug:
-                            tickertape_symbol_cache.set(f"tt_slug:{symbol}", slug)
-                            logger.info(f"Found Tickertape slug for {symbol}: {slug}")
-                            return slug
+                if data.get("success") and data.get("data", {}).get("stocks"):
+                    stocks = data["data"]["stocks"]
+                    for stock in stocks:
+                        if stock.get("ticker", "").upper() == symbol:
+                            slug = stock.get("slug", "")
+                            # Remove '/stocks/' prefix if present
+                            if slug.startswith("/stocks/"):
+                                slug = slug[8:]
+                            if slug:
+                                tickertape_symbol_cache.set(f"tt_slug:{symbol}", slug)
+                                logger.info(f"Found Tickertape slug for {symbol}: {slug}")
+                                return slug
         except Exception as e:
             logger.warning(f"Tickertape API search failed for {symbol}: {e}")
 
