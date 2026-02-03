@@ -1,8 +1,8 @@
 # Permabullish - Product Roadmap
 ## AI Stock Researcher
 
-**Version:** 3.1
-**Last Updated:** February 2, 2026
+**Version:** 3.2
+**Last Updated:** February 3, 2026
 
 ---
 
@@ -899,7 +899,119 @@ Launch a US-focused version of Permabullish at us.permabullish.com, providing AI
 
 ---
 
-## Phase 9: Future Features (Post-Launch)
+## Phase 9: Performance Optimization
+**Status:** Backlog
+**Priority:** Medium
+
+### Objective
+Improve application performance, reduce latency, and handle scale efficiently.
+
+### 9.1 Caching Improvements
+
+- [ ] **Redis Cache Layer**
+  - Persistent cache across restarts (currently in-memory)
+  - Shared cache across multiple instances
+  - TTL-based expiration for different data types
+
+- [ ] **Chart Data Caching**
+  - Cache historical price data (doesn't change)
+  - Only fetch latest day's data on subsequent requests
+  - Reduce Yahoo Finance API calls by 50%
+
+- [ ] **Pre-warm Popular Stocks**
+  - Cache top 50 Nifty stocks on startup
+  - Background refresh during low-traffic periods
+
+### 9.2 API Response Optimization
+
+- [ ] **Parallel Provider Calls**
+  - Fetch Yahoo + Groww simultaneously
+  - Use first successful response
+  - Cut latency in half when primary fails
+
+- [ ] **Response Compression**
+  - Enable Gzip/Brotli for all responses
+  - ~70% reduction in transfer size
+
+- [ ] **Lazy Loading**
+  - Return basic data immediately
+  - Stream fundamentals asynchronously
+
+### 9.3 Report Generation
+
+- [ ] **Background Job Queue**
+  - Move report generation to Celery/RQ worker
+  - Non-blocking API responses
+  - Better handling of concurrent requests
+
+- [ ] **Incremental Updates**
+  - Only regenerate sections that changed
+  - Cache AI analysis separately from data
+
+- [ ] **Template Caching**
+  - Pre-compile Jinja templates
+  - Reduce render time
+
+### 9.4 Frontend Optimization
+
+- [ ] **Asset Optimization**
+  - Minify CSS/JS
+  - WebP images with lazy loading
+  - Critical CSS inlining
+
+- [ ] **Chart Library CDN**
+  - Load Lightweight Charts from CDN
+  - Remove inline script injection
+
+- [ ] **Service Worker**
+  - Cache static assets
+  - Offline support for viewed reports
+
+### 9.5 Database Optimization
+
+- [ ] **Query Optimization**
+  - Add indexes for frequent lookups
+  - Analyze slow queries with EXPLAIN
+
+- [ ] **Connection Pooling**
+  - PgBouncer for PostgreSQL
+  - Reduce connection overhead
+
+- [ ] **Read Replicas** (if needed)
+  - Separate read-heavy operations
+  - Scale report viewing independently
+
+### 9.6 Infrastructure
+
+- [ ] **CDN for Static Assets**
+  - Cloudflare or CloudFront
+  - Edge caching globally
+
+- [ ] **Auto-scaling**
+  - Multiple Render instances
+  - Load balancing
+
+- [ ] **Health Checks**
+  - Database connectivity monitoring
+  - External API status checks
+  - Automated alerts
+
+### Quick Wins (Low Effort, High Impact)
+1. Chart data caching - Historical prices don't change
+2. Response compression - 70% smaller responses
+3. Parallel provider calls - Halve fallback latency
+4. Pre-warm top 50 stocks - Faster popular stock lookups
+
+### Deliverables
+- [ ] Redis caching layer
+- [ ] Optimized API response times (<500ms p95)
+- [ ] Background job processing
+- [ ] CDN-served static assets
+- [ ] Comprehensive monitoring
+
+---
+
+## Phase 10: Future Features (Post-Launch)
 **Status:** Backlog
 **Priority:** Low
 
@@ -913,6 +1025,7 @@ Launch a US-focused version of Permabullish at us.permabullish.com, providing AI
 - [ ] **API access:** Programmatic access for Enterprise
 - [ ] **Mobile app:** Native iOS/Android
 - [x] **International stocks:** US market ✅ (Phase 8)
+- [ ] **Performance optimization:** Caching, CDN, background jobs (Phase 9)
 
 ---
 
@@ -934,7 +1047,8 @@ Launch a US-focused version of Permabullish at us.permabullish.com, providing AI
 | 7.6 | Stock Comparison Tool | ✅ Complete |
 | 7.8 | **Report Quality Enhancements** | 🔄 In Progress |
 | 8 | US Market Expansion | 📋 Planning |
-| 9 | Future Features | Backlog |
+| 9 | Performance Optimization | Backlog |
+| 10 | Future Features | Backlog |
 
 ---
 
