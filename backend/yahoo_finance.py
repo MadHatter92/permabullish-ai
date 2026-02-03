@@ -196,7 +196,137 @@ def _merge_screener_data(primary: Dict[str, Any], screener: Dict[str, Any]) -> D
     if not result["dividends"].get("dividend_yield") and screener.get("dividend_yield"):
         result["dividends"]["dividend_yield"] = screener["dividend_yield"] / 100 if screener["dividend_yield"] > 1 else screener["dividend_yield"]
 
+    # Calculate missing metrics from balance sheet and P&L data
+    balance_sheet = screener.get("balance_sheet", [])
+    profit_loss = screener.get("profit_loss", [])
+
+    if "balance_sheet" not in result:
+        result["balance_sheet"] = {}
+
+    balance = result["balance_sheet"]
+
+    # Calculate Debt to Equity if missing
+    if not balance.get("debt_to_equity") or balance.get("debt_to_equity") == 0:
+        borrowings = _get_latest_value(balance_sheet, "Borrowings")
+        equity_capital = _get_latest_value(balance_sheet, "Equity Capital")
+        reserves = _get_latest_value(balance_sheet, "Reserves")
+
+        if borrowings is not None and (equity_capital or reserves):
+            total_equity = (equity_capital or 0) + (reserves or 0)
+            if total_equity > 0:
+                # Store as percentage (multiply by 100 to match Yahoo format)
+                balance["debt_to_equity"] = (borrowings / total_equity) * 100
+                logger.info(f"Calculated Debt/Equity from Screener: {balance['debt_to_equity']:.2f}")
+
+    # Calculate EBITDA if missing
+    if "financials" not in result:
+        result["financials"] = {}
+
+    financials = result["financials"]
+
+    if not financials.get("ebitda") or financials.get("ebitda") == 0:
+        operating_profit = _get_latest_value(profit_loss, "Operating Profit")
+        depreciation = _get_latest_value(profit_loss, "Depreciation")
+
+        if operating_profit is not None:
+            # EBITDA = Operating Profit + Depreciation
+            ebitda = operating_profit + (depreciation or 0)
+            # Convert from Cr to actual value (Screener shows in Cr)
+            financials["ebitda"] = ebitda * 10000000  # 1 Cr = 10 million
+            logger.info(f"Calculated EBITDA from Screener: {ebitda:.2f} Cr")
+
+    # Calculate EV/EBITDA if we have both values
+    if not valuation.get("ev_to_ebitda") or valuation.get("ev_to_ebitda") == 0:
+        enterprise_value = valuation.get("enterprise_value", 0)
+        ebitda = financials.get("ebitda", 0)
+
+        if enterprise_value and ebitda and ebitda > 0:
+            valuation["ev_to_ebitda"] = enterprise_value / ebitda
+            logger.info(f"Calculated EV/EBITDA: {valuation['ev_to_ebitda']:.2f}")
+
+    # Calculate PEG ratio if missing (P/E divided by earnings growth)
+    if not valuation.get("peg_ratio") or valuation.get("peg_ratio") == 0:
+        pe_ratio = valuation.get("pe_ratio", 0)
+        earnings_growth = _calculate_earnings_growth(profit_loss)
+
+        if pe_ratio and pe_ratio > 0 and earnings_growth and earnings_growth > 0:
+            valuation["peg_ratio"] = pe_ratio / earnings_growth
+            logger.info(f"Calculated PEG ratio: {valuation['peg_ratio']:.2f} (P/E: {pe_ratio:.1f}, Growth: {earnings_growth:.1f}%)")
+
     return result
+
+
+def _calculate_earnings_growth(profit_loss: list) -> Optional[float]:
+    """
+    Calculate earnings growth rate from profit & loss data.
+    Uses 3-year CAGR of Net Profit if available.
+    Returns growth as a percentage (e.g., 15 for 15%).
+    """
+    if not profit_loss:
+        return None
+
+    # Find Net Profit row
+    net_profit_row = None
+    for row in profit_loss:
+        metric = row.get("metric", "").strip().lower()
+        if metric in ["net profit", "profit after tax", "pat"]:
+            net_profit_row = row
+            break
+
+    if not net_profit_row:
+        return None
+
+    # Get values for different years
+    values = []
+    for key, value in net_profit_row.items():
+        if key != "metric" and value is not None:
+            try:
+                values.append(float(value))
+            except (ValueError, TypeError):
+                continue
+
+    # Need at least 2 years of data
+    if len(values) < 2:
+        return None
+
+    # Calculate YoY growth (latest vs previous year)
+    latest = values[0]
+    previous = values[1] if len(values) > 1 else None
+
+    if previous and previous > 0 and latest > 0:
+        yoy_growth = ((latest / previous) - 1) * 100
+        return yoy_growth
+
+    # Try 3-year CAGR if we have enough data
+    if len(values) >= 4:
+        three_years_ago = values[3]
+        if three_years_ago > 0 and latest > 0:
+            cagr = (((latest / three_years_ago) ** (1/3)) - 1) * 100
+            return cagr
+
+    return None
+
+
+def _get_latest_value(table_data: list, metric_name: str) -> Optional[float]:
+    """
+    Extract the latest (most recent) value for a metric from Screener table data.
+    Table data format: [{"metric": "Sales", "Mar 2024": 100, "Mar 2023": 90, ...}, ...]
+    """
+    if not table_data:
+        return None
+
+    for row in table_data:
+        if row.get("metric", "").strip().lower() == metric_name.lower():
+            # Find the most recent value (first non-metric column with data)
+            for key, value in row.items():
+                if key != "metric" and value is not None:
+                    try:
+                        return float(value)
+                    except (ValueError, TypeError):
+                        continue
+            break
+
+    return None
 
 
 def _fetch_yahoo_enrichment(symbol: str, exchange: str) -> Optional[Dict[str, Any]]:
