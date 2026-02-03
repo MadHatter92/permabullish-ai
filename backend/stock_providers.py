@@ -457,6 +457,248 @@ class TickertapeProvider(StockDataProvider):
             return []
 
 
+class GrowwProvider(StockDataProvider):
+    """Fetches data from Groww by scraping their stock pages."""
+
+    name = "Groww"
+    BASE_URL = "https://groww.in"
+    SEARCH_API = "https://groww.in/v1/api/search/v3/query/global/st_query"
+
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        })
+        self._slug_cache = SimpleCache(default_ttl=86400)  # 24 hour cache for slugs
+
+    def _get_groww_slug(self, symbol: str) -> Optional[str]:
+        """Get Groww URL slug for a symbol using their search API."""
+        symbol = symbol.upper().strip()
+
+        # Check cache first
+        cached = self._slug_cache.get(f"groww_slug:{symbol}")
+        if cached:
+            return cached
+
+        try:
+            params = {
+                "page": 0,
+                "query": symbol,
+                "size": 10,
+                "web": "true"
+            }
+            response = self.session.get(self.SEARCH_API, params=params, timeout=10)
+
+            if response.status_code == 200:
+                data = response.json()
+                stocks = data.get("data", {}).get("content", [])
+
+                for stock in stocks:
+                    if stock.get("entity_type") == "Stocks":
+                        nse_code = stock.get("nse_scrip_code", "").upper()
+                        if nse_code == symbol:
+                            slug = stock.get("id") or stock.get("search_id")
+                            if slug:
+                                self._slug_cache.set(f"groww_slug:{symbol}", slug)
+                                logger.info(f"Found Groww slug for {symbol}: {slug}")
+                                return slug
+
+                # If no exact match, try first stock result
+                for stock in stocks:
+                    if stock.get("entity_type") == "Stocks":
+                        slug = stock.get("id") or stock.get("search_id")
+                        if slug:
+                            self._slug_cache.set(f"groww_slug:{symbol}", slug)
+                            return slug
+
+        except Exception as e:
+            logger.warning(f"Groww search API failed for {symbol}: {e}")
+
+        return None
+
+    def _parse_float(self, value) -> float:
+        """Parse float from various formats."""
+        if value is None:
+            return 0.0
+        try:
+            if isinstance(value, (int, float)):
+                return float(value)
+            cleaned = re.sub(r'[^\d.-]', '', str(value))
+            return float(cleaned) if cleaned else 0.0
+        except:
+            return 0.0
+
+    def _parse_market_cap(self, value: str) -> float:
+        """Parse market cap with Cr/L multipliers."""
+        if not value:
+            return 0.0
+        try:
+            value = value.replace(",", "").replace("₹", "").strip()
+            multiplier = 1
+            if "Cr" in value:
+                value = value.replace("Cr", "").strip()
+                multiplier = 10000000  # 1 Cr = 10 million
+            elif "L" in value:
+                value = value.replace("L", "").strip()
+                multiplier = 100000  # 1 L = 100k
+            return float(value) * multiplier
+        except:
+            return 0.0
+
+    def fetch_stock_data(self, symbol: str, exchange: str = "NSE") -> Optional[Dict[str, Any]]:
+        """Fetch stock data from Groww using Next.js data."""
+        slug = self._get_groww_slug(symbol)
+        if not slug:
+            logger.warning(f"Groww: Could not find slug for {symbol}")
+            return None
+
+        try:
+            url = f"{self.BASE_URL}/stocks/{slug}"
+            response = self.session.get(url, timeout=15)
+
+            if response.status_code == 429:
+                self.mark_rate_limited(30)
+                return None
+
+            if response.status_code != 200:
+                logger.warning(f"Groww returned status {response.status_code} for {symbol}")
+                return None
+
+            html = response.text
+            soup = BeautifulSoup(html, 'html.parser')
+
+            # Extract data from __NEXT_DATA__ JSON (Next.js)
+            next_data_script = soup.find('script', id='__NEXT_DATA__')
+            if not next_data_script:
+                logger.warning(f"Groww: No __NEXT_DATA__ found for {symbol}")
+                return None
+
+            next_data = json.loads(next_data_script.string)
+            stock_data = next_data.get('props', {}).get('pageProps', {}).get('stockData', {})
+
+            if not stock_data:
+                logger.warning(f"Groww: No stockData in response for {symbol}")
+                return None
+
+            data = self._extract_from_next_data(stock_data, symbol, exchange)
+            if data:
+                data["provider"] = self.name
+                return data
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Groww error for {symbol}: {e}")
+            return None
+
+    def _extract_from_next_data(self, stock_data: Dict, symbol: str, exchange: str) -> Optional[Dict[str, Any]]:
+        """Extract stock data from Groww's __NEXT_DATA__ JSON."""
+        try:
+            header = stock_data.get('header', {})
+            stats = stock_data.get('stats', {})
+            price_data_raw = stock_data.get('priceData', {})
+
+            # priceData is nested: {nse: {...}, bse: {...}}
+            # Prefer NSE data
+            price_data = price_data_raw.get('nse', {}) or price_data_raw.get('bse', {})
+
+            company_name = header.get('displayName') or header.get('shortName') or symbol
+            industry = header.get('industryName', 'N/A')
+
+            # Get current price from priceData
+            current_price = price_data.get('ltp', 0) or price_data.get('close', 0)
+
+            # Build the response in standard format
+            result = {
+                "basic_info": {
+                    "company_name": company_name,
+                    "ticker": header.get('nseScriptCode') or symbol.upper(),
+                    "exchange": exchange,
+                    "sector": industry,
+                    "industry": industry,
+                    "isin": header.get('isin', ''),
+                },
+                "price_info": {
+                    "current_price": current_price,
+                    "previous_close": price_data.get('close', 0),
+                    "open": price_data.get('open', 0),
+                    "day_high": price_data.get('high', 0),
+                    "day_low": price_data.get('low', 0),
+                    "volume": price_data.get('volume', 0),
+                    "fifty_two_week_high": price_data.get('yearHighPrice', 0),
+                    "fifty_two_week_low": price_data.get('yearLowPrice', 0),
+                    "day_change": price_data.get('dayChange', 0),
+                    "day_change_percent": price_data.get('dayChangePerc', 0),
+                },
+                "valuation": {
+                    "market_cap": stats.get('marketCap', 0) * 10000000,  # Convert Cr to actual
+                    "pe_ratio": stats.get('peRatio', 0),
+                    "pb_ratio": stats.get('pbRatio', 0),
+                    "dividend_yield": stats.get('divYield', 0),
+                    "eps": stats.get('epsTtm', 0),
+                    "industry_pe": stats.get('industryPe', 0),
+                    "ev_to_ebitda": stats.get('evToEbitda', 0),
+                    "price_to_sales": stats.get('priceToSales', 0),
+                    "peg_ratio": stats.get('pegRatio', 0),
+                },
+                "financials": {
+                    "roe": stats.get('roe', 0),
+                    "roce": stats.get('returnOnEquity', 0),
+                    "roa": stats.get('returnOnAssets', 0),
+                    "debt_to_equity": stats.get('debtToEquity', 0),
+                    "book_value": stats.get('bookValue', 0),
+                    "face_value": stats.get('faceValue', 0),
+                    "operating_margin": stats.get('operatingProfitMargin', 0),
+                    "net_profit_margin": stats.get('netProfitMargin', 0),
+                    "current_ratio": stats.get('currentRatio', 0),
+                },
+            }
+
+            # Only return if we got meaningful data
+            if current_price > 0 or stats.get('marketCap', 0) > 0:
+                return result
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Groww data extraction failed: {e}")
+            return None
+
+    def search_stocks(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Search for stocks via Groww."""
+        try:
+            params = {
+                "page": 0,
+                "query": query,
+                "size": limit,
+                "web": "true"
+            }
+            response = self.session.get(self.SEARCH_API, params=params, timeout=10)
+
+            if response.status_code != 200:
+                return []
+
+            data = response.json()
+            results = []
+
+            for stock in data.get("data", {}).get("content", []):
+                if stock.get("entity_type") == "Stocks":
+                    results.append({
+                        "symbol": stock.get("nse_scrip_code") or stock.get("bse_scrip_code", ""),
+                        "name": stock.get("title", ""),
+                        "exchange": "NSE" if stock.get("nse_scrip_code") else "BSE",
+                        "isin": stock.get("isin", ""),
+                    })
+
+            return results[:limit]
+
+        except Exception as e:
+            logger.error(f"Groww search failed: {e}")
+            return []
+
+
 class AlphaVantageProvider(StockDataProvider):
     """Fetches data from Alpha Vantage API (fallback)."""
 
@@ -589,11 +831,14 @@ class StockDataManager:
     """
 
     def __init__(self, alpha_vantage_key: str = ""):
-        # Yahoo Finance first (comprehensive data, may rate limit)
-        # Tickertape second (good fundamentals, scraping)
-        # Alpha Vantage last (limited daily calls)
+        # Provider priority order:
+        # 1. Yahoo Finance (comprehensive data, may rate limit)
+        # 2. Groww (good fundamentals, scraping)
+        # 3. Tickertape (good fundamentals, scraping, often rate limited)
+        # 4. Alpha Vantage (limited daily calls, fallback)
         self.providers: List[StockDataProvider] = [
             YahooFinanceProvider(),
+            GrowwProvider(),
             TickertapeProvider(),
         ]
 
