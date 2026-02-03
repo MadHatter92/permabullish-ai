@@ -17,31 +17,28 @@
         .gradient-header {
             background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
         }
-        /* Mobile: nav 48px + info bar 44px + chart section ~216px + bottom bar 48px = 356px */
-        /* Use dvh (dynamic viewport height) with vh fallback for mobile browser compatibility */
+        /* Scrollable content wrapper - chart + iframe scroll together */
+        #reportFrameWrapper {
+            height: calc(100vh - 140px); /* nav + info bar + bottom bar */
+            height: calc(100dvh - 140px);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        @media (min-width: 640px) {
+            #reportFrameWrapper {
+                height: calc(100vh - 176px);
+                height: calc(100dvh - 176px);
+            }
+        }
+        /* Iframe has fixed height - scrolls with chart in wrapper */
         #reportFrame {
             width: 100%;
-            height: calc(100vh - 356px);
-            height: calc(100dvh - 356px); /* Modern browsers - accounts for mobile address bar */
-            min-height: 350px; /* Fallback minimum */
+            height: 2000px; /* Fixed height for report content */
+            min-height: 800px;
             border: none;
         }
-        /* Desktop: nav 64px + info bar 60px + chart section ~264px + bottom bar 52px = 440px */
-        @media (min-width: 640px) {
-            #reportFrame {
-                height: calc(100vh - 440px);
-                height: calc(100dvh - 440px);
-            }
-        }
         #reportFrame.no-info-bar {
-            height: calc(100vh - 312px);
-            height: calc(100dvh - 312px);
-        }
-        @media (min-width: 640px) {
-            #reportFrame.no-info-bar {
-                height: calc(100vh - 380px);
-                height: calc(100dvh - 380px);
-            }
+            /* No change needed */
         }
         @media print {
             nav { display: none !important; }
@@ -573,16 +570,14 @@
         }
 
         function setIframeHeight(extraOffset = 0) {
+            // Iframe now has fixed height, wrapper scrolls
+            // This function now only adjusts wrapper height for nudge banner
             const isMobile = window.innerWidth < 640;
-            // Base offset: nav + info bar + chart section + bottom bar
-            // Mobile: 48 + 44 + 216 + 48 = 356
-            // Desktop: 64 + 60 + 264 + 52 = 440
-            const baseOffset = isMobile ? 356 : 440;
+            const baseOffset = isMobile ? 140 : 176; // nav + info bar + bottom bar
             const totalOffset = baseOffset + extraOffset;
-            const iframe = document.getElementById('reportFrame');
-            // Use actual viewport height for reliable mobile sizing
-            const height = Math.max(350, getViewportHeight() - totalOffset);
-            iframe.style.height = `${height}px`;
+            const wrapper = document.getElementById('reportFrameWrapper');
+            const height = Math.max(400, getViewportHeight() - totalOffset);
+            wrapper.style.height = `${height}px`;
         }
 
         function showGuestNudge() {
