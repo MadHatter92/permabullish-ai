@@ -60,7 +60,7 @@ def get_nifty500_symbols() -> Tuple[List[str], Dict[str, str]]:
     return symbols, company_names
 
 
-def search_tickertape(query: str, symbol: str, session: requests.Session) -> Optional[str]:
+def search_tickertape(query: str, symbol: str, session: requests.Session, by_name: bool = False) -> Optional[str]:
     """Search Tickertape and return slug if found for the given symbol."""
     search_url = f"https://api.tickertape.in/search?text={requests.utils.quote(query)}"
     headers = {
@@ -74,23 +74,23 @@ def search_tickertape(query: str, symbol: str, session: requests.Session) -> Opt
 
         if data.get("success") and data.get("data", {}).get("stocks"):
             stocks = data["data"]["stocks"]
-            # Find exact match by ticker
-            for stock in stocks:
-                if stock.get("ticker", "").upper() == symbol.upper():
-                    slug = stock.get("slug", "")
-                    if slug.startswith("/stocks/"):
-                        return slug[8:]  # Remove '/stocks/' prefix
-                    return slug
 
-            # If no exact ticker match but searching by name, use first stock result
-            # that matches the symbol in its slug (e.g., "varun-beverages-VBL" contains "VBL")
-            for stock in stocks:
-                slug = stock.get("slug", "")
+            # Find exact match by ticker (only when searching by symbol)
+            if not by_name:
+                for stock in stocks:
+                    if stock.get("ticker", "").upper() == symbol.upper():
+                        slug = stock.get("slug", "")
+                        if slug.startswith("/stocks/"):
+                            return slug[8:]  # Remove '/stocks/' prefix
+                        return slug
+
+            # When searching by name, use the first stock result
+            # (Tickertape tickers often differ from NSE symbols)
+            if by_name and stocks:
+                slug = stocks[0].get("slug", "")
                 if slug.startswith("/stocks/"):
-                    slug = slug[8:]
-                # Check if symbol appears in slug (case insensitive)
-                if symbol.upper() in slug.upper():
-                    return slug
+                    return slug[8:]
+                return slug
 
         return None
     except Exception as e:
@@ -105,7 +105,7 @@ def get_tickertape_slug(symbol: str, company_name: str, session: requests.Sessio
     Returns (slug, method) where method is 'ticker' or 'name' or 'failed'.
     """
     # First, try searching by ticker symbol
-    slug = search_tickertape(symbol, symbol, session)
+    slug = search_tickertape(symbol, symbol, session, by_name=False)
     if slug:
         return slug, "ticker"
 
@@ -119,11 +119,23 @@ def get_tickertape_slug(symbol: str, company_name: str, session: requests.Sessio
 
         if clean_name:
             time.sleep(0.15)  # Small delay between searches
-            slug = search_tickertape(clean_name, symbol, session)
+            slug = search_tickertape(clean_name, symbol, session, by_name=True)
             if slug:
                 return slug, "name"
 
     return None, "failed"
+
+
+def load_existing_slugs() -> Dict[str, str]:
+    """Load existing slug mappings from JSON file."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    json_path = os.path.join(script_dir, "..", "data", "tickertape_slugs.json")
+
+    if not os.path.exists(json_path):
+        return {}
+
+    with open(json_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def build_slug_mapping():
@@ -131,15 +143,24 @@ def build_slug_mapping():
     print("Fetching Nifty 500 symbols from NSE...")
     symbols, company_names = get_nifty500_symbols()
     print(f"Found {len(symbols)} symbols")
-    print(f"Loaded company names for {sum(1 for n in company_names.values() if n)} stocks\n")
+    print(f"Loaded company names for {sum(1 for n in company_names.values() if n)} stocks")
+
+    # Load existing slugs to resume from previous run
+    existing_slugs = load_existing_slugs()
+    print(f"Loaded {len(existing_slugs)} existing slugs (will skip these)\n")
 
     session = requests.Session()
-    mapping = {}
+    mapping = dict(existing_slugs)  # Start with existing mappings
     failed = []
     found_by_ticker = 0
     found_by_name = 0
+    skipped = 0
 
     for i, symbol in enumerate(symbols):
+        # Skip if we already have this slug
+        if symbol in existing_slugs:
+            skipped += 1
+            continue
         name = company_names.get(symbol, "")
         name_display = f" ({name[:30]}...)" if len(name) > 30 else f" ({name})" if name else ""
         print(f"[{i+1}/{len(symbols)}] {symbol}{name_display}...", end=" ", flush=True)
@@ -159,9 +180,10 @@ def build_slug_mapping():
             print("FAILED")
 
         # Rate limiting - be nice to Tickertape
-        time.sleep(0.2)  # 5 requests per second max
+        time.sleep(1.0)  # 1 request per second to avoid rate limits
 
-    print(f"\n\nCompleted: {len(mapping)} successful ({found_by_ticker} by ticker, {found_by_name} by name), {len(failed)} failed")
+    new_found = found_by_ticker + found_by_name
+    print(f"\n\nCompleted: {len(mapping)} total slugs ({skipped} existing, {new_found} new: {found_by_ticker} by ticker, {found_by_name} by name), {len(failed)} failed")
 
     if failed:
         print(f"\nFailed symbols ({len(failed)}): {failed[:20]}{'...' if len(failed) > 20 else ''}")
