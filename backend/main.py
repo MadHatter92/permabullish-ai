@@ -32,7 +32,7 @@ from slowapi.errors import RateLimitExceeded
 
 import database as db
 import auth
-from yahoo_finance import fetch_stock_data, search_stocks
+from yahoo_finance import fetch_stock_data, search_stocks, fetch_chart_data
 from report_generator import generate_ai_analysis, generate_report_html, generate_comparison_analysis
 from config import (
     SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
@@ -533,6 +533,42 @@ async def get_stock_info(
         "market_cap": valuation.get("market_cap", 0),
         "pe_ratio": valuation.get("pe_ratio", 0),
     }
+
+
+@app.get("/api/stocks/{symbol}/chart")
+async def get_stock_chart(
+    symbol: str,
+    exchange: str = "NSE",
+    period: str = "1y"
+):
+    """
+    Get historical price data for stock charts.
+
+    Args:
+        symbol: Stock ticker symbol
+        exchange: Exchange (NSE or BSE)
+        period: Time period - 1m, 3m, 6m, 1y, 5y
+
+    Returns:
+        Chart data with price history, moving averages, and key stats
+    """
+    # Validate period
+    valid_periods = ["1m", "3m", "6m", "1y", "5y"]
+    if period not in valid_periods:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid period. Must be one of: {', '.join(valid_periods)}"
+        )
+
+    chart_data = fetch_chart_data(symbol, exchange, period)
+
+    if not chart_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Chart data not available for {symbol} on {exchange}"
+        )
+
+    return chart_data
 
 
 # Report Generation Routes (Stock Research)

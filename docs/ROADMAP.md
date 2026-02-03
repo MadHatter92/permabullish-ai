@@ -656,7 +656,250 @@ Add a stock comparison feature where users can compare two stocks side-by-side w
 
 ---
 
-## Phase 8: Future Features (Post-Launch)
+## Phase 7.8: Report Quality Enhancements
+**Status:** 🔄 IN PROGRESS
+**Priority:** High
+**Started:** February 3, 2026
+
+### Objective
+Improve the depth and quality of AI-generated reports with charts, management analysis, and sector-specific insights.
+
+### 7.8.1 Stock Price Charts ⬅️ CURRENT
+
+- [ ] **Chart Integration**
+  - Add interactive price chart to report page
+  - Show 1M, 3M, 6M, 1Y, 5Y timeframes
+  - Display key moving averages (50-day, 200-day SMA)
+  - Mark support/resistance levels
+  - Volume overlay
+
+- [ ] **Technical Signals**
+  - 52-week high/low proximity
+  - Above/below key moving averages
+  - Recent trend direction
+
+- [ ] **Implementation Options**
+  - Option A: TradingView widget (embed, free tier available)
+  - Option B: Chart.js/Lightweight Charts with Yahoo Finance data
+  - Option C: Third-party chart image API
+
+### 7.8.2 Management Quality Assessment
+
+- [ ] **Data Points to Include**
+  - Promoter background and track record
+  - Promoter holding % and pledge status
+  - Related party transactions
+  - Capital allocation history (dividends, buybacks, acquisitions)
+  - Board composition and independence
+  - Auditor changes (red flag indicator)
+  - Corporate governance score
+
+- [ ] **AI Analysis**
+  - Add management quality section to report prompt
+  - Rate management on scale (Excellent/Good/Average/Poor)
+  - Highlight any governance red flags
+
+- [ ] **Data Sources**
+  - Screener.in (promoter holding, pledges)
+  - BSE/NSE announcements (governance disclosures)
+  - Manual curation for top 200 stocks initially
+
+### 7.8.3 Sector-Specific Analysis Templates
+
+- [ ] **Banking & NBFC**
+  - NPA ratios (Gross NPA, Net NPA)
+  - NIM (Net Interest Margin)
+  - CASA ratio
+  - Capital adequacy (CAR)
+  - Credit cost trends
+  - Loan book composition
+
+- [ ] **IT Services**
+  - Revenue by geography
+  - Deal wins / TCV (Total Contract Value)
+  - Attrition rate
+  - Utilization rate
+  - Top client concentration
+
+- [ ] **Pharmaceuticals**
+  - Domestic vs Export split
+  - US FDA observations / warning letters
+  - ANDA pipeline
+  - API vs Formulations mix
+  - R&D spend as % of revenue
+
+- [ ] **FMCG / Consumer**
+  - Volume growth vs Value growth
+  - Rural vs Urban mix
+  - Distribution reach
+  - Brand strength / market share
+  - Raw material cost trends
+
+- [ ] **Auto & Auto Ancillary**
+  - Production / sales volumes
+  - EV transition readiness
+  - Export %
+  - OEM vs Aftermarket mix
+  - Capacity utilization
+
+- [ ] **Implementation**
+  - Detect sector from stock metadata
+  - Load sector-specific prompt additions
+  - Include relevant metrics in data fetch
+  - Display sector-specific section in report
+
+### Deliverables
+- [ ] Interactive price charts on reports
+- [ ] Management quality section in reports
+- [ ] Sector-specific analysis for top 5 sectors
+- [ ] Enhanced AI prompts for deeper analysis
+
+---
+
+## Phase 8: US Market Expansion (us.permabullish.com)
+**Status:** Planning
+**Priority:** High
+**Target:** Q2 2026
+
+### Objective
+Launch a US-focused version of Permabullish at us.permabullish.com, providing AI-powered equity research for US stocks (NYSE, NASDAQ).
+
+### 8.1 Data Sources Research ✅
+
+| Source | Data Type | Pricing | Decision |
+|--------|-----------|---------|----------|
+| **Yahoo Finance** | Prices, basic fundamentals | Free | ✅ Already using - works for US |
+| **Financial Modeling Prep** | Fundamentals, ratios, SEC filings | Free: 250/day, Paid: $19-99/mo | ✅ **Primary** - closest to Screener.in |
+| **Alpha Vantage** | Prices, fundamentals | Free: 25/day, $50/mo | ⏳ Backup option |
+| **Polygon.io** | Prices, news, fundamentals | $29-199/mo | ❌ Overkill for MVP |
+| **SEC EDGAR** | Official filings (10-K, 10-Q) | Free | ⏳ Phase 2 enhancement |
+| **IEX Cloud** | Everything | $9-500/mo | ❌ Pay-per-message expensive |
+
+**Recommended:** Financial Modeling Prep (FMP) for fundamentals + Yahoo Finance for prices
+
+### 8.2 Architecture Decision
+
+**Option A: Unified Codebase (Recommended)**
+- Single codebase with market switching
+- Shared: Auth, payments, AI engine, caching logic
+- Market-specific: Data fetchers, stock lists, prompt context
+- Subdomain routing via Render or Cloudflare
+- Pros: DRY, easier maintenance, shared improvements
+- Cons: Slightly more complex config
+
+**Option B: Forked Codebase**
+- Separate repository for US version
+- Independent deployments
+- Pros: Full isolation, simpler per-project
+- Cons: Double maintenance, divergent features
+
+**Decision:** [ ] TBD
+
+### 8.3 Technical Implementation
+
+#### 8.3.1 Backend Changes
+
+- [ ] **Market Abstraction Layer**
+  - Create `markets/` module with `india.py`, `us.py`
+  - Abstract: `get_stock_data()`, `search_stocks()`, `get_fundamentals()`
+  - Market detected from subdomain or API parameter
+
+- [ ] **US Stock Data Fetcher**
+  - `backend/data_sources/fmp.py` - Financial Modeling Prep client
+  - `backend/data_sources/yahoo_us.py` - Yahoo Finance for US (already works)
+  - Stock list: S&P 500 initially, expand to Russell 3000
+
+- [ ] **AI Prompt Adjustments**
+  - US fiscal year (Jan-Dec vs Apr-Mar)
+  - SEC filing references (10-K, 10-Q vs annual reports)
+  - USD currency formatting
+  - US market terminology
+
+- [ ] **Database Schema**
+  - Add `market` column to: `report_cache`, `watchlist`, `comparison_cache`
+  - Or: Separate tables per market (simpler queries)
+
+#### 8.3.2 Frontend Changes
+
+- [ ] **Market-Aware Config**
+  - `config.js` detects subdomain → sets market context
+  - Currency symbol (₹ vs $)
+  - Stock search endpoint routing
+
+- [ ] **UI Adjustments**
+  - US branding variant (same design, different market context)
+  - Remove Hindi/Gujarati language options for US
+  - Update footer/legal disclaimers for US
+
+#### 8.3.3 Stock Data
+
+- [ ] **US Stock List**
+  - `data/us_stocks.json` - NYSE + NASDAQ
+  - Start with S&P 500 (~500 stocks)
+  - Expand to Russell 3000 (~3000 stocks)
+
+- [ ] **Fundamentals Sync Script**
+  - `scripts/us_fundamentals_sync.py`
+  - Fetch from Financial Modeling Prep API
+  - Similar structure to India sync
+
+### 8.4 Payment Integration
+
+- [ ] **Stripe Integration** (US users pay in USD)
+  - Stripe Checkout for subscriptions
+  - Webhook handling for payment events
+  - Keep Cashfree for India (geo-based routing)
+
+- [ ] **Pricing (USD)**
+  | Tier | Monthly | 6 Months | Yearly |
+  |------|---------|----------|--------|
+  | Free | $0 (5 reports) | - | - |
+  | Basic | $9.99 | $49.99 | $89.99 |
+  | Pro | $19.99 | $99.99 | $179.99 |
+
+### 8.5 Hosting & Infrastructure
+
+- [ ] **Subdomain Setup**
+  - `us.permabullish.com` → Same Render app with routing
+  - Or: Separate Render service (easier isolation)
+
+- [ ] **Environment Variables (US)**
+  - `FMP_API_KEY` - Financial Modeling Prep
+  - `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY`
+  - `STRIPE_WEBHOOK_SECRET`
+
+- [ ] **Database Strategy**
+  - Option A: Same PostgreSQL, market column filtering
+  - Option B: Separate database (cleaner, but more cost)
+
+### 8.6 Launch Checklist
+
+- [ ] FMP API account and key
+- [ ] Stripe account setup
+- [ ] US stock list populated
+- [ ] Initial fundamentals sync (S&P 500)
+- [ ] AI prompts tested for US context
+- [ ] Subdomain DNS configured
+- [ ] Legal disclaimer updated for US
+- [ ] Beta testing with US stocks
+
+### Deliverables
+- [ ] us.permabullish.com live
+- [ ] S&P 500 coverage at launch
+- [ ] USD payments via Stripe
+- [ ] US-specific AI analysis context
+
+### Estimated Costs (Monthly)
+| Item | Cost |
+|------|------|
+| FMP API (Starter) | $19/mo |
+| Stripe fees | 2.9% + 30¢ per transaction |
+| Additional Render service | $7-25/mo |
+| Claude API (incremental) | Variable |
+
+---
+
+## Phase 9: Future Features (Post-Launch)
 **Status:** Backlog
 **Priority:** Low
 
@@ -669,7 +912,7 @@ Add a stock comparison feature where users can compare two stocks side-by-side w
 - [x] **Comparison reports:** Compare two stocks side-by-side ✅ (Phase 7.6)
 - [ ] **API access:** Programmatic access for Enterprise
 - [ ] **Mobile app:** Native iOS/Android
-- [ ] **International stocks:** US, UK markets
+- [x] **International stocks:** US market ✅ (Phase 8)
 
 ---
 
@@ -689,7 +932,9 @@ Add a stock comparison feature where users can compare two stocks side-by-side w
 | 7 | Multi-Language | ✅ Complete |
 | 7.5 | Security & Best Practices | 🔄 In Progress |
 | 7.6 | Stock Comparison Tool | ✅ Complete |
-| 8 | Future Features | Backlog |
+| 7.8 | **Report Quality Enhancements** | 🔄 In Progress |
+| 8 | US Market Expansion | 📋 Planning |
+| 9 | Future Features | Backlog |
 
 ---
 

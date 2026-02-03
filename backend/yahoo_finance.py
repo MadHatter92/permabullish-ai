@@ -444,3 +444,112 @@ def calculate_upside(current_price: float, target_price: float) -> float:
     if current_price and target_price and current_price > 0:
         return ((target_price - current_price) / current_price) * 100
     return 0
+
+
+def fetch_chart_data(symbol: str, exchange: str = "NSE", period: str = "1y") -> Optional[Dict[str, Any]]:
+    """
+    Fetch historical price data for charts.
+
+    Args:
+        symbol: Stock ticker symbol
+        exchange: Exchange (NSE or BSE)
+        period: Time period - 1m, 3m, 6m, 1y, 5y
+
+    Returns:
+        Dictionary with OHLC data, volume, and calculated indicators
+    """
+    ticker_symbol = get_ticker_symbol(symbol, exchange)
+
+    # Map period to yfinance format
+    period_map = {
+        "1m": "1mo",
+        "3m": "3mo",
+        "6m": "6mo",
+        "1y": "1y",
+        "5y": "5y",
+        "max": "max"
+    }
+    yf_period = period_map.get(period, "1y")
+
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        hist = ticker.history(period=yf_period)
+
+        if hist.empty:
+            logger.warning(f"No historical data for {symbol}")
+            return None
+
+        # Convert to list format for frontend
+        dates = hist.index.strftime("%Y-%m-%d").tolist()
+        closes = hist["Close"].tolist()
+        highs = hist["High"].tolist()
+        lows = hist["Low"].tolist()
+        opens = hist["Open"].tolist()
+        volumes = hist["Volume"].tolist()
+
+        # Calculate moving averages
+        ma50 = []
+        ma200 = []
+
+        for i in range(len(closes)):
+            # 50-day MA
+            if i >= 49:
+                ma50.append({
+                    "time": dates[i],
+                    "value": round(sum(closes[i-49:i+1]) / 50, 2)
+                })
+
+            # 200-day MA
+            if i >= 199:
+                ma200.append({
+                    "time": dates[i],
+                    "value": round(sum(closes[i-199:i+1]) / 200, 2)
+                })
+
+        # Calculate 52-week high/low (use last 252 trading days or all available)
+        lookback = min(252, len(closes))
+        recent_highs = highs[-lookback:]
+        recent_lows = lows[-lookback:]
+        week52_high = max(recent_highs) if recent_highs else None
+        week52_low = min(recent_lows) if recent_lows else None
+
+        # Calculate period return
+        if len(closes) >= 2:
+            period_return = ((closes[-1] - closes[0]) / closes[0]) * 100
+        else:
+            period_return = 0
+
+        # Format price data for Lightweight Charts
+        price_data = []
+        for i in range(len(dates)):
+            price_data.append({
+                "time": dates[i],
+                "value": round(closes[i], 2)
+            })
+
+        # Current price and MAs for footer display
+        current_price = round(closes[-1], 2) if closes else None
+        current_ma50 = round(ma50[-1]["value"], 2) if ma50 else None
+        current_ma200 = round(ma200[-1]["value"], 2) if ma200 else None
+
+        return {
+            "symbol": symbol,
+            "exchange": exchange,
+            "period": period,
+            "price_data": price_data,
+            "ma50": ma50,
+            "ma200": ma200,
+            "stats": {
+                "current_price": current_price,
+                "week52_high": round(week52_high, 2) if week52_high else None,
+                "week52_low": round(week52_low, 2) if week52_low else None,
+                "ma50": current_ma50,
+                "ma200": current_ma200,
+                "period_return": round(period_return, 2),
+                "data_points": len(price_data)
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to fetch chart data for {symbol}: {e}")
+        return None

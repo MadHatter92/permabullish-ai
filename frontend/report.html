@@ -8,6 +8,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Report - Permabullish</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lightweight Charts for price chart -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -15,35 +17,36 @@
         .gradient-header {
             background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
         }
-        /* Mobile: nav 48px + info bar ~44px + bottom bar 48px = 140px */
+        /* Mobile: nav 48px + info bar 44px + chart section ~216px + bottom bar 48px = 356px */
         /* Use dvh (dynamic viewport height) with vh fallback for mobile browser compatibility */
         #reportFrame {
             width: 100%;
-            height: calc(100vh - 140px);
-            height: calc(100dvh - 140px); /* Modern browsers - accounts for mobile address bar */
-            min-height: 300px; /* Fallback minimum */
+            height: calc(100vh - 356px);
+            height: calc(100dvh - 356px); /* Modern browsers - accounts for mobile address bar */
+            min-height: 350px; /* Fallback minimum */
             border: none;
         }
-        /* Desktop: nav 64px + info bar 60px + bottom bar 52px = 176px */
+        /* Desktop: nav 64px + info bar 60px + chart section ~264px + bottom bar 52px = 440px */
         @media (min-width: 640px) {
             #reportFrame {
-                height: calc(100vh - 176px);
-                height: calc(100dvh - 176px);
+                height: calc(100vh - 440px);
+                height: calc(100dvh - 440px);
             }
         }
         #reportFrame.no-info-bar {
-            height: calc(100vh - 96px);
-            height: calc(100dvh - 96px);
+            height: calc(100vh - 312px);
+            height: calc(100dvh - 312px);
         }
         @media (min-width: 640px) {
             #reportFrame.no-info-bar {
-                height: calc(100vh - 116px);
-                height: calc(100dvh - 116px);
+                height: calc(100vh - 380px);
+                height: calc(100dvh - 380px);
             }
         }
         @media print {
             nav { display: none !important; }
             #reportContainer { padding-top: 0 !important; }
+            #chartSection { display: none !important; }
         }
         body {
             font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
@@ -264,6 +267,47 @@
     <!-- Report Container -->
     <div id="reportContainer" class="hidden pt-12 sm:pt-16">
         <div id="reportFrameWrapper" class="pt-[44px] sm:pt-[60px]">
+            <!-- Price Chart Section -->
+            <div id="chartSection" class="max-w-4xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
+                <div class="bg-[#102a43] rounded-xl overflow-hidden shadow-lg">
+                    <!-- Chart Header with Timeframe Toggles -->
+                    <div class="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-[#1e3a5f]">
+                        <div class="flex items-center gap-2">
+                            <span class="text-white/60 text-xs sm:text-sm">Price Chart</span>
+                            <span id="chartReturn" class="text-green-400 text-xs sm:text-sm font-medium">--</span>
+                        </div>
+                        <div id="chartTimeframes" class="flex items-center gap-0.5 sm:gap-1">
+                            <button onclick="loadChart('1m')" data-period="1m" class="chart-period-btn px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs text-white/60 hover:text-white hover:bg-white/10 rounded transition-all">1M</button>
+                            <button onclick="loadChart('3m')" data-period="3m" class="chart-period-btn px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs text-white/60 hover:text-white hover:bg-white/10 rounded transition-all">3M</button>
+                            <button onclick="loadChart('6m')" data-period="6m" class="chart-period-btn px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs text-white/60 hover:text-white hover:bg-white/10 rounded transition-all">6M</button>
+                            <button onclick="loadChart('1y')" data-period="1y" class="chart-period-btn px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs bg-[#e8913a] text-white rounded transition-all">1Y</button>
+                            <button onclick="loadChart('5y')" data-period="5y" class="chart-period-btn px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs text-white/60 hover:text-white hover:bg-white/10 rounded transition-all">5Y</button>
+                        </div>
+                    </div>
+                    <!-- Chart Container -->
+                    <div id="priceChart" class="w-full h-[160px] sm:h-[200px]"></div>
+                    <!-- Chart Loading State -->
+                    <div id="chartLoading" class="hidden w-full h-[160px] sm:h-[200px] flex items-center justify-center">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[#e8913a]"></div>
+                    </div>
+                    <!-- Chart Error State -->
+                    <div id="chartError" class="hidden w-full h-[160px] sm:h-[200px] flex items-center justify-center">
+                        <span class="text-white/40 text-sm">Chart unavailable</span>
+                    </div>
+                    <!-- Chart Footer - Key Levels -->
+                    <div id="chartFooter" class="flex items-center justify-between px-3 sm:px-4 py-2 border-t border-[#1e3a5f] text-[10px] sm:text-xs">
+                        <div class="flex items-center gap-2 sm:gap-4">
+                            <span class="text-white/40">52W:</span>
+                            <span id="chart52Low" class="text-red-400">L --</span>
+                            <span id="chart52High" class="text-green-400">H --</span>
+                        </div>
+                        <div class="flex items-center gap-2 sm:gap-4">
+                            <span id="chartMA50" class="text-blue-400"><span class="hidden sm:inline">50D </span>--</span>
+                            <span id="chartMA200" class="text-purple-400"><span class="hidden sm:inline">200D </span>--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <iframe id="reportFrame" sandbox="allow-scripts allow-same-origin"></iframe>
         </div>
     </div>
@@ -321,6 +365,186 @@
         const NUDGE_MAX_DISMISSALS = 5; // Stop showing after 5 dismissals
         const NUDGE_RESET_HOURS = 24; // Reset dismissal count after 24 hours
 
+        // Chart variables
+        let priceChart = null;
+        let priceSeries = null;
+        let ma50Series = null;
+        let ma200Series = null;
+        let currentChartPeriod = '1y';
+
+        // Initialize chart
+        function initChart() {
+            const chartContainer = document.getElementById('priceChart');
+            if (!chartContainer || !window.LightweightCharts) return;
+
+            priceChart = LightweightCharts.createChart(chartContainer, {
+                layout: {
+                    background: { type: 'solid', color: '#102a43' },
+                    textColor: '#9fb3c8',
+                },
+                grid: {
+                    vertLines: { color: '#1e3a5f' },
+                    horzLines: { color: '#1e3a5f' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: '#1e3a5f',
+                },
+                timeScale: {
+                    borderColor: '#1e3a5f',
+                    timeVisible: false,
+                },
+                handleScroll: {
+                    vertTouchDrag: false,
+                },
+            });
+
+            // Add area series for price
+            priceSeries = priceChart.addAreaSeries({
+                topColor: 'rgba(232, 145, 58, 0.4)',
+                bottomColor: 'rgba(232, 145, 58, 0.0)',
+                lineColor: '#e8913a',
+                lineWidth: 2,
+            });
+
+            // Add 50-day MA line
+            ma50Series = priceChart.addLineSeries({
+                color: '#60a5fa',
+                lineWidth: 1,
+                lineStyle: 2, // Dashed
+            });
+
+            // Add 200-day MA line
+            ma200Series = priceChart.addLineSeries({
+                color: '#a78bfa',
+                lineWidth: 1,
+                lineStyle: 2,
+            });
+
+            // Handle resize
+            const resizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    priceChart.applyOptions({
+                        width: entry.contentRect.width,
+                        height: entry.contentRect.height
+                    });
+                }
+            });
+            resizeObserver.observe(chartContainer);
+        }
+
+        // Load chart data
+        async function loadChart(period = '1y') {
+            if (!currentReport) return;
+
+            currentChartPeriod = period;
+
+            // Update active button
+            document.querySelectorAll('.chart-period-btn').forEach(btn => {
+                if (btn.dataset.period === period) {
+                    btn.classList.remove('text-white/60', 'hover:text-white', 'hover:bg-white/10');
+                    btn.classList.add('bg-[#e8913a]', 'text-white');
+                } else {
+                    btn.classList.remove('bg-[#e8913a]', 'text-white');
+                    btn.classList.add('text-white/60', 'hover:text-white', 'hover:bg-white/10');
+                }
+            });
+
+            // Show loading state
+            document.getElementById('priceChart').classList.add('hidden');
+            document.getElementById('chartError').classList.add('hidden');
+            document.getElementById('chartLoading').classList.remove('hidden');
+
+            try {
+                const exchange = currentReport.exchange || 'NSE';
+                const response = await fetch(
+                    `${API_BASE}/stocks/${currentReport.ticker}/chart?exchange=${exchange}&period=${period}`
+                );
+
+                if (!response.ok) {
+                    throw new Error('Chart data not available');
+                }
+
+                const chartData = await response.json();
+                renderChart(chartData);
+
+            } catch (error) {
+                console.error('Failed to load chart:', error);
+                document.getElementById('chartLoading').classList.add('hidden');
+                document.getElementById('chartError').classList.remove('hidden');
+            }
+        }
+
+        // Render chart with data
+        function renderChart(data) {
+            if (!priceChart || !data.price_data) return;
+
+            // Set price data
+            priceSeries.setData(data.price_data);
+
+            // Set moving averages (if available)
+            if (data.ma50 && data.ma50.length > 0) {
+                ma50Series.setData(data.ma50);
+            } else {
+                ma50Series.setData([]);
+            }
+
+            if (data.ma200 && data.ma200.length > 0) {
+                ma200Series.setData(data.ma200);
+            } else {
+                ma200Series.setData([]);
+            }
+
+            // Fit content
+            priceChart.timeScale().fitContent();
+
+            // Update footer stats
+            updateChartFooter(data.stats);
+
+            // Hide loading, show chart
+            document.getElementById('chartLoading').classList.add('hidden');
+            document.getElementById('priceChart').classList.remove('hidden');
+        }
+
+        // Update chart footer with stats
+        function updateChartFooter(stats) {
+            if (!stats) return;
+
+            // Period return
+            const returnEl = document.getElementById('chartReturn');
+            if (stats.period_return !== null && stats.period_return !== undefined) {
+                const returnVal = stats.period_return;
+                const sign = returnVal >= 0 ? '+' : '';
+                returnEl.textContent = `${sign}${returnVal.toFixed(1)}% (${currentChartPeriod.toUpperCase()})`;
+                returnEl.className = returnVal >= 0
+                    ? 'text-green-400 text-xs sm:text-sm font-medium'
+                    : 'text-red-400 text-xs sm:text-sm font-medium';
+            }
+
+            // 52-week high/low
+            if (stats.week52_low) {
+                document.getElementById('chart52Low').textContent = `L ₹${stats.week52_low.toLocaleString('en-IN')}`;
+            }
+            if (stats.week52_high) {
+                document.getElementById('chart52High').textContent = `H ₹${stats.week52_high.toLocaleString('en-IN')}`;
+            }
+
+            // Moving averages
+            if (stats.ma50) {
+                document.getElementById('chartMA50').innerHTML = `<span class="hidden sm:inline">50D </span>₹${stats.ma50.toLocaleString('en-IN')}`;
+            } else {
+                document.getElementById('chartMA50').innerHTML = `<span class="hidden sm:inline">50D </span>--`;
+            }
+
+            if (stats.ma200) {
+                document.getElementById('chartMA200').innerHTML = `<span class="hidden sm:inline">200D </span>₹${stats.ma200.toLocaleString('en-IN')}`;
+            } else {
+                document.getElementById('chartMA200').innerHTML = `<span class="hidden sm:inline">200D </span>--`;
+            }
+        }
+
         // Check if we should show the guest nudge
         function shouldShowGuestNudge() {
             const nudgeData = localStorage.getItem('guestNudgeDismissals');
@@ -350,11 +574,14 @@
 
         function setIframeHeight(extraOffset = 0) {
             const isMobile = window.innerWidth < 640;
-            const baseOffset = isMobile ? 140 : 176;
+            // Base offset: nav + info bar + chart section + bottom bar
+            // Mobile: 48 + 44 + 216 + 48 = 356
+            // Desktop: 64 + 60 + 264 + 52 = 440
+            const baseOffset = isMobile ? 356 : 440;
             const totalOffset = baseOffset + extraOffset;
             const iframe = document.getElementById('reportFrame');
             // Use actual viewport height for reliable mobile sizing
-            const height = Math.max(300, getViewportHeight() - totalOffset);
+            const height = Math.max(350, getViewportHeight() - totalOffset);
             iframe.style.height = `${height}px`;
         }
 
@@ -509,6 +736,10 @@
 
                 // Set proper iframe height for mobile
                 setIframeHeight(0);
+
+                // Initialize and load chart (async, non-blocking)
+                initChart();
+                loadChart('1y');
 
                 // Track report view
                 if (window.analytics) {
