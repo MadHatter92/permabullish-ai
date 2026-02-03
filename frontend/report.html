@@ -18,46 +18,29 @@
             background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
         }
 
-        /* Prevent body scroll - only wrapper scrolls */
-        html, body {
-            overflow: hidden;
-            height: 100%;
-        }
-
         body {
             font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
         }
 
-        /* Single scrollable content area - ONLY scroll context */
+        /* Content wrapper - just holds content, page scrolls naturally */
         #reportFrameWrapper {
-            height: calc(100vh - 140px); /* Mobile: nav 48 + info 44 + bottom 48 */
-            height: calc(100dvh - 140px);
-            overflow-y: auto;
-            overflow-x: hidden;
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
-        }
-        @media (min-width: 640px) {
-            #reportFrameWrapper {
-                height: calc(100vh - 176px); /* Desktop: nav 64 + info 60 + bottom 52 */
-                height: calc(100dvh - 176px);
-            }
+            padding-bottom: 60px; /* Space for fixed bottom bar */
         }
 
-        /* Iframe is tall enough to show full report - NO internal scroll */
+        /* Iframe displays report content */
         #reportFrame {
             width: 100%;
             height: 4000px; /* Tall enough for most reports */
             border: none;
             display: block;
-            overflow: hidden; /* Prevent iframe scrollbar */
         }
 
         @media print {
-            html, body { overflow: visible; height: auto; }
             nav { display: none !important; }
             #reportContainer { padding-top: 0 !important; }
             #chartSection { display: none !important; }
+            #bottomBar { display: none !important; }
+            #reportFrameWrapper { padding-bottom: 0; }
         }
 
         .font-display {
@@ -82,7 +65,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 min-h-screen">
     <!-- Navigation -->
     <nav class="gradient-header text-white shadow-lg fixed top-0 left-0 right-0 z-50">
         <div class="max-w-full mx-auto px-3 sm:px-6 lg:px-8">
@@ -576,30 +559,11 @@
             }
         }
 
-        // Helper to get actual viewport height (handles mobile browser address bar)
-        function getViewportHeight() {
-            return window.innerHeight;
-        }
-
-        function setIframeHeight(extraOffset = 0) {
-            // Iframe now has fixed height, wrapper scrolls
-            // This function now only adjusts wrapper height for nudge banner
-            const isMobile = window.innerWidth < 640;
-            const baseOffset = isMobile ? 140 : 176; // nav + info bar + bottom bar
-            const totalOffset = baseOffset + extraOffset;
-            const wrapper = document.getElementById('reportFrameWrapper');
-            const height = Math.max(400, getViewportHeight() - totalOffset);
-            wrapper.style.height = `${height}px`;
-        }
-
         function showGuestNudge() {
             document.getElementById('guestNudge').classList.remove('hidden');
-            // Adjust report frame position and height when nudge is shown
+            // Add extra padding when nudge is shown
             const isMobile = window.innerWidth < 640;
-            const nudgeHeight = 36;
             document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '80px' : '100px';
-            // Use actual viewport height calculation
-            setIframeHeight(nudgeHeight);
         }
 
         // Detect in-app browsers that have iframe issues
@@ -644,16 +608,6 @@
             }
 
             loadReport(reportId);
-        });
-
-        // Handle viewport resize (orientation change, keyboard show/hide)
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                const nudgeVisible = !document.getElementById('guestNudge').classList.contains('hidden');
-                setIframeHeight(nudgeVisible ? 36 : 0);
-            }, 100);
         });
 
         function getHeaders() {
@@ -1130,10 +1084,9 @@
 
         function dismissGuestNudge() {
             document.getElementById('guestNudge').classList.add('hidden');
+            // Reset padding when nudge is dismissed
             const isMobile = window.innerWidth < 640;
             document.getElementById('reportFrameWrapper').style.paddingTop = isMobile ? '44px' : '60px';
-            // Restore iframe height using actual viewport
-            setIframeHeight(0);
 
             // Track dismissal count in localStorage
             try {
