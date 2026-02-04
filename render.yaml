@@ -121,11 +121,11 @@ services:
   # CRON JOBS
   # ============================================
 
-  # Daily Usage Report (runs at 9:00 AM UTC daily)
+  # Daily Usage Report (runs at 9:00 AM IST / 3:30 AM UTC daily)
   - type: cron
     name: permabullish-daily-report
     runtime: python
-    schedule: "0 9 * * *"
+    schedule: "30 3 * * *"
     region: oregon
     branch: main
     rootDir: backend
@@ -141,11 +141,11 @@ services:
       - key: RESEND_API_KEY
         sync: false
 
-  # Weekly Usage Report (runs Monday at 9:00 AM UTC)
+  # Weekly Usage Report (runs Monday at 9:00 AM IST / 3:30 AM UTC)
   - type: cron
     name: permabullish-weekly-report
     runtime: python
-    schedule: "0 9 * * 1"
+    schedule: "30 3 * * 1"
     region: oregon
     branch: main
     rootDir: backend

@@ -607,8 +607,8 @@ def should_send_reengagement(
     if days_since_signup > 180:
         return False
 
-    # Must be inactive for 7 days
-    if days_since_last_activity is not None and days_since_last_activity < 7:
+    # Must be inactive for 1 day
+    if days_since_last_activity is not None and days_since_last_activity < 1:
         return False
 
     # Check email frequency
