@@ -26,7 +26,13 @@ import argparse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytz
-from database import get_users_for_reengagement, update_reengagement_email_sent
+from database import (
+    get_users_for_reengagement,
+    update_reengagement_email_sent,
+    get_external_contacts_for_reengagement,
+    update_external_contact_email_sent,
+    get_external_contact_count,
+)
 from email_service import (
     send_reengagement_email,
     get_featured_reports_for_email,
@@ -121,10 +127,78 @@ def main():
             failed_count += 1
             print(f"    [ERROR] {e}")
 
-    print(f"\n[RE-ENGAGEMENT] Complete:")
+    print(f"\n[RE-ENGAGEMENT] Users complete:")
     print(f"  Sent: {sent_count}")
     print(f"  Failed: {failed_count}")
     print(f"  Total processed: {len(users)}")
+
+    # =========================================================================
+    # EXTERNAL CONTACTS
+    # =========================================================================
+    print(f"\n[RE-ENGAGEMENT] Processing external contacts...")
+
+    external_contacts = get_external_contacts_for_reengagement()
+    print(f"[RE-ENGAGEMENT] Found {len(external_contacts)} eligible external contacts")
+
+    if args.limit > 0:
+        remaining_limit = args.limit - sent_count
+        if remaining_limit > 0:
+            external_contacts = external_contacts[:remaining_limit]
+        else:
+            external_contacts = []
+        print(f"[RE-ENGAGEMENT] Limited to {len(external_contacts)} external contacts")
+
+    external_sent = 0
+    external_failed = 0
+
+    for contact in external_contacts:
+        contact_id = contact['id']
+        email = contact['email']
+        first_name = contact.get('first_name') or ''
+        email_count = contact.get('reengagement_email_count', 0) or 0
+
+        # External contacts always use template rotation 1-5
+        template_num = (email_count % 5) + 1
+
+        print(f"  External {contact_id} ({email}): {email_count} emails sent, template {template_num}")
+
+        if args.dry_run:
+            print(f"    [DRY RUN] Would send template {template_num}")
+            external_sent += 1
+            continue
+
+        try:
+            success = send_reengagement_email(
+                user_email=email,
+                first_name=first_name,
+                template_num=template_num,
+                sample_reports=sample_reports
+            )
+
+            if success:
+                update_external_contact_email_sent(contact_id)
+                external_sent += 1
+                print(f"    [SENT] Template {template_num}")
+            else:
+                external_failed += 1
+                print(f"    [FAILED] Template {template_num}")
+
+        except Exception as e:
+            external_failed += 1
+            print(f"    [ERROR] {e}")
+
+    print(f"\n[RE-ENGAGEMENT] External contacts complete:")
+    print(f"  Sent: {external_sent}")
+    print(f"  Failed: {external_failed}")
+    print(f"  Total processed: {len(external_contacts)}")
+
+    # =========================================================================
+    # FINAL SUMMARY
+    # =========================================================================
+    print(f"\n[RE-ENGAGEMENT] FINAL SUMMARY:")
+    print(f"  Users - Sent: {sent_count}, Failed: {failed_count}")
+    print(f"  External - Sent: {external_sent}, Failed: {external_failed}")
+    print(f"  TOTAL - Sent: {sent_count + external_sent}, Failed: {failed_count + external_failed}")
 
 
 if __name__ == "__main__":

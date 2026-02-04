@@ -387,6 +387,22 @@ def init_database():
                 except:
                     pass  # Column already exists
 
+            # External contacts table (for imported email lists)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS external_contacts (
+                    id SERIAL PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    first_name TEXT,
+                    last_name TEXT,
+                    source TEXT DEFAULT 'import',
+                    is_active BOOLEAN DEFAULT TRUE,
+                    unsubscribed BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_reengagement_email_at TIMESTAMP,
+                    reengagement_email_count INTEGER DEFAULT 0
+                )
+            """)
+
         else:
             # SQLite schema (for local development)
             cursor.execute("""
@@ -617,6 +633,22 @@ def init_database():
                     cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}")
                 except:
                     pass  # Column already exists
+
+            # External contacts table (SQLite)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS external_contacts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT UNIQUE NOT NULL,
+                    first_name TEXT,
+                    last_name TEXT,
+                    source TEXT DEFAULT 'import',
+                    is_active INTEGER DEFAULT 1,
+                    unsubscribed INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_reengagement_email_at TIMESTAMP,
+                    reengagement_email_count INTEGER DEFAULT 0
+                )
+            """)
 
         conn.commit()
         print(f"Database initialized successfully ({'PostgreSQL' if USE_POSTGRES else 'SQLite'}).")
@@ -1727,6 +1759,107 @@ def get_users_for_reengagement() -> List[dict]:
 
         rows = cursor.fetchall()
         return [_dict_from_row(row) for row in rows]
+
+
+def get_external_contacts_for_reengagement() -> List[dict]:
+    """
+    Get external contacts who should receive re-engagement emails.
+
+    Criteria:
+    - Active and not unsubscribed
+    - No email sent today
+    """
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+
+        if USE_POSTGRES:
+            cursor.execute("""
+                SELECT
+                    id, email, first_name, last_name, source,
+                    created_at, last_reengagement_email_at,
+                    reengagement_email_count
+                FROM external_contacts
+                WHERE is_active = TRUE
+                  AND unsubscribed = FALSE
+                  AND (last_reengagement_email_at IS NULL
+                       OR last_reengagement_email_at < CURRENT_DATE)
+                ORDER BY created_at DESC
+            """)
+        else:
+            cursor.execute("""
+                SELECT
+                    id, email, first_name, last_name, source,
+                    created_at, last_reengagement_email_at,
+                    reengagement_email_count
+                FROM external_contacts
+                WHERE is_active = 1
+                  AND unsubscribed = 0
+                  AND (last_reengagement_email_at IS NULL
+                       OR last_reengagement_email_at < date('now'))
+                ORDER BY created_at DESC
+            """)
+
+        rows = cursor.fetchall()
+        return [_dict_from_row(row) for row in rows]
+
+
+def update_external_contact_email_sent(contact_id: int) -> bool:
+    """Update external contact's email tracking after sending an email."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(
+            f"""UPDATE external_contacts SET
+                last_reengagement_email_at = CURRENT_TIMESTAMP,
+                reengagement_email_count = COALESCE(reengagement_email_count, 0) + 1
+            WHERE id = {p}""",
+            (contact_id,)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def add_external_contact(email: str, first_name: str = None, last_name: str = None, source: str = 'import') -> Optional[int]:
+    """Add an external contact. Returns contact ID or None if already exists."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        try:
+            if USE_POSTGRES:
+                cursor.execute(
+                    """INSERT INTO external_contacts (email, first_name, last_name, source)
+                       VALUES (%s, %s, %s, %s)
+                       ON CONFLICT (email) DO UPDATE SET
+                           first_name = COALESCE(EXCLUDED.first_name, external_contacts.first_name),
+                           last_name = COALESCE(EXCLUDED.last_name, external_contacts.last_name)
+                       RETURNING id""",
+                    (email.lower().strip(), first_name, last_name, source)
+                )
+                result = cursor.fetchone()
+                conn.commit()
+                return result['id'] if result else None
+            else:
+                cursor.execute(
+                    """INSERT OR REPLACE INTO external_contacts (email, first_name, last_name, source)
+                       VALUES (?, ?, ?, ?)""",
+                    (email.lower().strip(), first_name, last_name, source)
+                )
+                conn.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            print(f"Error adding external contact {email}: {e}")
+            return None
+
+
+def get_external_contact_count() -> int:
+    """Get total count of active external contacts."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        if USE_POSTGRES:
+            cursor.execute("SELECT COUNT(*) as count FROM external_contacts WHERE is_active = TRUE AND unsubscribed = FALSE")
+        else:
+            cursor.execute("SELECT COUNT(*) as count FROM external_contacts WHERE is_active = 1 AND unsubscribed = 0")
+        result = cursor.fetchone()
+        return result['count'] if result else 0
 
 
 def get_users_with_expired_subscriptions() -> List[dict]:
