@@ -19,6 +19,7 @@ Options:
 
 import sys
 import os
+import time
 from datetime import datetime
 import argparse
 
@@ -127,6 +128,9 @@ def main():
             failed_count += 1
             print(f"    [ERROR] {e}")
 
+        # Rate limit: Resend allows 2 requests/second
+        time.sleep(0.6)
+
     print(f"\n[RE-ENGAGEMENT] Users complete:")
     print(f"  Sent: {sent_count}")
     print(f"  Failed: {failed_count}")
@@ -186,6 +190,9 @@ def main():
         except Exception as e:
             external_failed += 1
             print(f"    [ERROR] {e}")
+
+        # Rate limit: Resend allows 2 requests/second
+        time.sleep(0.6)
 
     print(f"\n[RE-ENGAGEMENT] External contacts complete:")
     print(f"  Sent: {external_sent}")
