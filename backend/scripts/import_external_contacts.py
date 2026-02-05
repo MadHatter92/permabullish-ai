@@ -57,7 +57,7 @@ def import_csv(filepath: str, source: str = None, dry_run: bool = False) -> tupl
     print(f"Source tag: {source}")
     print("-" * 50)
 
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, 'r', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
 
         for row in reader:
