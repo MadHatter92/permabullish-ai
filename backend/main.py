@@ -173,6 +173,48 @@ async def health_check():
     }
 
 
+# Unsubscribe endpoint (no auth required)
+class UnsubscribeRequest(BaseModel):
+    email: str
+
+
+@app.post("/api/unsubscribe")
+async def unsubscribe_email(request: UnsubscribeRequest):
+    """
+    Unsubscribe an email from marketing emails.
+    Works for both registered users and external contacts.
+    """
+    email = request.email.lower().strip()
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    # Try to unsubscribe from external contacts first
+    external_result = db.unsubscribe_external_contact(email)
+
+    # Also try to mark user as unsubscribed if they're a registered user
+    user_result = db.unsubscribe_user(email)
+
+    if external_result or user_result:
+        already_unsubscribed = (
+            (external_result and external_result.get('already_unsubscribed')) and
+            (not user_result or user_result.get('already_unsubscribed'))
+        )
+        return {
+            "success": True,
+            "message": "Successfully unsubscribed",
+            "already_unsubscribed": already_unsubscribed
+        }
+    else:
+        # Email not found in either table - still return success
+        # (don't reveal if email exists or not)
+        return {
+            "success": True,
+            "message": "Successfully unsubscribed",
+            "already_unsubscribed": False
+        }
+
+
 @app.get("/api/sentry-test")
 async def sentry_test(secret: str = ""):
     """Test endpoint to verify Sentry is working. Requires admin secret."""

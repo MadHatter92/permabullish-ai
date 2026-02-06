@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unsubscribe - Permabullish</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'DM Sans', sans-serif; }
+        .brand-gradient { background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%); }
+    </style>
+</head>
+<body class="brand-gradient min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center">
+        <!-- Logo -->
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold">
+                <span class="text-[#1e3a5f]">Perma</span><span class="text-[#e8913a]">bullish</span>
+            </h1>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#e8913a] mx-auto"></div>
+            <p class="text-gray-600 mt-4">Processing your request...</p>
+        </div>
+
+        <!-- Success State -->
+        <div id="success" class="hidden py-8">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h2 class="text-xl font-semibold text-gray-800 mb-2">You've been unsubscribed</h2>
+            <p class="text-gray-600 mb-6">You will no longer receive promotional emails from Permabullish.</p>
+            <p class="text-sm text-gray-500">Changed your mind? You can always sign up again at</p>
+            <a href="/" class="text-[#e8913a] hover:underline">permabullish.com</a>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="hidden py-8">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </div>
+            <h2 class="text-xl font-semibold text-gray-800 mb-2">Something went wrong</h2>
+            <p class="text-gray-600 mb-6" id="error-message">We couldn't process your unsubscribe request.</p>
+            <p class="text-sm text-gray-500">Please contact us at</p>
+            <a href="mailto:mail@mayaskara.com" class="text-[#e8913a] hover:underline">mail@mayaskara.com</a>
+        </div>
+
+        <!-- Already Unsubscribed State -->
+        <div id="already" class="hidden py-8">
+            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <h2 class="text-xl font-semibold text-gray-800 mb-2">Already unsubscribed</h2>
+            <p class="text-gray-600 mb-6">This email address has already been unsubscribed from our mailing list.</p>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        async function unsubscribe() {
+            const params = new URLSearchParams(window.location.search);
+            const email = params.get('email');
+
+            if (!email) {
+                showError('No email address provided.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/unsubscribe`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (data.already_unsubscribed) {
+                        showAlready();
+                    } else {
+                        showSuccess();
+                    }
+                } else {
+                    showError(data.detail || 'Failed to unsubscribe.');
+                }
+            } catch (err) {
+                console.error('Unsubscribe error:', err);
+                showError('Network error. Please try again.');
+            }
+        }
+
+        function showSuccess() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('success').classList.remove('hidden');
+        }
+
+        function showError(message) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error').classList.remove('hidden');
+            document.getElementById('error-message').textContent = message;
+        }
+
+        function showAlready() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('already').classList.remove('hidden');
+        }
+
+        // Run on page load
+        unsubscribe();
+    </script>
+</body>
+</html>

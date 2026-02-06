@@ -34,6 +34,27 @@ Investments in securities are subject to market risks.
 </p>
 """
 
+
+def get_footer(email: str = "") -> str:
+    """
+    Generate email footer with unsubscribe link.
+    The unsubscribe link includes the email for identification.
+    """
+    import urllib.parse
+    encoded_email = urllib.parse.quote(email) if email else ""
+    unsubscribe_url = f"{BASE_URL}/unsubscribe.html?email={encoded_email}"
+
+    return f"""
+<p style="font-size: 12px; color: #888; margin-top: 20px;">
+    <a href="mailto:{REPLY_TO_EMAIL}" style="color: #e8913a;">Contact Us</a>
+    &nbsp;|&nbsp;
+    <a href="{unsubscribe_url}" style="color: #888;">Unsubscribe</a>
+</p>
+{DISCLAIMER}
+"""
+
+
+# Default footer (for backward compatibility)
 FOOTER = f"""
 <p style="font-size: 12px; color: #888; margin-top: 20px;">
     <a href="mailto:{REPLY_TO_EMAIL}" style="color: #e8913a;">Contact Us</a>
@@ -99,17 +120,28 @@ def format_report_cards(reports: List[Dict]) -> str:
 
 
 def send_email(to_email: str, subject: str, html_content: str) -> bool:
-    """Send an email via Resend."""
+    """Send an email via Resend with proper headers for deliverability."""
+    import urllib.parse
+
     if not RESEND_API_KEY:
         print(f"[EMAIL] Skipping (no API key): {subject} -> {to_email}")
         return False
 
     try:
+        # Build unsubscribe URL for headers
+        encoded_email = urllib.parse.quote(to_email)
+        unsubscribe_url = f"{BASE_URL}/unsubscribe.html?email={encoded_email}"
+
         params = {
             "from": FROM_EMAIL,
             "to": [to_email],
             "subject": subject,
             "html": html_content,
+            "headers": {
+                # List-Unsubscribe header helps with Gmail deliverability
+                "List-Unsubscribe": f"<{unsubscribe_url}>",
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            }
         }
 
         response = resend.Emails.send(params)
@@ -128,6 +160,7 @@ def send_welcome_email(user_email: str, first_name: str, sample_reports: List[Di
     """Send welcome email to new user."""
 
     report_cards = format_report_cards(sample_reports)
+    footer = get_footer(user_email)
 
     html = f"""
     <!DOCTYPE html>
@@ -176,7 +209,7 @@ def send_welcome_email(user_email: str, first_name: str, sample_reports: List[Di
             <p>Happy researching,<br><strong>The Permabullish Team</strong></p>
         </div>
 
-        {FOOTER}
+        {footer}
     </div>
     </body>
     </html>
@@ -197,6 +230,8 @@ def send_purchase_email(
     expiry_date: str
 ) -> bool:
     """Send purchase confirmation email."""
+
+    footer = get_footer(user_email)
 
     html = f"""
     <!DOCTYPE html>
@@ -240,7 +275,7 @@ def send_purchase_email(
             <p>The Permabullish Team</p>
         </div>
 
-        {FOOTER}
+        {footer}
     </div>
     </body>
     </html>
@@ -307,6 +342,8 @@ def send_subscription_expiry_email(
         """
         cta_text = "Reactivate My Account"
 
+    footer = get_footer(user_email)
+
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -341,7 +378,7 @@ def send_subscription_expiry_email(
             <p>The Permabullish Team</p>
         </div>
 
-        {FOOTER}
+        {footer}
     </div>
     </body>
     </html>
@@ -355,7 +392,7 @@ def send_subscription_expiry_email(
 # Interspersed: Generic, Broker-focused, Hindi, and Gujarati
 # =============================================================================
 
-def get_reengagement_template(template_num: int, first_name: str, sample_reports: List[Dict]) -> tuple:
+def get_reengagement_template(template_num: int, first_name: str, sample_reports: List[Dict], user_email: str = "") -> tuple:
     """
     Get re-engagement email template by number.
     Returns (subject, html_content).
@@ -363,6 +400,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
     Templates 1-14 for daily rotation, template 15 for weekly.
     """
     report_cards = format_report_cards(sample_reports)
+    footer = get_footer(user_email)
 
     templates = {
         # Template 1: Generic - Reminder
@@ -822,7 +860,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>Happy investing,<br><strong>The Permabullish Team</strong></p>
         </div>
 
-        {FOOTER}
+        {footer}
     </div>
     </body>
     </html>
@@ -838,7 +876,7 @@ def send_reengagement_email(
     sample_reports: List[Dict]
 ) -> bool:
     """Send re-engagement email using specified template."""
-    subject, html = get_reengagement_template(template_num, first_name, sample_reports)
+    subject, html = get_reengagement_template(template_num, first_name, sample_reports, user_email)
     return send_email(user_email, subject, html)
 
 

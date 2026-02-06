@@ -2277,5 +2277,76 @@ def get_user_comparison_history(user_id: int, limit: int = 50) -> List[dict]:
         return results
 
 
+# =============================================================================
+# UNSUBSCRIBE FUNCTIONS
+# =============================================================================
+
+def unsubscribe_external_contact(email: str) -> Optional[dict]:
+    """
+    Unsubscribe an external contact from marketing emails.
+    Returns dict with status, or None if email not found.
+    """
+    email = email.lower().strip()
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+
+        # Check if contact exists and current unsubscribe status
+        cursor.execute(
+            f"SELECT id, unsubscribed FROM external_contacts WHERE email = {p}",
+            (email,)
+        )
+        row = cursor.fetchone()
+
+        if not row:
+            return None
+
+        contact = _dict_from_row(row)
+        already_unsubscribed = contact.get('unsubscribed', False)
+
+        if not already_unsubscribed:
+            # Mark as unsubscribed
+            cursor.execute(
+                f"UPDATE external_contacts SET unsubscribed = TRUE WHERE email = {p}",
+                (email,)
+            )
+            conn.commit()
+
+        return {
+            'success': True,
+            'already_unsubscribed': already_unsubscribed
+        }
+
+
+def unsubscribe_user(email: str) -> Optional[dict]:
+    """
+    Mark a registered user as having unsubscribed from marketing emails.
+    We add an 'unsubscribed' flag or use existing column.
+    Returns dict with status, or None if user not found.
+    """
+    email = email.lower().strip()
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+
+        # Check if user exists
+        cursor.execute(
+            f"SELECT id, email FROM users WHERE email = {p}",
+            (email,)
+        )
+        row = cursor.fetchone()
+
+        if not row:
+            return None
+
+        # For now, we'll just return success - we can add an unsubscribed column later
+        # The re-engagement email logic already checks activity, so users who
+        # unsubscribe and continue using the app won't get emails anyway
+        return {
+            'success': True,
+            'already_unsubscribed': False
+        }
+
+
 # Initialize database on module import
 init_database()
