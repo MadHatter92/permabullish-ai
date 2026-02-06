@@ -161,17 +161,55 @@ services:
       - key: RESEND_API_KEY
         sync: false
 
-  # Re-engagement Emails (daily at 10 AM IST / 4:30 AM UTC)
+  # Re-engagement Emails - Batch 0: Morning (9 AM IST / 3:30 AM UTC)
   - type: cron
-    name: permabullish-reengagement-emails
+    name: permabullish-reengagement-morning
     runtime: python
     plan: starter
-    schedule: "30 4 * * *"
+    schedule: "30 3 * * *"
     region: oregon
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/send_reengagement_emails.py
+    startCommand: python scripts/send_reengagement_emails.py --batch 0
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: permabullish-db
+          property: connectionString
+      - key: RESEND_API_KEY
+        sync: false
+
+  # Re-engagement Emails - Batch 1: Afternoon (2 PM IST / 8:30 AM UTC)
+  - type: cron
+    name: permabullish-reengagement-afternoon
+    runtime: python
+    plan: starter
+    schedule: "30 8 * * *"
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/send_reengagement_emails.py --batch 1
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: permabullish-db
+          property: connectionString
+      - key: RESEND_API_KEY
+        sync: false
+
+  # Re-engagement Emails - Batch 2: Evening (6 PM IST / 12:30 PM UTC)
+  - type: cron
+    name: permabullish-reengagement-evening
+    runtime: python
+    plan: starter
+    schedule: "30 12 * * *"
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/send_reengagement_emails.py --batch 2
     envVars:
       - key: DATABASE_URL
         fromDatabase:

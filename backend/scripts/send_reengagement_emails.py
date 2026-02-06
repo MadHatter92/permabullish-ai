@@ -3,18 +3,29 @@
 Re-engagement Email Script for Permabullish
 
 This script sends re-engagement emails to inactive free users.
-Should be run daily via cron job, ideally around 10 AM IST.
+Can be run multiple times per day via cron job for batched sending.
 
-Schedule (IST timing):
-- Days 1-14 after signup: Daily emails (if inactive for 7+ days)
+Batch Schedule (IST timing):
+- Batch 0: 9 AM IST (Morning)
+- Batch 1: 2 PM IST (Afternoon)
+- Batch 2: 6 PM IST (Evening)
+
+Batch Rotation:
+- Contacts rotate through batches using: (contact_id + day_of_year) % 3
+- This ensures the same person receives emails at different times on different days
+
+User Schedule (IST timing):
+- Days 1-14 after signup: Daily emails (if inactive for 1+ days)
 - Days 15-180 after signup: Weekly emails (if inactive for 7+ days)
 
 Usage:
-    python send_reengagement_emails.py [--dry-run] [--limit N]
+    python send_reengagement_emails.py [--dry-run] [--limit N] [--batch N]
 
 Options:
     --dry-run    Don't actually send emails, just print what would be sent
     --limit N    Maximum number of emails to send (default: no limit)
+    --batch N    Force specific batch (0, 1, 2). Auto-detects if not specified.
+    --all        Send to all batches (ignore batching, for backward compatibility)
 """
 
 import sys
@@ -44,6 +55,34 @@ from email_service import (
 # India timezone
 IST = pytz.timezone('Asia/Kolkata')
 
+# Batch time windows (IST hours)
+# Batch 0: 9 AM (hour 9)
+# Batch 1: 2 PM (hour 14)
+# Batch 2: 6 PM (hour 18)
+BATCH_HOURS = {
+    0: (8, 12),   # 8 AM - 12 PM -> Batch 0 (Morning)
+    1: (12, 16),  # 12 PM - 4 PM -> Batch 1 (Afternoon)
+    2: (16, 23),  # 4 PM - 11 PM -> Batch 2 (Evening)
+}
+
+
+def get_batch_from_hour(hour: int) -> int:
+    """
+    Determine which batch to run based on current IST hour.
+    Returns batch number 0, 1, or 2.
+    """
+    for batch_num, (start, end) in BATCH_HOURS.items():
+        if start <= hour < end:
+            return batch_num
+    # Default to batch 0 for early morning hours (before 8 AM)
+    return 0
+
+
+def get_batch_name(batch_num: int) -> str:
+    """Get human-readable batch name."""
+    names = {0: "Morning (9 AM)", 1: "Afternoon (2 PM)", 2: "Evening (6 PM)"}
+    return names.get(batch_num, f"Batch {batch_num}")
+
 
 def calculate_days_since(timestamp) -> int:
     """Calculate days since a timestamp."""
@@ -65,11 +104,29 @@ def main():
     parser = argparse.ArgumentParser(description='Send re-engagement emails to inactive users')
     parser.add_argument('--dry-run', action='store_true', help="Don't send, just show what would be sent")
     parser.add_argument('--limit', type=int, default=0, help='Max emails to send (0 = no limit)')
+    parser.add_argument('--batch', type=int, choices=[0, 1, 2], help='Force specific batch (0=Morning, 1=Afternoon, 2=Evening)')
+    parser.add_argument('--all', action='store_true', help='Send to all contacts (ignore batching)')
     args = parser.parse_args()
 
     # Get current IST time
     now_ist = datetime.now(IST)
+    day_of_year = now_ist.timetuple().tm_yday
+    current_hour = now_ist.hour
+
+    # Determine batch number
+    if args.all:
+        batch_num = None
+        batch_info = "ALL BATCHES"
+    elif args.batch is not None:
+        batch_num = args.batch
+        batch_info = f"BATCH {batch_num} ({get_batch_name(batch_num)})"
+    else:
+        batch_num = get_batch_from_hour(current_hour)
+        batch_info = f"BATCH {batch_num} ({get_batch_name(batch_num)}) - auto-detected"
+
     print(f"[RE-ENGAGEMENT] Starting at {now_ist.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    print(f"[RE-ENGAGEMENT] Day of year: {day_of_year}, Hour: {current_hour}")
+    print(f"[RE-ENGAGEMENT] Processing: {batch_info}")
 
     # Get featured reports for emails
     sample_reports = get_featured_reports_for_email()
@@ -137,12 +194,21 @@ def main():
     print(f"  Total processed: {len(users)}")
 
     # =========================================================================
-    # EXTERNAL CONTACTS
+    # EXTERNAL CONTACTS (with batching)
     # =========================================================================
     print(f"\n[RE-ENGAGEMENT] Processing external contacts...")
+    print(f"[RE-ENGAGEMENT] {batch_info}")
 
-    external_contacts = get_external_contacts_for_reengagement()
-    print(f"[RE-ENGAGEMENT] Found {len(external_contacts)} eligible external contacts")
+    # Fetch contacts for this batch (or all if --all)
+    if batch_num is not None:
+        external_contacts = get_external_contacts_for_reengagement(
+            batch_num=batch_num,
+            day_of_year=day_of_year
+        )
+        print(f"[RE-ENGAGEMENT] Found {len(external_contacts)} eligible contacts for batch {batch_num}")
+    else:
+        external_contacts = get_external_contacts_for_reengagement()
+        print(f"[RE-ENGAGEMENT] Found {len(external_contacts)} eligible external contacts (all batches)")
 
     if args.limit > 0:
         remaining_limit = args.limit - sent_count
@@ -203,6 +269,8 @@ def main():
     # FINAL SUMMARY
     # =========================================================================
     print(f"\n[RE-ENGAGEMENT] FINAL SUMMARY:")
+    print(f"  {batch_info}")
+    print(f"  Day of year: {day_of_year}")
     print(f"  Users - Sent: {sent_count}, Failed: {failed_count}")
     print(f"  External - Sent: {external_sent}, Failed: {external_failed}")
     print(f"  TOTAL - Sent: {sent_count + external_sent}, Failed: {failed_count + external_failed}")

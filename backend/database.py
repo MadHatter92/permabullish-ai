@@ -1709,43 +1709,83 @@ def get_users_for_reengagement() -> List[dict]:
         return [_dict_from_row(row) for row in rows]
 
 
-def get_external_contacts_for_reengagement() -> List[dict]:
+def get_external_contacts_for_reengagement(
+    batch_num: Optional[int] = None,
+    day_of_year: Optional[int] = None
+) -> List[dict]:
     """
     Get external contacts who should receive re-engagement emails.
 
     Criteria:
     - Active and not unsubscribed
     - No email sent today
+    - If batch_num is specified (0, 1, or 2), filter using:
+      (contact_id + day_of_year) % 3 == batch_num
+      This ensures contacts rotate through different time slots on different days.
+
+    Args:
+        batch_num: Optional batch number (0, 1, 2) for time-based sending
+        day_of_year: Day of year for batch rotation (1-366)
     """
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
 
         if USE_POSTGRES:
-            cursor.execute("""
-                SELECT
-                    id, email, first_name, last_name, source,
-                    created_at, last_reengagement_email_at,
-                    reengagement_email_count
-                FROM external_contacts
-                WHERE is_active = TRUE
-                  AND unsubscribed = FALSE
-                  AND (last_reengagement_email_at IS NULL
-                       OR last_reengagement_email_at < CURRENT_DATE)
-                ORDER BY created_at DESC
-            """)
+            if batch_num is not None and day_of_year is not None:
+                cursor.execute("""
+                    SELECT
+                        id, email, first_name, last_name, source,
+                        created_at, last_reengagement_email_at,
+                        reengagement_email_count
+                    FROM external_contacts
+                    WHERE is_active = TRUE
+                      AND unsubscribed = FALSE
+                      AND (last_reengagement_email_at IS NULL
+                           OR last_reengagement_email_at < CURRENT_DATE)
+                      AND MOD(id + %s, 3) = %s
+                    ORDER BY created_at DESC
+                """, (day_of_year, batch_num))
+            else:
+                cursor.execute("""
+                    SELECT
+                        id, email, first_name, last_name, source,
+                        created_at, last_reengagement_email_at,
+                        reengagement_email_count
+                    FROM external_contacts
+                    WHERE is_active = TRUE
+                      AND unsubscribed = FALSE
+                      AND (last_reengagement_email_at IS NULL
+                           OR last_reengagement_email_at < CURRENT_DATE)
+                    ORDER BY created_at DESC
+                """)
         else:
-            cursor.execute("""
-                SELECT
-                    id, email, first_name, last_name, source,
-                    created_at, last_reengagement_email_at,
-                    reengagement_email_count
-                FROM external_contacts
-                WHERE is_active = 1
-                  AND unsubscribed = 0
-                  AND (last_reengagement_email_at IS NULL
-                       OR last_reengagement_email_at < date('now'))
-                ORDER BY created_at DESC
-            """)
+            if batch_num is not None and day_of_year is not None:
+                cursor.execute("""
+                    SELECT
+                        id, email, first_name, last_name, source,
+                        created_at, last_reengagement_email_at,
+                        reengagement_email_count
+                    FROM external_contacts
+                    WHERE is_active = 1
+                      AND unsubscribed = 0
+                      AND (last_reengagement_email_at IS NULL
+                           OR last_reengagement_email_at < date('now'))
+                      AND (id + ?) % 3 = ?
+                    ORDER BY created_at DESC
+                """, (day_of_year, batch_num))
+            else:
+                cursor.execute("""
+                    SELECT
+                        id, email, first_name, last_name, source,
+                        created_at, last_reengagement_email_at,
+                        reengagement_email_count
+                    FROM external_contacts
+                    WHERE is_active = 1
+                      AND unsubscribed = 0
+                      AND (last_reengagement_email_at IS NULL
+                           OR last_reengagement_email_at < date('now'))
+                    ORDER BY created_at DESC
+                """)
 
         rows = cursor.fetchall()
         return [_dict_from_row(row) for row in rows]

@@ -1,7 +1,7 @@
 # Permabullish - AI Stock Researcher
 ## Product Requirements Document (PRD)
 
-**Version:** 2.4
+**Version:** 2.5
 **Date:** February 6, 2026
 **Status:** Phase 1-4 Complete, Phase 7 Complete, Phase 5 Partially Complete
 
@@ -316,12 +316,36 @@ Support for bulk email campaigns to external contact lists (not registered users
 - They don't have accounts, so there's no activity to track
 - Template rotation is based on `reengagement_email_count` only
 
-### 7.6 Email Infrastructure
+### 7.6 Batched Email Sending
+
+External contacts are split into 3 batches for better email delivery:
+
+| Batch | Time (IST) | Time (UTC) | Description |
+|-------|------------|------------|-------------|
+| 0 | 9:00 AM | 3:30 AM | Morning batch |
+| 1 | 2:00 PM | 8:30 AM | Afternoon batch |
+| 2 | 6:00 PM | 12:30 PM | Evening batch |
+
+**Rotation Formula:** `(contact_id + day_of_year) % 3`
+
+This ensures:
+- Each contact receives emails at different times on different days
+- Batch assignment rotates daily for variety
+- Email delivery is spread throughout the day
+
+**Example:**
+- Day 1 (day_of_year=1): Contact ID 100 → (100+1)%3 = 2 → Evening batch
+- Day 2 (day_of_year=2): Contact ID 100 → (100+2)%3 = 0 → Morning batch
+- Day 3 (day_of_year=3): Contact ID 100 → (100+3)%3 = 1 → Afternoon batch
+
+### 7.7 Email Infrastructure
 
 - **Provider:** Resend (SMTP alternative to SendGrid)
 - **Sending Domain:** permabullish.com (SPF, DKIM verified)
 - **Cron Jobs:**
-  - Re-engagement emails: 10 AM IST daily
+  - Re-engagement Morning: 9 AM IST (Batch 0)
+  - Re-engagement Afternoon: 2 PM IST (Batch 1)
+  - Re-engagement Evening: 6 PM IST (Batch 2)
   - Expiry reminders: 10:30 AM IST daily
 
 ---
