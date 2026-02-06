@@ -347,6 +347,54 @@ Polish and enhance the live product based on initial usage.
 - [x] **Share URL Consistency**
   - Fixed: Share URLs always use production domain regardless of access method
 
+### 3.6.6 Email Deliverability ⬅️ IN PROGRESS
+
+**Goal:** Improve inbox placement, especially for Gmail users.
+
+#### Completed ✅
+- [x] **DNS Authentication**
+  - SPF record configured
+  - DKIM record configured (Resend)
+  - DMARC record configured (`p=none`)
+- [x] **Unsubscribe Compliance**
+  - Unsubscribe link in all email footers
+  - `List-Unsubscribe` and `List-Unsubscribe-Post` headers
+  - `/api/unsubscribe` endpoint
+  - `frontend/unsubscribe.html` page
+- [x] **Domain Warm-up**
+  - Limited to 100 emails/batch (300/day total)
+  - Batched sending at 9 AM, 2 PM, 6 PM IST
+  - Gradual increase planned weekly
+
+#### Week 2 (Feb 13, 2026)
+- [ ] **Check Google Postmaster Tools**
+  - Verify domain reputation status
+  - Check spam rate metrics
+  - Review authentication status
+- [ ] **Increase sending limits**
+  - If metrics healthy: increase to 200/batch (600/day)
+  - If issues: investigate and adjust
+
+#### Week 3-4 (Feb 20-27, 2026)
+- [ ] **Upgrade DMARC policy**
+  - Change from `p=none` to `p=quarantine`
+  - Monitor for delivery issues
+- [ ] **Increase sending limits**
+  - Scale to 400/batch, then remove limits
+
+#### Future (After DMARC Enforcing)
+- [ ] **BIMI Setup (Brand Logo in Gmail)**
+  - Requires DMARC `p=quarantine` or `p=reject`
+  - Create SVG logo in required format
+  - Optional: VMC certificate (~$1,500/year)
+  - Shows brand logo next to emails in Gmail
+
+#### Content Improvements (Backlog)
+- [ ] Change from address from `noreply@` to `hello@permabullish.com`
+- [ ] Add plain text version to emails (multipart)
+- [ ] Reduce links per email (currently 5-8, target 2-3)
+- [ ] Remove spam trigger words ("Free" in CTAs)
+
 ### Deliverables
 - ✅ Complete email automation system
 - ✅ Fiscally-grounded AI reports
