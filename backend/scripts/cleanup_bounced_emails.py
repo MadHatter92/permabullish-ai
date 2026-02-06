@@ -17,16 +17,16 @@ import sys
 import os
 import argparse
 import time
+import requests
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import resend
 from config import RESEND_API_KEY
 from database import init_database, get_db_connection, get_cursor, placeholder, USE_POSTGRES
 
-# Initialize Resend
-resend.api_key = RESEND_API_KEY
+# Resend API base URL
+RESEND_API_URL = "https://api.resend.com"
 
 # Statuses that indicate permanent delivery failure
 FAILED_STATUSES = {'bounced', 'failed', 'complained'}
@@ -46,6 +46,11 @@ def fetch_all_emails(limit: int = 0) -> list:
     after_cursor = None
     page = 1
 
+    headers = {
+        "Authorization": f"Bearer {RESEND_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
     print("[RESEND] Fetching emails from Resend API...")
 
     while True:
@@ -54,8 +59,15 @@ def fetch_all_emails(limit: int = 0) -> list:
             params["after"] = after_cursor
 
         try:
-            response = resend.Emails.list(params)
-            emails = response.get("data", [])
+            response = requests.get(
+                f"{RESEND_API_URL}/emails",
+                headers=headers,
+                params=params
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            emails = data.get("data", [])
 
             if not emails:
                 break
@@ -69,7 +81,7 @@ def fetch_all_emails(limit: int = 0) -> list:
                 break
 
             # Check if there are more pages
-            if not response.get("has_more", False):
+            if not data.get("has_more", False):
                 break
 
             # Get cursor for next page (last email ID)
@@ -79,7 +91,7 @@ def fetch_all_emails(limit: int = 0) -> list:
             # Rate limit: be nice to the API
             time.sleep(0.5)
 
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             print(f"[ERROR] Failed to fetch emails: {e}")
             break
 
