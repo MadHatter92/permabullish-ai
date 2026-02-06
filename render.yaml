@@ -34,7 +34,7 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_REDIRECT_URI
-        value: https://permabullish-api.onrender.com/api/auth/google/callback
+        value: https://api.permabullish.com/api/auth/google/callback
       - key: FRONTEND_URL
         value: https://permabullish.com
       - key: CASHFREE_APP_ID
