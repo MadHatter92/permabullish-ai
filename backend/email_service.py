@@ -351,8 +351,8 @@ def send_subscription_expiry_email(
 
 
 # =============================================================================
-# RE-ENGAGEMENT EMAILS (10 Templates + Weekly)
-# Interspersed: Generic (odd) and Broker-focused (even)
+# RE-ENGAGEMENT EMAILS (14 Templates + Weekly)
+# Interspersed: Generic, Broker-focused, Hindi, and Gujarati
 # =============================================================================
 
 def get_reengagement_template(template_num: int, first_name: str, sample_reports: List[Dict]) -> tuple:
@@ -360,7 +360,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
     Get re-engagement email template by number.
     Returns (subject, html_content).
 
-    Templates 1-10 for daily rotation (generic + broker interspersed), template 11 for weekly.
+    Templates 1-14 for daily rotation, template 15 for weekly.
     """
     report_cards = format_report_cards(sample_reports)
 
@@ -530,8 +530,74 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             """
         ),
 
-        # Template 7: Generic - Market FOMO
+        # Template 7: Hindi - Introduction
         7: (
+            "अब हिंदी में AI स्टॉक रिसर्च",
+            f"""
+            <h2>नमस्ते,</h2>
+
+            <p><strong>अब AI स्टॉक रिसर्च हिंदी में उपलब्ध है।</strong></p>
+
+            <p>Permabullish अब हिंदी में comprehensive stock reports generate करता है।</p>
+
+            <p>हमारी AI रिपोर्ट्स में शामिल है:</p>
+            <ul>
+                <li><strong>तिमाही नतीजों का विश्लेषण</strong> — Quarterly earnings analysis</li>
+                <li><strong>वैल्यूएशन मेट्रिक्स</strong> — P/E, P/B और industry comparison</li>
+                <li><strong>AI Target Price</strong> — 12 महीने का लक्ष्य मूल्य</li>
+                <li><strong>रिस्क असेसमेंट</strong> — निवेश के जोखिम</li>
+            </ul>
+
+            <p>चाहे आप खुद के लिए रिसर्च कर रहे हों या clients के लिए — <strong>हिंदी में समझना आसान है।</strong></p>
+
+            <p style="text-align: center;">
+                <a href="{BASE_URL}/generate.html?lang=hi" class="button">हिंदी में रिपोर्ट बनाएं</a>
+            </p>
+
+            <h3>देखें AI रिसर्च कैसे काम करती है:</h3>
+            {report_cards}
+
+            <p style="text-align: center; color: #1e3a5f; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                हर निवेशक को समझ में आने वाली रिसर्च मिलनी चाहिए।
+            </p>
+            """
+        ),
+
+        # Template 8: Gujarati - Introduction
+        8: (
+            "હવે ગુજરાતીમાં AI સ્ટોક રિસર્ચ",
+            f"""
+            <h2>નમસ્તે,</h2>
+
+            <p><strong>હવે AI સ્ટોક રિસર્ચ ગુજરાતીમાં ઉપલબ્ધ છે.</strong></p>
+
+            <p>Permabullish હવે ગુજરાતીમાં comprehensive stock reports generate કરે છે.</p>
+
+            <p>અમારી AI રિપોર્ટ્સમાં શામેલ છે:</p>
+            <ul>
+                <li><strong>ત્રિમાસિક પરિણામોનું વિશ્લેષણ</strong> — Quarterly earnings analysis</li>
+                <li><strong>વેલ્યુએશન મેટ્રિક્સ</strong> — P/E, P/B અને industry comparison</li>
+                <li><strong>AI Target Price</strong> — 12 મહિનાનો લક્ષ્ય ભાવ</li>
+                <li><strong>રિસ્ક એસેસમેન્ટ</strong> — રોકાણના જોખમો</li>
+            </ul>
+
+            <p>ગુજરાતના રોકાણકારો માટે — અમદાવાદ, સુરત, રાજકોટ, વડોદરા — <strong>તમારી ભાષામાં રિસર્ચ.</strong></p>
+
+            <p style="text-align: center;">
+                <a href="{BASE_URL}/generate.html?lang=gu" class="button">ગુજરાતીમાં રિપોર્ટ બનાવો</a>
+            </p>
+
+            <h3>જુઓ AI રિસર્ચ કેવી રીતે કામ કરે છે:</h3>
+            {report_cards}
+
+            <p style="text-align: center; color: #1e3a5f; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                દરેક રોકાણકારને સમજાય એવું સંશોધન મળવું જોઈએ.
+            </p>
+            """
+        ),
+
+        # Template 9: Generic - Market FOMO
+        9: (
             "Markets moved this week - here's what AI sees",
             f"""
             <h2>Hi {first_name},</h2>
@@ -559,8 +625,8 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             """
         ),
 
-        # Template 8: Broker - Competitive Edge
-        8: (
+        # Template 10: Broker - Competitive Edge
+        10: (
             "Your competition is using AI research. Are you?",
             f"""
             <h2>Hi {first_name},</h2>
@@ -588,8 +654,74 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             """
         ),
 
-        # Template 9: Generic - Feature Highlight
-        9: (
+        # Template 11: Hindi - Broker Angle
+        11: (
+            "आपके Hindi-speaking clients के लिए",
+            f"""
+            <h2>नमस्ते,</h2>
+
+            <p>आपके कितने clients हिंदी में stock analysis पढ़ना पसंद करेंगे?</p>
+
+            <p>North India, UP, MP, Rajasthan के निवेशकों के लिए — हिंदी सिर्फ comfortable नहीं है,
+            यह वो भाषा है जिसमें वे पैसों के बारे में सोचते हैं।</p>
+
+            <p><strong>अब आप दे सकते हैं:</strong></p>
+            <ul>
+                <li>हिंदी में AI research reports</li>
+                <li>Institutional-quality analysis</li>
+                <li>Target prices और risk assessment जो वो समझ सकें</li>
+            </ul>
+
+            <p>जब clients research को सच में समझते हैं, तो वे faster decisions लेते हैं।</p>
+
+            <p style="text-align: center;">
+                <a href="{BASE_URL}/generate.html?lang=hi" class="button">हिंदी में रिपोर्ट बनाएं</a>
+            </p>
+
+            <h3>देखें AI रिसर्च:</h3>
+            {report_cards}
+
+            <p style="text-align: center; color: #1e3a5f; margin: 20px 0;">
+                अपने clients को वो research दीजिए जो वो समझ सकें।
+            </p>
+            """
+        ),
+
+        # Template 12: Gujarati - Broker Angle
+        12: (
+            "તમારા Gujarati-speaking clients માટે",
+            f"""
+            <h2>નમસ્તે,</h2>
+
+            <p>ગુજરાતની trading culture ઊંડી છે. Dalal Street ના veterans થી લઈને નવા retail investors સુધી — ગુજરાતીઓ markets જાણે છે.</p>
+
+            <p><strong>તેમને એ ભાષામાં research આપો જેમાં તેઓ વિચારે છે.</strong></p>
+
+            <p>Permabullish હવે ગુજરાતીમાં AI stock reports generate કરે છે:</p>
+            <ul>
+                <li>Complete fundamental analysis</li>
+                <li>AI-calculated target prices</li>
+                <li>Risk factors અને catalysts</li>
+                <li>Bull vs bear cases</li>
+            </ul>
+
+            <p>જ્યારે તમારા clients ગુજરાતીમાં research વાંચે છે, ત્યારે તેઓ વધુ deeply engage થાય છે અને faster decide કરે છે.</p>
+
+            <p style="text-align: center;">
+                <a href="{BASE_URL}/generate.html?lang=gu" class="button">ગુજરાતીમાં રિપોર્ટ બનાવો</a>
+            </p>
+
+            <h3>જુઓ AI રિસર્ચ:</h3>
+            {report_cards}
+
+            <p style="text-align: center; color: #1e3a5f; margin: 20px 0;">
+                તમારા clients ને એવું research આપો જે તેઓ સમજી શકે.
+            </p>
+            """
+        ),
+
+        # Template 13: Generic - Feature Highlight
+        13: (
             "Did you know Permabullish can do this?",
             f"""
             <h2>Hi {first_name},</h2>
@@ -615,8 +747,8 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             """
         ),
 
-        # Template 10: Broker - Revenue
-        10: (
+        # Template 14: Broker - Revenue
+        14: (
             "Better research = more client trades",
             f"""
             <h2>Hi {first_name},</h2>
@@ -645,8 +777,8 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             """
         ),
 
-        # Template 11: Weekly Digest
-        11: (
+        # Template 15: Weekly Digest
+        15: (
             "Weekly: Your AI market insights",
             f"""
             <h2>Hi {first_name},</h2>
@@ -718,15 +850,15 @@ def get_template_for_day(days_since_signup: int, email_count: int) -> int:
     """
     Determine which template to use based on days since signup and emails sent.
 
-    Days 1-14: Daily emails, rotate templates 1-10 (generic + broker interspersed)
-    Days 15+: Weekly emails, use template 11
+    Days 1-14: Daily emails, rotate templates 1-14 (generic, broker, Hindi, Gujarati)
+    Days 15+: Weekly emails, use template 15
     """
     if days_since_signup <= 14:
-        # Daily phase: rotate templates 1-10
-        return (email_count % 10) + 1
+        # Daily phase: rotate templates 1-14
+        return (email_count % 14) + 1
     else:
-        # Weekly phase: use template 11
-        return 11
+        # Weekly phase: use template 15
+        return 15
 
 
 def should_send_reengagement(
