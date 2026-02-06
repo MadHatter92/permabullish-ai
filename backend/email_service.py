@@ -351,7 +351,8 @@ def send_subscription_expiry_email(
 
 
 # =============================================================================
-# RE-ENGAGEMENT EMAILS (5 Templates + Weekly)
+# RE-ENGAGEMENT EMAILS (10 Templates + Weekly)
+# Interspersed: Generic (odd) and Broker-focused (even)
 # =============================================================================
 
 def get_reengagement_template(template_num: int, first_name: str, sample_reports: List[Dict]) -> tuple:
@@ -359,12 +360,12 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
     Get re-engagement email template by number.
     Returns (subject, html_content).
 
-    Templates 1-5 for daily rotation, template 6 for weekly.
+    Templates 1-10 for daily rotation (generic + broker interspersed), template 11 for weekly.
     """
     report_cards = format_report_cards(sample_reports)
 
     templates = {
-        # Template 1: Reminder
+        # Template 1: Generic - Reminder
         1: (
             "Your AI research reports are waiting",
             f"""
@@ -388,8 +389,38 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             """
         ),
 
-        # Template 2: Value/Education
+        # Template 2: Broker - Research That Closes Deals
         2: (
+            "The research tool smart brokers are using",
+            f"""
+            <h2>Hi {first_name},</h2>
+
+            <p>When a client asks <em>"Why should I buy this stock?"</em> — what do you show them?</p>
+
+            <p>Most brokers rely on outdated reports, gut feeling, or whatever the terminal shows.
+            But the best ones come prepared with real research.</p>
+
+            <p><strong>Permabullish gives you AI-powered equity research in seconds:</strong></p>
+            <ul>
+                <li>Target prices backed by fundamental analysis</li>
+                <li>Bull and bear cases for any stock</li>
+                <li>Risk factors and catalysts to watch</li>
+                <li>Coverage of 3,000+ NSE-listed stocks</li>
+            </ul>
+
+            <p>Generate a report before your next client call. Walk in with conviction.</p>
+
+            <p style="text-align: center;">
+                <a href="{BASE_URL}/generate.html" class="button">Try It Free</a>
+            </p>
+
+            <h3>See AI research in action:</h3>
+            {report_cards}
+            """
+        ),
+
+        # Template 3: Generic - Value/Education
+        3: (
             "What smart investors look for (and how AI helps)",
             f"""
             <h2>Hi {first_name},</h2>
@@ -419,8 +450,34 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             """
         ),
 
-        # Template 3: Social Proof
-        3: (
+        # Template 4: Broker - Time Savings
+        4: (
+            "2 hours of research in 30 seconds",
+            f"""
+            <h2>Hi {first_name},</h2>
+
+            <p>How much time do you spend researching stocks before pitching them to clients?</p>
+
+            <p>Digging through quarterly results, reading news, comparing valuations,
+            understanding risks — it adds up. Time that could be spent actually talking to clients.</p>
+
+            <p><strong>Permabullish does the heavy lifting:</strong></p>
+
+            <p>Enter any stock → Get a comprehensive AI research report → Share insights with confidence</p>
+
+            <p>No more scrambling before client meetings. No more <em>"let me get back to you on that."</em></p>
+
+            <p style="text-align: center;">
+                <a href="{BASE_URL}/generate.html" class="button">Generate Your First Report</a>
+            </p>
+
+            <h3>Example reports:</h3>
+            {report_cards}
+            """
+        ),
+
+        # Template 5: Generic - Social Proof
+        5: (
             "Investors are researching these stocks right now",
             f"""
             <h2>Hi {first_name},</h2>
@@ -442,8 +499,39 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             """
         ),
 
-        # Template 4: Market FOMO
-        4: (
+        # Template 6: Broker - Client Value
+        6: (
+            "Institutional research for independent brokers",
+            f"""
+            <h2>Hi {first_name},</h2>
+
+            <p>Large brokerages have teams of analysts producing research reports.
+            Their clients get detailed stock analysis before making decisions.</p>
+
+            <p><strong>Now you can offer the same.</strong></p>
+
+            <p>Permabullish uses AI to generate equity research that rivals institutional reports:</p>
+            <ul>
+                <li>Quarterly earnings analysis</li>
+                <li>Valuation comparisons</li>
+                <li>News impact assessment</li>
+                <li>AI-calculated target prices</li>
+            </ul>
+
+            <p>Your clients don't need to know you're not a large brokerage.
+            They just need to see you come prepared.</p>
+
+            <p style="text-align: center;">
+                <a href="{BASE_URL}/generate.html" class="button">See Sample Reports</a>
+            </p>
+
+            <h3>Level the playing field:</h3>
+            {report_cards}
+            """
+        ),
+
+        # Template 7: Generic - Market FOMO
+        7: (
             "Markets moved this week - here's what AI sees",
             f"""
             <h2>Hi {first_name},</h2>
@@ -471,8 +559,37 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             """
         ),
 
-        # Template 5: Feature Highlight
-        5: (
+        # Template 8: Broker - Competitive Edge
+        8: (
+            "Your competition is using AI research. Are you?",
+            f"""
+            <h2>Hi {first_name},</h2>
+
+            <p>The brokers winning today aren't just good at selling — they're good at <em>informing</em>.</p>
+
+            <p>When clients can Google any stock themselves, your value comes from insights
+            they can't easily find. Analysis. Context. Conviction.</p>
+
+            <p><strong>Permabullish gives you that edge:</strong></p>
+            <ul>
+                <li>AI research on any stock in seconds</li>
+                <li>Professional reports you can share with clients</li>
+                <li>Analysis that builds trust and closes deals</li>
+            </ul>
+
+            <p>Don't let competitors out-research you.</p>
+
+            <p style="text-align: center;">
+                <a href="{BASE_URL}/generate.html" class="button">Get Your Edge</a>
+            </p>
+
+            <h3>See what AI research looks like:</h3>
+            {report_cards}
+            """
+        ),
+
+        # Template 9: Generic - Feature Highlight
+        9: (
             "Did you know Permabullish can do this?",
             f"""
             <h2>Hi {first_name},</h2>
@@ -498,8 +615,38 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             """
         ),
 
-        # Template 6: Weekly Digest
-        6: (
+        # Template 10: Broker - Revenue
+        10: (
+            "Better research = more client trades",
+            f"""
+            <h2>Hi {first_name},</h2>
+
+            <p>Here's a simple truth: <strong>clients trade more when they feel confident.</strong></p>
+
+            <p>And confidence comes from understanding. When you walk a client through solid research —
+            showing them why a stock makes sense, what the risks are, what price to target —
+            they're more likely to act.</p>
+
+            <p><strong>Permabullish helps you build that confidence:</strong></p>
+            <ul>
+                <li>Generate AI research reports before client meetings</li>
+                <li>Answer "why this stock?" with data, not opinion</li>
+                <li>Share professional reports that build credibility</li>
+            </ul>
+
+            <p>Better conversations. More trades. Happier clients.</p>
+
+            <p style="text-align: center;">
+                <a href="{BASE_URL}/generate.html" class="button">Start Free</a>
+            </p>
+
+            <h3>See AI research in action:</h3>
+            {report_cards}
+            """
+        ),
+
+        # Template 11: Weekly Digest
+        11: (
             "Weekly: Your AI market insights",
             f"""
             <h2>Hi {first_name},</h2>
@@ -571,15 +718,15 @@ def get_template_for_day(days_since_signup: int, email_count: int) -> int:
     """
     Determine which template to use based on days since signup and emails sent.
 
-    Days 1-14: Daily emails, rotate templates 1-5
-    Days 15+: Weekly emails, use template 6
+    Days 1-14: Daily emails, rotate templates 1-10 (generic + broker interspersed)
+    Days 15+: Weekly emails, use template 11
     """
     if days_since_signup <= 14:
-        # Daily phase: rotate templates 1-5
-        return (email_count % 5) + 1
+        # Daily phase: rotate templates 1-10
+        return (email_count % 10) + 1
     else:
-        # Weekly phase: use template 6
-        return 6
+        # Weekly phase: use template 11
+        return 11
 
 
 def should_send_reengagement(

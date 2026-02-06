@@ -161,8 +161,8 @@ def main():
         first_name = contact.get('first_name') or ''
         email_count = contact.get('reengagement_email_count', 0) or 0
 
-        # External contacts always use template rotation 1-5
-        template_num = (email_count % 5) + 1
+        # External contacts use template rotation 1-10 (generic + broker interspersed)
+        template_num = (email_count % 10) + 1
 
         print(f"  External {contact_id} ({email}): {email_count} emails sent, template {template_num}")
 
