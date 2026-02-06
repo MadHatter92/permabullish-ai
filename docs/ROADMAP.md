@@ -682,8 +682,9 @@ Add a stock comparison feature where users can compare two stocks side-by-side w
   - Test endpoint: `/api/sentry-test`
 
 - [ ] **Health Check Improvements**
-  - Add database connectivity check
+  - Add database connectivity check to `/api/health`
   - Add external API status (Claude, Resend)
+  - Consider external uptime monitoring (UptimeRobot - free)
 
 - [ ] **Structured Logging**
   - JSON logging for easier parsing
