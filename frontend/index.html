@@ -95,33 +95,14 @@
                     <svg class="w-5 h-5 text-[#e8913a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    Sign in benefits
+                    Free account benefits
                 </div>
                 <ul class="text-sm text-[#243b53] space-y-1">
-                    <li>5 free reports (vs 1 for guests)</li>
+                    <li>5 free AI research reports</li>
                     <li>Save and access your report history</li>
                     <li>Upgrade for up to 100 reports/month</li>
                 </ul>
             </div>
-
-            <!-- Divider -->
-            <div class="relative my-6">
-                <div class="absolute inset-0 flex items-center">
-                    <div class="w-full border-t border-gray-200"></div>
-                </div>
-                <div class="relative flex justify-center text-sm">
-                    <span class="px-4 bg-white text-gray-500">or</span>
-                </div>
-            </div>
-
-            <!-- Continue as Guest -->
-            <button onclick="continueAsGuest()"
-                class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3.5 rounded-xl transition-all">
-                Continue as Guest
-            </button>
-            <p class="text-center text-sm text-gray-500 mt-3">
-                1 free report without signing in
-            </p>
         </div>
 
         <!-- Disclaimer Footer -->
@@ -182,16 +163,6 @@
 
         function signInWithGoogle() {
             window.location.href = `${API_BASE}/auth/google/login`;
-        }
-
-        function continueAsGuest() {
-            // Track guest mode
-            if (window.analytics) {
-                gtag('event', 'continue_as_guest', {
-                    event_category: 'engagement'
-                });
-            }
-            window.location.href = 'generate.html';
         }
     </script>
 </body>

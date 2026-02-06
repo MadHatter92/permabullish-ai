@@ -10,7 +10,6 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from pydantic import BaseModel
 from typing import Optional
 import json
-import hashlib
 import logging
 import os
 from pathlib import Path
@@ -464,31 +463,11 @@ async def google_callback(request: Request):
         return RedirectResponse(url=redirect_url, status_code=302)
 
 
-# Helper function for anonymous user identification
-def get_client_identifier(request: Request) -> str:
-    """Get a hashed identifier for anonymous users based on IP."""
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    if forwarded:
-        client_ip = forwarded.split(",")[0].strip()
-    else:
-        client_ip = request.client.host if request.client else "unknown"
-
-    return hashlib.sha256(client_ip.encode()).hexdigest()[:32]
-
-
 # Usage Routes
 @app.get("/api/usage")
 async def get_usage_stats(current_user: dict = Depends(auth.get_current_user)):
     """Get user's current month usage statistics."""
     usage = db.get_usage(current_user["id"])
-    return usage
-
-
-@app.get("/api/usage/anonymous")
-async def get_anonymous_usage_stats(request: Request):
-    """Get anonymous user's usage statistics."""
-    identifier = get_client_identifier(request)
-    usage = db.get_anonymous_usage(identifier)
     return usage
 
 
@@ -577,9 +556,9 @@ async def get_stock_chart(
 async def generate_report(
     request: Request,
     report_request: GenerateReportRequest,
-    current_user: Optional[dict] = Depends(auth.get_optional_current_user)
+    current_user: dict = Depends(auth.get_current_user)
 ):
-    """Generate or retrieve a cached equity research report."""
+    """Generate or retrieve a cached equity research report. Requires authentication."""
     ticker = report_request.symbol.upper()
     exchange = report_request.exchange.upper()
     language = report_request.language.lower() if report_request.language else 'en'
@@ -594,8 +573,7 @@ async def generate_report(
     # Check for cached report first (language-specific)
     cached_report = db.get_cached_report(ticker, exchange, language)
     logger.info(f"Cached report found: {cached_report is not None}, cached language: {cached_report.get('language') if cached_report else 'N/A'}")
-    user_id = current_user["id"] if current_user else None
-    is_anonymous = current_user is None
+    user_id = current_user["id"]
 
     # Determine if we need to generate a new report
     need_generation = False
@@ -608,28 +586,19 @@ async def generate_report(
         need_generation = True
     elif cached_report.get('is_outdated', False):
         # Report is older than 15 days
-        if current_user:
-            # Check if user has viewed this report before
-            if not db.has_user_viewed_report(user_id, ticker, exchange):
-                # First-time viewer + outdated = auto-regenerate
-                need_generation = True
-            # else: returning viewer + outdated = show cached (they can manually regenerate)
+        # Check if user has viewed this report before
+        if not db.has_user_viewed_report(user_id, ticker, exchange):
+            # First-time viewer + outdated = auto-regenerate
+            need_generation = True
+        # else: returning viewer + outdated = show cached (they can manually regenerate)
 
     # If we need to generate, check usage limits first
     if need_generation:
-        if current_user:
-            if not db.can_generate_report(user_id):
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail="Monthly report limit reached. Limit resets on the 1st of next month."
-                )
-        else:
-            identifier = get_client_identifier(request)
-            if not db.can_anonymous_generate(identifier):
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail="Free report limit reached (3 reports). Please sign in for more reports."
-                )
+        if not db.can_generate_report(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Monthly report limit reached. Limit resets on the 1st of next month."
+            )
 
         # Fetch stock data and generate report
         stock_data = fetch_stock_data(ticker, exchange)
@@ -671,10 +640,7 @@ async def generate_report(
         )
 
         # Increment usage
-        if is_anonymous:
-            db.increment_anonymous_usage(get_client_identifier(request))
-        else:
-            db.increment_usage(user_id)
+        db.increment_usage(user_id)
 
         # Get the updated cached report
         cached_report = db.get_cached_report_by_id(report_cache_id)
@@ -683,10 +649,9 @@ async def generate_report(
         report_cache_id = cached_report['id']
         generated_new = False
 
-    # Link user to report (for authenticated users) and update activity
-    if current_user:
-        db.link_user_to_report(user_id, report_cache_id)
-        db.update_user_activity(user_id)
+    # Link user to report and update activity
+    db.link_user_to_report(user_id, report_cache_id)
+    db.update_user_activity(user_id)
 
     return {
         "report_cache_id": report_cache_id,
@@ -708,9 +673,9 @@ async def generate_report(
 async def compare_stocks(
     request: Request,
     compare_request: CompareRequest,
-    current_user: Optional[dict] = Depends(auth.get_optional_current_user)
+    current_user: dict = Depends(auth.get_current_user)
 ):
-    """Compare two stocks side-by-side with AI analysis."""
+    """Compare two stocks side-by-side with AI analysis. Requires authentication."""
     import asyncio
     from concurrent.futures import ThreadPoolExecutor
 
@@ -730,22 +695,13 @@ async def compare_stocks(
         )
 
     # Check usage limits (comparison costs 1 credit)
-    user_id = current_user["id"] if current_user else None
-    is_anonymous = current_user is None
+    user_id = current_user["id"]
 
-    if current_user:
-        if not db.can_generate_report(user_id):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Monthly report limit reached. Limit resets on the 1st of next month."
-            )
-    else:
-        identifier = get_client_identifier(request)
-        if not db.can_anonymous_generate(identifier):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Free report limit reached (3 reports). Please sign in for more reports."
-            )
+    if not db.can_generate_report(user_id):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Monthly report limit reached. Limit resets on the 1st of next month."
+        )
 
     # Fetch stock data for both stocks in parallel
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -804,11 +760,8 @@ async def compare_stocks(
     )
 
     # Deduct 1 credit
-    if is_anonymous:
-        db.increment_anonymous_usage(get_client_identifier(request))
-    else:
-        db.increment_usage(user_id)
-        db.update_user_activity(user_id)
+    db.increment_usage(user_id)
+    db.update_user_activity(user_id)
 
     # Extract key info for response
     basic_a = stock_data_a.get("basic_info", {})
@@ -1234,8 +1187,7 @@ async def get_report_direct_view(report_cache_id: int):
         <h3>Like this report?</h3>
         <p>Get AI-powered research on 3000+ Indian stocks</p>
         <div class="cta-buttons">
-            <a href="{FRONTEND_URL}" class="btn-primary">Sign In with Google</a>
-            <a href="{FRONTEND_URL}/generate.html" class="btn-secondary">Try as Guest</a>
+            <a href="{FRONTEND_URL}" class="btn-primary">Sign Up Free</a>
         </div>
     </div>
     <div class="footer">

@@ -121,26 +121,6 @@
             </div>
         </div>
 
-        <!-- Guest Login Nudge -->
-        <div id="guestNudge" class="hidden bg-gradient-to-r from-[#102a43] to-[#1e3a5f] rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 text-white">
-            <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
-                    <div class="bg-white/20 rounded-full p-1.5 sm:p-2 flex-shrink-0">
-                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                        </svg>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="font-medium text-xs sm:text-base truncate">Sign in for more reports</p>
-                        <p class="text-[10px] sm:text-sm text-white/70 truncate">Get 10+ reports/month free</p>
-                    </div>
-                </div>
-                <button onclick="signInWithGoogle()" class="bg-white text-[#102a43] px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
-                    Sign In
-                </button>
-            </div>
-        </div>
-
         <!-- Upgrade Nudge (for logged-in users with low quota) -->
         <div id="upgradeNudge" class="hidden bg-gradient-to-r from-amber-500 to-orange-500 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 text-white">
             <div class="flex items-center justify-between gap-3">
@@ -328,9 +308,14 @@
         let forceRegenerate = false;
         let selectedLanguage = 'en';
 
-        // Auth state
+        // Auth state - require login to generate reports
         const token = localStorage.getItem('token');
         const isLoggedIn = !!token;
+
+        // Redirect to login if not authenticated
+        if (!isLoggedIn) {
+            window.location.href = 'index.html';
+        }
 
         // Language selection
         function selectLanguage(lang) {
@@ -396,83 +381,55 @@
 
         async function updateUsageDisplay() {
             const remainingEl = document.getElementById('reportsRemaining');
-            const guestNudge = document.getElementById('guestNudge');
             const upgradeNudge = document.getElementById('upgradeNudge');
             const expiredBanner = document.getElementById('expiredBanner');
 
-            if (isLoggedIn) {
-                guestNudge.classList.add('hidden');
+            // Fetch subscription status for authenticated users
+            try {
+                const response = await apiCall('/subscription/status');
+                if (response.ok) {
+                    const status = await response.json();
+                    remainingEl.textContent = status.reports_remaining;
 
-                // Fetch subscription status for authenticated users
-                try {
-                    const response = await apiCall('/subscription/status');
-                    if (response.ok) {
-                        const status = await response.json();
-                        remainingEl.textContent = status.reports_remaining;
+                    const tier = status.tier || 'free';
 
-                        const tier = status.tier || 'free';
-
-                        // Check for expired subscription or exhausted limits first
-                        if (status.is_expired) {
-                            // Paid subscription expired
-                            document.getElementById('expiredBannerTitle').textContent = 'Your subscription has expired';
-                            document.getElementById('expiredBannerText').textContent = 'Renew to continue generating reports';
-                            expiredBanner.classList.remove('hidden');
-                            upgradeNudge.classList.add('hidden');
-                        } else if (status.reports_remaining === 0) {
-                            // No reports left
-                            if (tier === 'free') {
-                                document.getElementById('expiredBannerTitle').textContent = "You've used all free reports";
-                                document.getElementById('expiredBannerText').textContent = 'Upgrade to continue generating reports';
-                            } else {
-                                document.getElementById('expiredBannerTitle').textContent = 'Monthly limit reached';
-                                document.getElementById('expiredBannerText').textContent = `Resets on ${status.reset_date}`;
-                            }
-                            expiredBanner.classList.remove('hidden');
-                            upgradeNudge.classList.add('hidden');
+                    // Check for expired subscription or exhausted limits first
+                    if (status.is_expired) {
+                        // Paid subscription expired
+                        document.getElementById('expiredBannerTitle').textContent = 'Your subscription has expired';
+                        document.getElementById('expiredBannerText').textContent = 'Renew to continue generating reports';
+                        expiredBanner.classList.remove('hidden');
+                        upgradeNudge.classList.add('hidden');
+                    } else if (status.reports_remaining === 0) {
+                        // No reports left
+                        if (tier === 'free') {
+                            document.getElementById('expiredBannerTitle').textContent = "You've used all free reports";
+                            document.getElementById('expiredBannerText').textContent = 'Upgrade to continue generating reports';
                         } else {
-                            expiredBanner.classList.add('hidden');
+                            document.getElementById('expiredBannerTitle').textContent = 'Monthly limit reached';
+                            document.getElementById('expiredBannerText').textContent = `Resets on ${status.reset_date}`;
+                        }
+                        expiredBanner.classList.remove('hidden');
+                        upgradeNudge.classList.add('hidden');
+                    } else {
+                        expiredBanner.classList.add('hidden');
 
-                            // Show upgrade nudge if low on reports (<=3 remaining or used >70%)
-                            const usedPercent = status.reports_limit > 0 ? (status.reports_used / status.reports_limit) * 100 : 0;
+                        // Show upgrade nudge if low on reports (<=3 remaining or used >70%)
+                        const usedPercent = status.reports_limit > 0 ? (status.reports_used / status.reports_limit) * 100 : 0;
 
-                            if (tier !== 'enterprise' && (status.reports_remaining <= 3 || usedPercent >= 70)) {
-                                upgradeNudge.classList.remove('hidden');
-                                if (status.reports_remaining <= 3) {
-                                    document.getElementById('upgradeNudgeTitle').textContent = `Only ${status.reports_remaining} report${status.reports_remaining > 1 ? 's' : ''} left`;
-                                    document.getElementById('upgradeNudgeText').textContent = 'Upgrade for more reports - save up to 30% yearly';
-                                }
-                            } else {
-                                upgradeNudge.classList.add('hidden');
+                        if (tier !== 'enterprise' && (status.reports_remaining <= 3 || usedPercent >= 70)) {
+                            upgradeNudge.classList.remove('hidden');
+                            if (status.reports_remaining <= 3) {
+                                document.getElementById('upgradeNudgeTitle').textContent = `Only ${status.reports_remaining} report${status.reports_remaining > 1 ? 's' : ''} left`;
+                                document.getElementById('upgradeNudgeText').textContent = 'Upgrade for more reports - save up to 30% yearly';
                             }
+                        } else {
+                            upgradeNudge.classList.add('hidden');
                         }
                     }
-                } catch (e) {
-                    remainingEl.textContent = '-';
                 }
-            } else {
-                upgradeNudge.classList.add('hidden');
-                expiredBanner.classList.add('hidden');
-
-                // Fetch anonymous usage from server
-                try {
-                    const response = await apiCall('/usage/anonymous');
-                    if (response.ok) {
-                        const usage = await response.json();
-                        remainingEl.textContent = usage.reports_remaining;
-
-                        // Show guest nudge - guests only get 1 report, encourage sign in
-                        guestNudge.classList.remove('hidden');
-
-                        if (usage.reports_remaining === 0) {
-                            showLimitModal();
-                        }
-                    }
-                } catch (e) {
-                    remainingEl.textContent = '1';
-                    // Show nudge for new users
-                    guestNudge.classList.remove('hidden');
-                }
+            } catch (e) {
+                remainingEl.textContent = '-';
             }
         }
 
@@ -648,13 +605,7 @@
                 if (response.ok) {
                     cachedReport = await response.json();
 
-                    // For guests: don't show notice, just store the cached report
-                    // They'll be redirected when they click Generate
-                    if (!isLoggedIn) {
-                        return;
-                    }
-
-                    // For logged-in users: show the notice
+                    // Show the cached report notice
                     const notice = document.getElementById('cachedNotice');
                     const dateSpan = document.getElementById('cachedDate');
                     const actionSpan = document.getElementById('cachedAction');
@@ -755,12 +706,6 @@
 
         async function generateReport() {
             if (!selectedStock) return;
-
-            // For guests: if there's a fresh cached report, redirect to it
-            if (!isLoggedIn && cachedReport && !cachedReport.is_outdated) {
-                window.location.href = `report.html?id=${cachedReport.id}`;
-                return;
-            }
 
             const btn = document.getElementById('generateBtn');
             const preview = document.getElementById('stockPreview');

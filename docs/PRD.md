@@ -1,8 +1,8 @@
 # Permabullish - AI Stock Researcher
 ## Product Requirements Document (PRD)
 
-**Version:** 2.3
-**Date:** February 2, 2026
+**Version:** 2.4
+**Date:** February 6, 2026
 **Status:** Phase 1-4 Complete, Phase 7 Complete, Phase 5 Partially Complete
 
 ---
@@ -98,7 +98,9 @@ The product operates on a subscription model with tiered access, allowing users 
 
 - **Primary:** Indian retail investors researching NSE/BSE stocks
 - **Secondary:** Financial advisors, wealth managers, and investment enthusiasts
+- **Tertiary:** Stock brokers, sub-brokers, and Associated Persons (APs) serving retail clients
 - **Geography:** India (initial focus)
+- **Languages:** English, Hindi (हिंदी), Gujarati (ગુજરાતી)
 
 ---
 
@@ -194,7 +196,15 @@ The product operates on a subscription model with tiered access, allowing users 
 | **Pro** | 100/month | All Basic + priority generation |
 | **Enterprise** | Unlimited | All features + API access + dedicated support |
 
-### 6.2 Pricing (INR)
+### 6.2 Target Audience Segments
+
+| Segment | Description | Email Approach |
+|---------|-------------|----------------|
+| **Retail Investors** | Individual stock traders | Educational, feature highlights |
+| **Brokers & Sub-Brokers** | Stock brokers, sub-brokers, Associated Persons (APs) | Client tools, time savings, competitive edge |
+| **Regional Users** | Hindi and Gujarati speaking investors | Multilingual content, regional relevance |
+
+### 6.3 Pricing (INR)
 
 | Tier | Monthly | 6 Months | Yearly | Per Report |
 |------|---------|----------|--------|------------|
@@ -222,9 +232,103 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ---
 
-## 7. Data Sources
+## 7. Email Marketing System
 
-### 7.1 Stock Data
+### 7.1 Email Types
+
+| Email Type | Trigger | Purpose |
+|------------|---------|---------|
+| **Welcome** | User signup | Onboard new users, showcase features |
+| **Purchase Confirmation** | Subscription activated | Confirm plan details and benefits |
+| **Re-engagement** | Inactivity (7+ days) | Win back inactive users |
+| **Expiry Reminder** | Subscription ending | Encourage renewal |
+
+### 7.2 Re-engagement Email Templates (14 + 1 Weekly)
+
+| # | Type | Subject | Audience |
+|---|------|---------|----------|
+| 1 | Generic | Your AI research reports are waiting | All |
+| 2 | Broker | The research tool smart brokers are using | Brokers, Sub-brokers, APs |
+| 3 | Generic | What smart investors look for | All |
+| 4 | Broker | 2 hours of research in 30 seconds | Brokers, Sub-brokers, APs |
+| 5 | Generic | Investors are researching these stocks | All |
+| 6 | Broker | Institutional research for independent brokers | Brokers, Sub-brokers, APs |
+| 7 | Hindi | अब हिंदी में AI स्टॉक रिसर्च | Hindi speakers |
+| 8 | Gujarati | હવે ગુજરાતીમાં AI સ્ટોક રિસર્ચ | Gujarati speakers |
+| 9 | Generic | Markets moved this week | All |
+| 10 | Broker | Your competition is using AI research | Brokers, Sub-brokers, APs |
+| 11 | Hindi | आपके Hindi-speaking clients के लिए | Hindi speakers (broker angle) |
+| 12 | Gujarati | તમારા Gujarati-speaking clients માટે | Gujarati speakers (broker angle) |
+| 13 | Generic | Did you know Permabullish can do this? | All |
+| 14 | Broker | Better research = more client trades | Brokers, Sub-brokers, APs |
+| 15 | Weekly | Weekly: Your AI market insights | All (weekly digest) |
+
+### 7.3 Re-engagement Eligibility Criteria
+
+A registered user receives re-engagement emails only when ALL of the following conditions are met:
+
+| Criterion | Requirement | Rationale |
+|-----------|-------------|-----------|
+| **Account Status** | `is_active = TRUE` | Deactivated accounts are excluded |
+| **Subscription Tier** | `subscription_tier = 'free'` | Paid users excluded (they get expiry reminders instead) |
+| **Account Age** | Signed up within 180 days | Focus on recent signups with conversion potential |
+| **Inactivity** | No activity for 7+ days | Only target users who haven't engaged recently |
+| **Email Timing** | See schedule below | Prevent email fatigue |
+
+**Activity Tracking:**
+- `last_activity_at` is updated when users generate reports or compare stocks
+- Login alone does NOT count as activity (prevents gaming the system)
+- New users start with `last_activity_at` = signup time
+
+**Why a user might NOT receive re-engagement emails:**
+1. They're on a paid tier (basic, pro, enterprise)
+2. They've been active within the last 7 days
+3. They already received an email today (daily phase) or this week (weekly phase)
+4. Their account is older than 180 days
+5. Their account is deactivated
+
+### 7.4 Email Schedule
+
+- **Days 1-14 after signup (Daily Phase):**
+  - One email per day maximum
+  - Only if inactive for 7+ days
+  - Templates 1-14 rotate in sequence
+- **Days 15-180 after signup (Weekly Phase):**
+  - One email per week maximum
+  - Only if inactive for 7+ days
+  - Template 15 (weekly digest) used
+- Templates rotate: 1→2→3→...→14→1→...
+
+### 7.5 External Contacts System
+
+Support for bulk email campaigns to external contact lists (not registered users):
+
+| Feature | Description |
+|---------|-------------|
+| **Import** | CSV import via `scripts/import_external_contacts.py` |
+| **Eligibility** | All active contacts (no inactivity requirement) |
+| **Template Rotation** | Same 14 templates as registered users |
+| **Cleanup** | Bounce detection via `scripts/cleanup_bounced_emails.py` |
+| **Rate Limiting** | 0.6s delay between emails (Resend API: 2 req/sec) |
+
+**Key Difference from Registered Users:**
+- External contacts receive emails regardless of activity (no 7-day inactivity requirement)
+- They don't have accounts, so there's no activity to track
+- Template rotation is based on `reengagement_email_count` only
+
+### 7.6 Email Infrastructure
+
+- **Provider:** Resend (SMTP alternative to SendGrid)
+- **Sending Domain:** permabullish.com (SPF, DKIM verified)
+- **Cron Jobs:**
+  - Re-engagement emails: 10 AM IST daily
+  - Expiry reminders: 10:30 AM IST daily
+
+---
+
+## 8. Data Sources
+
+### 8.1 Stock Data
 
 | Source | Data Type | Frequency |
 |--------|-----------|-----------|
@@ -232,7 +336,7 @@ The product operates on a subscription model with tiered access, allowing users 
 | **Yahoo Finance** | Real-time prices, basic metrics | On-demand |
 | **NSE/BSE** | Corporate actions, announcements | As needed |
 
-### 7.2 AI Analysis
+### 8.2 AI Analysis
 
 - **Model:** Claude (Anthropic API)
 - **Purpose:** Generate opinionated investment analysis
@@ -241,15 +345,15 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ---
 
-## 8. Authentication & Security
+## 9. Authentication & Security
 
-### 8.1 Authentication
+### 9.1 Authentication
 
 - **Primary:** Google OAuth 2.0
 - **Session:** JWT tokens (7-day expiry)
 - **No email/password:** Google sign-in only for simplicity
 
-### 8.2 Security Considerations
+### 9.2 Security Considerations
 
 - All API endpoints require authentication (except health check)
 - Rate limiting on report generation
@@ -258,9 +362,9 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ---
 
-## 9. Technical Architecture
+## 10. Technical Architecture
 
-### 9.1 Stack
+### 10.1 Stack
 
 | Layer | Technology |
 |-------|------------|
@@ -272,7 +376,7 @@ The product operates on a subscription model with tiered access, allowing users 
 | **Payments** | Cashfree |
 | **Hosting** | Render |
 
-### 9.2 API Endpoints
+### 10.2 API Endpoints
 
 **Authentication:**
 - `GET /api/auth/google/login` - Initiate Google OAuth
@@ -318,7 +422,7 @@ The product operates on a subscription model with tiered access, allowing users 
 **Health:**
 - `GET /api/health` - Service health check
 
-### 9.3 Database Schema
+### 10.3 Database Schema
 
 ```sql
 -- Users
@@ -429,9 +533,9 @@ CREATE TABLE user_comparisons (
 
 ---
 
-## 10. Infrastructure & Capacity
+## 11. Infrastructure & Capacity
 
-### 10.1 Current Infrastructure (Render)
+### 11.1 Current Infrastructure (Render)
 
 | Component | Plan | Specs | Cost |
 |-----------|------|-------|------|
@@ -441,7 +545,7 @@ CREATE TABLE user_comparisons (
 | **Cron Jobs** | Included | 5 scheduled jobs | Included |
 | **Total** | - | - | ~$13/mo + Claude API |
 
-### 10.2 Rate Limits
+### 11.2 Rate Limits
 
 | Endpoint | Limit | Purpose |
 |----------|-------|---------|

@@ -29,7 +29,6 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 # Usage Limits
 MONTHLY_REPORT_LIMIT = int(os.getenv("MONTHLY_REPORT_LIMIT", "50"))
-ANONYMOUS_REPORT_LIMIT = int(os.getenv("ANONYMOUS_REPORT_LIMIT", "1"))  # Guest users get 1 report
 
 # Google OAuth Settings
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
@@ -92,7 +91,7 @@ FEATURED_REPORT_TICKERS = ["INFY", "SWIGGY", "DIXON"]
 REPORT_FRESHNESS_DAYS = 15
 
 # Subscription Tiers with Pricing (prices in INR)
-# Note: Guest (anonymous) users get 1 report (ANONYMOUS_REPORT_LIMIT above)
+# Note: Authentication is required for report generation
 SUBSCRIPTION_TIERS = {
     "free": {
         "name": "Free",

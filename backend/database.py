@@ -11,7 +11,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 from contextlib import contextmanager
 
-from config import MONTHLY_REPORT_LIMIT, ANONYMOUS_REPORT_LIMIT, SUBSCRIPTION_TIERS
+from config import MONTHLY_REPORT_LIMIT, SUBSCRIPTION_TIERS
 
 # Determine database type from environment
 DATABASE_URL = os.getenv("DATABASE_URL", "")
@@ -1063,58 +1063,6 @@ def create_subscription_record(
 
         conn.commit()
         return subscription_id
-
-
-# Anonymous Usage Operations
-def get_anonymous_usage(identifier: str) -> dict:
-    """Get anonymous user's usage stats."""
-    with get_db_connection() as conn:
-        cursor = get_cursor(conn)
-        p = placeholder()
-        cursor.execute(
-            f"SELECT reports_generated FROM anonymous_usage WHERE identifier = {p}",
-            (identifier,)
-        )
-        row = cursor.fetchone()
-
-    reports_used = row["reports_generated"] if row else 0
-
-    return {
-        "reports_used": reports_used,
-        "reports_limit": ANONYMOUS_REPORT_LIMIT,
-        "reports_remaining": max(0, ANONYMOUS_REPORT_LIMIT - reports_used)
-    }
-
-
-def can_anonymous_generate(identifier: str) -> bool:
-    """Check if anonymous user can generate more reports."""
-    usage = get_anonymous_usage(identifier)
-    return usage["reports_remaining"] > 0
-
-
-def increment_anonymous_usage(identifier: str) -> bool:
-    """Increment anonymous usage count. Returns False if limit reached."""
-    if not can_anonymous_generate(identifier):
-        return False
-
-    with get_db_connection() as conn:
-        cursor = get_cursor(conn)
-        if USE_POSTGRES:
-            cursor.execute("""
-                INSERT INTO anonymous_usage (identifier, reports_generated, last_used_at)
-                VALUES (%s, 1, CURRENT_TIMESTAMP)
-                ON CONFLICT(identifier)
-                DO UPDATE SET reports_generated = anonymous_usage.reports_generated + 1, last_used_at = CURRENT_TIMESTAMP
-            """, (identifier,))
-        else:
-            cursor.execute("""
-                INSERT INTO anonymous_usage (identifier, reports_generated, last_used_at)
-                VALUES (?, 1, CURRENT_TIMESTAMP)
-                ON CONFLICT(identifier)
-                DO UPDATE SET reports_generated = reports_generated + 1, last_used_at = CURRENT_TIMESTAMP
-            """, (identifier,))
-        conn.commit()
-    return True
 
 
 # ============================================

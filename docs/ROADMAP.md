@@ -1,8 +1,8 @@
 # Permabullish - Product Roadmap
 ## AI Stock Researcher
 
-**Version:** 3.2
-**Last Updated:** February 3, 2026
+**Version:** 3.3
+**Last Updated:** February 6, 2026
 
 ---
 
@@ -288,12 +288,28 @@ Polish and enhance the live product based on initial usage.
 - [x] **Purchase Confirmation Email** - Sent on subscription activation
   - Plan details, expiry date, reports per month
   - Triggered from verify endpoint and webhooks
-- [x] **Re-engagement Email System**
-  - 5 rotating templates + weekly digest template
+- [x] **Re-engagement Email System (Enhanced)**
+  - **14 rotating templates + weekly digest** (expanded from 5)
+  - Template categories:
+    - 5 generic templates for retail investors
+    - 5 broker-focused templates targeting brokers, sub-brokers, APs
+    - 2 Hindi language templates (हिंदी)
+    - 2 Gujarati language templates (ગુજરાતી)
+    - 1 weekly digest template
   - Days 1-14: Daily emails (if inactive 7+ days)
   - Days 15-180: Weekly emails (if inactive 7+ days)
   - Cron script: `scripts/send_reengagement_emails.py`
   - IST timezone support
+  - Rate limiting: 0.6s delay between sends (Resend API: 2 req/sec)
+- [x] **External Contacts System**
+  - Import CSV email lists: `scripts/import_external_contacts.py`
+  - Same template rotation as registered users
+  - `external_contacts` table with tracking columns
+  - Supports promotional campaigns to external lists
+- [x] **Bounced Email Cleanup**
+  - Fetches email delivery status from Resend API
+  - Marks bounced/failed contacts as inactive
+  - Script: `scripts/cleanup_bounced_emails.py`
 - [x] Database tracking columns: `last_activity_at`, `welcome_email_sent`, `last_reengagement_email_at`, `reengagement_email_count`
 
 ### 3.6.2 AI Report Enhancements
@@ -1076,8 +1092,11 @@ python scripts/weekly_new_users.py --format csv --output new_users.csv
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `scripts/send_reengagement_emails.py` | Re-engagement emails for inactive free users | `--dry-run --limit N` |
+| `scripts/send_reengagement_emails.py` | Re-engagement emails for inactive users + external contacts | `--dry-run --limit N` |
 | `scripts/send_expiry_emails.py` | Expiry reminders for lapsed paid subscribers | `--dry-run --limit N` |
+| `scripts/import_external_contacts.py` | Import CSV email lists for promotional campaigns | `<csv_path>` |
+| `scripts/cleanup_bounced_emails.py` | Mark bounced/failed emails as inactive | `--dry-run --limit N` |
+| `scripts/check_conversions.py` | Check external contacts who became users | - |
 
 ```bash
 # Re-engagement emails (dry run)
@@ -1086,9 +1105,19 @@ python scripts/send_reengagement_emails.py --dry-run
 # Expiry reminder emails (dry run)
 python scripts/send_expiry_emails.py --dry-run
 
-# Full run (all eligible users)
+# Full run (all eligible users + external contacts)
 python scripts/send_reengagement_emails.py
 python scripts/send_expiry_emails.py
+
+# Import external contacts from CSV
+python scripts/import_external_contacts.py /path/to/emails.csv
+
+# Cleanup bounced emails (dry run first)
+python scripts/cleanup_bounced_emails.py --dry-run
+python scripts/cleanup_bounced_emails.py
+
+# Check conversion rate
+python scripts/check_conversions.py
 ```
 
 **Cron Setup (Render):**

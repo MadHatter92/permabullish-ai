@@ -339,6 +339,11 @@
         const token = localStorage.getItem('token');
         const isLoggedIn = !!token;
 
+        // Redirect to login if not authenticated
+        if (!isLoggedIn) {
+            window.location.href = 'index.html';
+        }
+
         // Language selection
         function selectLanguage(lang) {
             selectedLanguage = lang;
@@ -377,8 +382,7 @@
         async function updateUsageDisplay() {
             const remainingEl = document.getElementById('reportsRemaining');
             try {
-                const endpoint = isLoggedIn ? '/subscription/status' : '/usage/anonymous';
-                const response = await apiCall(endpoint);
+                const response = await apiCall('/subscription/status');
                 if (response.ok) {
                     const data = await response.json();
                     remainingEl.textContent = data.reports_remaining;
