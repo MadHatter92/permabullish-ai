@@ -162,6 +162,7 @@ services:
         sync: false
 
   # Re-engagement Emails - Batch 0: Morning (9 AM IST / 3:30 AM UTC)
+  # Limit 100/batch for domain warm-up. Increase gradually each week.
   - type: cron
     name: permabullish-reengagement-morning
     runtime: python
@@ -171,7 +172,7 @@ services:
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/send_reengagement_emails.py --batch 0
+    startCommand: python scripts/send_reengagement_emails.py --batch 0 --limit 100
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -190,7 +191,7 @@ services:
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/send_reengagement_emails.py --batch 1
+    startCommand: python scripts/send_reengagement_emails.py --batch 1 --limit 100
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -209,7 +210,7 @@ services:
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/send_reengagement_emails.py --batch 2
+    startCommand: python scripts/send_reengagement_emails.py --batch 2 --limit 100
     envVars:
       - key: DATABASE_URL
         fromDatabase:
