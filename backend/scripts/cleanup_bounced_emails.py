@@ -189,14 +189,16 @@ def get_current_stats():
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
 
-        cursor.execute("SELECT COUNT(*) FROM external_contacts")
-        total = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) as cnt FROM external_contacts")
+        row = cursor.fetchone()
+        total = row['cnt'] if isinstance(row, dict) else row[0]
 
         if USE_POSTGRES:
-            cursor.execute("SELECT COUNT(*) FROM external_contacts WHERE is_active = TRUE")
+            cursor.execute("SELECT COUNT(*) as cnt FROM external_contacts WHERE is_active = TRUE")
         else:
-            cursor.execute("SELECT COUNT(*) FROM external_contacts WHERE is_active = 1")
-        active = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) as cnt FROM external_contacts WHERE is_active = 1")
+        row = cursor.fetchone()
+        active = row['cnt'] if isinstance(row, dict) else row[0]
 
         return total, active
 
