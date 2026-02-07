@@ -147,6 +147,7 @@ def init_database():
                     payment_customer_id TEXT,  -- For Cashfree or future payment provider
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT TRUE,
+                    email_verified BOOLEAN DEFAULT FALSE,
                     -- Email tracking columns
                     last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     welcome_email_sent BOOLEAN DEFAULT FALSE,
@@ -156,6 +157,12 @@ def init_database():
                     expiry_email_count INTEGER DEFAULT 0
                 )
             """)
+
+            # Migration: Add email_verified column if it doesn't exist
+            try:
+                cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE")
+            except:
+                pass
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS reports (
@@ -419,6 +426,7 @@ def init_database():
                     payment_customer_id TEXT,  -- For Cashfree or future payment provider
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT 1,
+                    email_verified BOOLEAN DEFAULT 0,
                     -- Email tracking columns
                     last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     welcome_email_sent BOOLEAN DEFAULT 0,
@@ -622,6 +630,7 @@ def init_database():
 
             # SQLite migrations for email tracking columns
             for col_name, col_def in [
+                ("email_verified", "BOOLEAN DEFAULT 0"),
                 ("last_activity_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
                 ("welcome_email_sent", "BOOLEAN DEFAULT 0"),
                 ("last_reengagement_email_at", "TIMESTAMP"),
@@ -728,28 +737,35 @@ def get_or_create_google_user(google_id: str, email: str, full_name: str, avatar
     # Check if email exists (user might have registered with email/password before)
     user = get_user_by_email(email)
     if user:
-        # Link Google account to existing user
+        # Link Google account to existing user and mark email as verified
         with get_db_connection() as conn:
             cursor = get_cursor(conn)
             p = placeholder()
-            cursor.execute(
-                f"UPDATE users SET google_id = {p}, auth_provider = 'google', avatar_url = {p} WHERE id = {p}",
-                (google_id, avatar_url, user["id"])
-            )
+            if USE_POSTGRES:
+                cursor.execute(
+                    f"UPDATE users SET google_id = {p}, auth_provider = 'google', avatar_url = {p}, email_verified = TRUE WHERE id = {p}",
+                    (google_id, avatar_url, user["id"])
+                )
+            else:
+                cursor.execute(
+                    f"UPDATE users SET google_id = {p}, auth_provider = 'google', avatar_url = {p}, email_verified = 1 WHERE id = {p}",
+                    (google_id, avatar_url, user["id"])
+                )
             conn.commit()
         user["google_id"] = google_id
         user["auth_provider"] = "google"
         user["avatar_url"] = avatar_url
+        user["email_verified"] = True
         return user
 
-    # Create new Google user
+    # Create new Google user (email_verified = TRUE since Google verified their email)
     is_new_user = True
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
         if USE_POSTGRES:
             cursor.execute(
-                """INSERT INTO users (email, password_hash, full_name, google_id, auth_provider, avatar_url)
-                   VALUES (%s, NULL, %s, %s, 'google', %s) RETURNING id""",
+                """INSERT INTO users (email, password_hash, full_name, google_id, auth_provider, avatar_url, email_verified)
+                   VALUES (%s, NULL, %s, %s, 'google', %s, TRUE) RETURNING id""",
                 (email, full_name, google_id, avatar_url)
             )
             result = cursor.fetchone()
@@ -757,8 +773,8 @@ def get_or_create_google_user(google_id: str, email: str, full_name: str, avatar
             user_id = result['id']
         else:
             cursor.execute(
-                """INSERT INTO users (email, password_hash, full_name, google_id, auth_provider, avatar_url)
-                   VALUES (?, NULL, ?, ?, 'google', ?)""",
+                """INSERT INTO users (email, password_hash, full_name, google_id, auth_provider, avatar_url, email_verified)
+                   VALUES (?, NULL, ?, ?, 'google', ?, 1)""",
                 (email, full_name, google_id, avatar_url)
             )
             conn.commit()
@@ -1612,6 +1628,38 @@ def mark_welcome_email_sent(user_id: int) -> bool:
                 f"UPDATE users SET welcome_email_sent = 1 WHERE id = {p}",
                 (user_id,)
             )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def mark_email_verified(user_id: int) -> bool:
+    """Mark user's email as verified."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        if USE_POSTGRES:
+            cursor.execute(
+                f"UPDATE users SET email_verified = TRUE WHERE id = {p}",
+                (user_id,)
+            )
+        else:
+            cursor.execute(
+                f"UPDATE users SET email_verified = 1 WHERE id = {p}",
+                (user_id,)
+            )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def update_password_hash(user_id: int, password_hash: str) -> bool:
+    """Update user's password hash."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(
+            f"UPDATE users SET password_hash = {p} WHERE id = {p}",
+            (password_hash, user_id)
+        )
         conn.commit()
         return cursor.rowcount > 0
 

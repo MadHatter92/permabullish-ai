@@ -162,7 +162,7 @@ services:
         sync: false
 
   # Re-engagement Emails - Batch 0: Morning (9 AM IST / 3:30 AM UTC)
-  # Limit 100/batch for domain warm-up. Increase gradually each week.
+  # --batch-size 200: max emails per batch for domain warm-up. Increase gradually.
   - type: cron
     name: permabullish-reengagement-morning
     runtime: python
@@ -172,7 +172,7 @@ services:
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/send_reengagement_emails.py --batch 0 --limit 100
+    startCommand: python scripts/send_reengagement_emails.py --batch 0 --batch-size 200
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -191,7 +191,7 @@ services:
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/send_reengagement_emails.py --batch 1 --limit 100
+    startCommand: python scripts/send_reengagement_emails.py --batch 1 --batch-size 200
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -210,7 +210,27 @@ services:
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/send_reengagement_emails.py --batch 2 --limit 100
+    startCommand: python scripts/send_reengagement_emails.py --batch 2 --batch-size 200
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: permabullish-db
+          property: connectionString
+      - key: RESEND_API_KEY
+        sync: false
+
+  # Cleanup Bounced Emails (daily at 8:30 PM IST / 3 PM UTC)
+  # Runs ~2 hours after last promo batch, marks bounced contacts inactive
+  - type: cron
+    name: permabullish-cleanup-bounced
+    runtime: python
+    plan: starter
+    schedule: "0 15 * * *"
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/cleanup_bounced_emails.py
     envVars:
       - key: DATABASE_URL
         fromDatabase:

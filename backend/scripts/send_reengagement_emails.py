@@ -18,14 +18,19 @@ User Schedule (IST timing):
 - Days 1-14 after signup: Daily emails (if inactive for 1+ days)
 - Days 15-180 after signup: Weekly emails (if inactive for 7+ days)
 
+Batch Size Limit:
+- Default: 200 emails per batch (configurable via --batch-size)
+- This caps total emails (users + external contacts) per run for domain warm-up / deliverability
+
 Usage:
-    python send_reengagement_emails.py [--dry-run] [--limit N] [--batch N]
+    python send_reengagement_emails.py [--dry-run] [--limit N] [--batch N] [--batch-size N]
 
 Options:
-    --dry-run    Don't actually send emails, just print what would be sent
-    --limit N    Maximum number of emails to send (default: no limit)
-    --batch N    Force specific batch (0, 1, 2). Auto-detects if not specified.
-    --all        Send to all batches (ignore batching, for backward compatibility)
+    --dry-run       Don't actually send emails, just print what would be sent
+    --limit N       Maximum number of emails to send (default: no limit)
+    --batch N       Force specific batch (0, 1, 2). Auto-detects if not specified.
+    --batch-size N  Max emails per batch run (default: 200). Set 0 for unlimited.
+    --all           Send to all batches (ignore batching, for backward compatibility)
 """
 
 import sys
@@ -54,6 +59,9 @@ from email_service import (
 
 # India timezone
 IST = pytz.timezone('Asia/Kolkata')
+
+# Max emails per batch run (for domain warm-up / deliverability)
+DEFAULT_BATCH_SIZE = 200
 
 # Batch time windows (IST hours)
 # Batch 0: 9 AM (hour 9)
@@ -105,6 +113,7 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help="Don't send, just show what would be sent")
     parser.add_argument('--limit', type=int, default=0, help='Max emails to send (0 = no limit)')
     parser.add_argument('--batch', type=int, choices=[0, 1, 2], help='Force specific batch (0=Morning, 1=Afternoon, 2=Evening)')
+    parser.add_argument('--batch-size', type=int, default=DEFAULT_BATCH_SIZE, help=f'Max emails per batch run (default: {DEFAULT_BATCH_SIZE}, 0 = unlimited)')
     parser.add_argument('--all', action='store_true', help='Send to all contacts (ignore batching)')
     args = parser.parse_args()
 
@@ -124,9 +133,14 @@ def main():
         batch_num = get_batch_from_hour(current_hour)
         batch_info = f"BATCH {batch_num} ({get_batch_name(batch_num)}) - auto-detected"
 
+    # Batch size limit
+    batch_size = args.batch_size
+    batch_size_info = f"{batch_size} emails" if batch_size > 0 else "unlimited"
+
     print(f"[RE-ENGAGEMENT] Starting at {now_ist.strftime('%Y-%m-%d %H:%M:%S %Z')}")
     print(f"[RE-ENGAGEMENT] Day of year: {day_of_year}, Hour: {current_hour}")
     print(f"[RE-ENGAGEMENT] Processing: {batch_info}")
+    print(f"[RE-ENGAGEMENT] Batch size limit: {batch_size_info}")
 
     # Get featured reports for emails
     sample_reports = get_featured_reports_for_email()
@@ -138,7 +152,12 @@ def main():
 
     if args.limit > 0:
         users = users[:args.limit]
-        print(f"[RE-ENGAGEMENT] Limited to {len(users)} users")
+        print(f"[RE-ENGAGEMENT] Limited to {len(users)} users (--limit)")
+
+    # Apply batch size cap to users
+    if batch_size > 0 and len(users) > batch_size:
+        users = users[:batch_size]
+        print(f"[RE-ENGAGEMENT] Capped to {len(users)} users (--batch-size {batch_size})")
 
     sent_count = 0
     failed_count = 0
@@ -210,13 +229,25 @@ def main():
         external_contacts = get_external_contacts_for_reengagement()
         print(f"[RE-ENGAGEMENT] Found {len(external_contacts)} eligible external contacts (all batches)")
 
+    # Apply --limit (counts across users + external)
     if args.limit > 0:
         remaining_limit = args.limit - sent_count
         if remaining_limit > 0:
             external_contacts = external_contacts[:remaining_limit]
         else:
             external_contacts = []
-        print(f"[RE-ENGAGEMENT] Limited to {len(external_contacts)} external contacts")
+        print(f"[RE-ENGAGEMENT] Limited to {len(external_contacts)} external contacts (--limit)")
+
+    # Apply batch size cap (counts across users + external)
+    if batch_size > 0:
+        remaining_batch = batch_size - sent_count
+        if remaining_batch > 0:
+            if len(external_contacts) > remaining_batch:
+                external_contacts = external_contacts[:remaining_batch]
+                print(f"[RE-ENGAGEMENT] Capped to {len(external_contacts)} external contacts (--batch-size {batch_size}, {sent_count} already sent to users)")
+        else:
+            print(f"[RE-ENGAGEMENT] Batch size reached ({sent_count} sent to users), skipping external contacts")
+            external_contacts = []
 
     external_sent = 0
     external_failed = 0
@@ -270,6 +301,7 @@ def main():
     # =========================================================================
     print(f"\n[RE-ENGAGEMENT] FINAL SUMMARY:")
     print(f"  {batch_info}")
+    print(f"  Batch size limit: {batch_size_info}")
     print(f"  Day of year: {day_of_year}")
     print(f"  Users - Sent: {sent_count}, Failed: {failed_count}")
     print(f"  External - Sent: {external_sent}, Failed: {external_failed}")

@@ -219,6 +219,110 @@ def send_welcome_email(user_email: str, first_name: str, sample_reports: List[Di
 
 
 # =============================================================================
+# EMAIL VERIFICATION
+# =============================================================================
+
+def send_verification_email(user_email: str, first_name: str, verification_url: str) -> bool:
+    """Send email verification link to new user."""
+
+    footer = get_footer(user_email)
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+    <div class="container">
+        {get_header()}
+
+        <div class="content">
+            <h2>Hi {first_name},</h2>
+
+            <p>Welcome to Permabullish! Please verify your email address to get started.</p>
+
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{verification_url}" class="button">Verify Email Address</a>
+            </p>
+
+            <p style="font-size: 14px; color: #666;">This link expires in 24 hours.</p>
+
+            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 14px; color: #856404;">
+                    <strong>Can't find the email?</strong> Check your spam or promotions folder.
+                    If you use Gmail, look in the "Promotions" tab.
+                </p>
+            </div>
+
+            <p style="font-size: 13px; color: #999;">
+                If you didn't create an account on Permabullish, you can safely ignore this email.
+            </p>
+
+            <p style="font-size: 13px; color: #999;">
+                If the button doesn't work, copy and paste this URL into your browser:<br>
+                <span style="word-break: break-all;">{verification_url}</span>
+            </p>
+        </div>
+
+        {footer}
+    </div>
+    </body>
+    </html>
+    """
+
+    return send_email(user_email, "Verify your email - Permabullish", html)
+
+
+# =============================================================================
+# PASSWORD RESET
+# =============================================================================
+
+def send_password_reset_email(user_email: str, first_name: str, reset_url: str) -> bool:
+    """Send password reset link to user."""
+
+    footer = get_footer(user_email)
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+    <div class="container">
+        {get_header()}
+
+        <div class="content">
+            <h2>Hi {first_name},</h2>
+
+            <p>We received a request to reset your password. Click the button below to set a new password.</p>
+
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{reset_url}" class="button">Reset Password</a>
+            </p>
+
+            <p style="font-size: 14px; color: #666;">This link expires in 1 hour for security.</p>
+
+            <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 14px; color: #666;">
+                    <strong>Didn't request this?</strong> If you didn't request a password reset,
+                    you can safely ignore this email. Your password will not be changed.
+                </p>
+            </div>
+
+            <p style="font-size: 13px; color: #999;">
+                If the button doesn't work, copy and paste this URL into your browser:<br>
+                <span style="word-break: break-all;">{reset_url}</span>
+            </p>
+        </div>
+
+        {footer}
+    </div>
+    </body>
+    </html>
+    """
+
+    return send_email(user_email, "Reset your password - Permabullish", html)
+
+
+# =============================================================================
 # PURCHASE CONFIRMATION EMAIL
 # =============================================================================
 

@@ -57,6 +57,45 @@ def decode_token(token: str) -> Optional[dict]:
         return None
 
 
+def create_verification_token(user_id: int, email: str) -> str:
+    """Create a JWT token for email verification (24-hour expiry)."""
+    return jwt.encode(
+        {
+            "sub": str(user_id),
+            "email": email,
+            "purpose": "email_verify",
+            "exp": datetime.utcnow() + timedelta(hours=24),
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+
+def create_password_reset_token(user_id: int, email: str) -> str:
+    """Create a JWT token for password reset (1-hour expiry)."""
+    return jwt.encode(
+        {
+            "sub": str(user_id),
+            "email": email,
+            "purpose": "password_reset",
+            "exp": datetime.utcnow() + timedelta(hours=1),
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+
+def decode_purpose_token(token: str, expected_purpose: str) -> Optional[dict]:
+    """Decode and validate a purpose-specific token (verification or reset)."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("purpose") != expected_purpose:
+            return None
+        return payload
+    except JWTError:
+        return None
+
+
 def get_user_subscription_tier(user: dict) -> str:
     """Get user's subscription tier, defaulting to 'free'."""
     return user.get("subscription_tier", "free")
@@ -172,6 +211,8 @@ def register_user(email: str, password: str, full_name: str) -> tuple[bool, str,
     # Check if user already exists
     existing_user = db.get_user_by_email(email)
     if existing_user:
+        if existing_user.get("auth_provider") == "google" and existing_user.get("password_hash") is None:
+            return False, "Email already registered. Try signing in with Google.", None
         return False, "Email already registered", None
 
     # Create user
@@ -181,16 +222,7 @@ def register_user(email: str, password: str, full_name: str) -> tuple[bool, str,
     if user_id is None:
         return False, "Failed to create user", None
 
-    # Send welcome email (async, don't block registration)
-    try:
-        from email_service import send_welcome_email, get_featured_reports_for_email, get_first_name
-        sample_reports = get_featured_reports_for_email()
-        first_name = get_first_name(full_name)
-        if send_welcome_email(email, first_name, sample_reports):
-            db.mark_welcome_email_sent(user_id)
-    except Exception as e:
-        print(f"[AUTH] Failed to send welcome email to {email}: {e}")
-
+    # Don't send welcome email here - send verification email instead (handled by endpoint)
     return True, "User created successfully", {
         "id": user_id,
         "email": email,
@@ -218,6 +250,10 @@ def authenticate_user(email: str, password: str) -> tuple[bool, str, Optional[st
 
     if not user.get("is_active", True):
         return False, "Account is disabled", None
+
+    # Check if email is verified (only for email/password users)
+    if not user.get("email_verified", False):
+        return False, "Please verify your email before signing in. Check your inbox for the verification link.", None
 
     # Create access token
     access_token = create_access_token(

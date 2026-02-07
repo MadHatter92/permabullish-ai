@@ -161,6 +161,19 @@ class MessageResponse(BaseModel):
     success: bool = True
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: str
+
+
 # Health check
 @app.get("/api/health")
 async def health_check():
@@ -354,10 +367,10 @@ async def admin_get_user_info(email: str, secret: str = ""):
 
 
 # Auth Routes
-@app.post("/api/auth/register", response_model=TokenResponse)
+@app.post("/api/auth/register")
 @limiter.limit("3/minute")
 async def register(request: Request, user_data: UserRegister):
-    """Register a new user. Rate limited: 3/minute."""
+    """Register a new user. Sends verification email. Rate limited: 3/minute."""
     success, message, user = auth.register_user(
         email=user_data.email,
         password=user_data.password,
@@ -370,18 +383,22 @@ async def register(request: Request, user_data: UserRegister):
             detail=message
         )
 
-    # Auto-login after registration
-    _, _, token = auth.authenticate_user(user_data.email, user_data.password)
+    # Send verification email instead of auto-login
+    try:
+        from email_service import send_verification_email, get_first_name
+        verification_token = auth.create_verification_token(user["id"], user["email"])
+        # Link directly to backend API which handles verification and redirects to frontend
+        api_base = str(request.base_url).rstrip('/') + "/api"
+        verification_url = f"{api_base}/auth/verify-email?token={verification_token}"
+        first_name = get_first_name(user["full_name"])
+        send_verification_email(user["email"], first_name, verification_url)
+    except Exception as e:
+        logger.error(f"Failed to send verification email to {user['email']}: {e}")
 
-    return TokenResponse(
-        access_token=token,
-        user={
-            "id": user["id"],
-            "email": user["email"],
-            "full_name": user["full_name"],
-            "subscription_tier": user.get("subscription_tier", "free")
-        }
-    )
+    return {
+        "message": "Please check your email to verify your account",
+        "email": user["email"]
+    }
 
 
 @app.post("/api/auth/login", response_model=TokenResponse)
@@ -410,6 +427,137 @@ async def login(request: Request, credentials: UserLogin):
             "subscription_tier": user.get("subscription_tier", "free")
         }
     )
+
+
+@app.get("/api/auth/verify-email")
+async def verify_email(token: str):
+    """Verify user's email address from the link sent to their inbox."""
+    import urllib.parse
+
+    payload = auth.decode_purpose_token(token, "email_verify")
+
+    if not payload:
+        msg = urllib.parse.quote("Invalid or expired verification link")
+        return RedirectResponse(
+            url=f"{FRONTEND_URL}/verify-email.html?status=error&message={msg}",
+            status_code=302
+        )
+
+    user_id = int(payload["sub"])
+    user = db.get_user_by_id(user_id)
+
+    if not user:
+        msg = urllib.parse.quote("User not found")
+        return RedirectResponse(
+            url=f"{FRONTEND_URL}/verify-email.html?status=error&message={msg}",
+            status_code=302
+        )
+
+    if user.get("email_verified"):
+        return RedirectResponse(
+            url=f"{FRONTEND_URL}/verify-email.html?status=success&message=Email already verified",
+            status_code=302
+        )
+
+    # Mark email as verified
+    db.mark_email_verified(user_id)
+
+    # Now send welcome email (post-verification)
+    try:
+        from email_service import send_welcome_email, get_featured_reports_for_email, get_first_name
+        sample_reports = get_featured_reports_for_email()
+        first_name = get_first_name(user.get("full_name", ""))
+        if send_welcome_email(user["email"], first_name, sample_reports):
+            db.mark_welcome_email_sent(user_id)
+    except Exception as e:
+        logger.error(f"Failed to send welcome email to {user['email']}: {e}")
+
+    return RedirectResponse(
+        url=f"{FRONTEND_URL}/verify-email.html?status=success",
+        status_code=302
+    )
+
+
+@app.post("/api/auth/resend-verification")
+@limiter.limit("3/minute")
+async def resend_verification(request: Request, data: ResendVerificationRequest):
+    """Resend verification email. Rate limited: 3/minute."""
+    email = data.email.lower().strip()
+
+    # Always return success (don't reveal if email exists)
+    user = db.get_user_by_email(email)
+    if user and not user.get("email_verified", False):
+        try:
+            from email_service import send_verification_email, get_first_name
+            verification_token = auth.create_verification_token(user["id"], user["email"])
+            api_base = str(request.base_url).rstrip('/') + "/api"
+            verification_url = f"{api_base}/auth/verify-email?token={verification_token}"
+            first_name = get_first_name(user.get("full_name", ""))
+            send_verification_email(user["email"], first_name, verification_url)
+        except Exception as e:
+            logger.error(f"Failed to resend verification email to {email}: {e}")
+
+    return {"message": "If an account exists with this email, a verification link has been sent."}
+
+
+@app.post("/api/auth/forgot-password")
+@limiter.limit("3/minute")
+async def forgot_password(request: Request, data: ForgotPasswordRequest):
+    """Send password reset email. Rate limited: 3/minute."""
+    email = data.email.lower().strip()
+
+    # Always return success (don't reveal if email exists)
+    user = db.get_user_by_email(email)
+    if user and user.get("password_hash"):
+        # Only send reset email if user has a password (not Google-only)
+        try:
+            from email_service import send_password_reset_email, get_first_name
+            reset_token = auth.create_password_reset_token(user["id"], user["email"])
+            reset_url = f"{FRONTEND_URL.rstrip('/')}/reset-password.html?token={reset_token}"
+            first_name = get_first_name(user.get("full_name", ""))
+            send_password_reset_email(user["email"], first_name, reset_url)
+        except Exception as e:
+            logger.error(f"Failed to send password reset email to {email}: {e}")
+
+    return {"message": "If an account exists with this email, a password reset link has been sent."}
+
+
+@app.post("/api/auth/reset-password")
+@limiter.limit("5/minute")
+async def reset_password(request: Request, data: ResetPasswordRequest):
+    """Reset password using a valid reset token. Rate limited: 5/minute."""
+    payload = auth.decode_purpose_token(data.token, "password_reset")
+
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset link. Please request a new one."
+        )
+
+    if len(data.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters"
+        )
+
+    user_id = int(payload["sub"])
+    user = db.get_user_by_id(user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not found"
+        )
+
+    # Update password
+    new_hash = auth.get_password_hash(data.new_password)
+    db.update_password_hash(user_id, new_hash)
+
+    # Also mark email as verified if not already (they proved ownership via email)
+    if not user.get("email_verified", False):
+        db.mark_email_verified(user_id)
+
+    return {"message": "Password has been reset successfully. You can now sign in."}
 
 
 @app.get("/api/auth/me")
