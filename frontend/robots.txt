@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Allow: /pricing.html
+Allow: /language_preview.html
+
+Disallow: /dashboard.html
+Disallow: /generate.html
+Disallow: /report.html
+Disallow: /compare.html
+Disallow: /checkout.html
+Disallow: /subscription.html
+Disallow: /payment-status.html
+Disallow: /verify-email.html
+Disallow: /reset-password.html
+Disallow: /unsubscribe.html
+
+Sitemap: https://permabullish.com/sitemap.xml

@@ -7,6 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Compare Stocks - Permabullish</title>
+    <meta name="robots" content="noindex, nofollow">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -683,12 +684,13 @@
             return `${sa.ticker} vs ${sb.ticker} Comparison\n\n${verdict}\n\nFull comparison on Permabullish:`;
         }
 
-        function getShareUrl() {
+        function getShareUrl(platform) {
             if (!comparisonResult) return window.location.href;
+            const utmSuffix = `utm_source=${platform || 'share'}&utm_medium=comparison&utm_campaign=${platform || 'share'}_share`;
 
             // If we have a comparison_cache_id, use the share page URL for OG image support
             if (comparisonResult.comparison_cache_id) {
-                return `${API_BASE}/comparisons/${comparisonResult.comparison_cache_id}/share`;
+                return `${API_BASE}/comparisons/${comparisonResult.comparison_cache_id}/share?${utmSuffix}`;
             }
 
             // Fallback to direct compare page URL
@@ -698,26 +700,29 @@
             if (selectedLanguage !== 'en') {
                 url += `&lang=${selectedLanguage}`;
             }
+            url += `&${utmSuffix}`;
             return url;
         }
 
         function updateShareLinks() {
             if (!comparisonResult) return;
-            const shareUrl = getShareUrl();
             const shareText = getShareText();
 
             // WhatsApp - uses wa.me with text parameter
-            const waText = encodeURIComponent(shareText + '\n' + shareUrl);
+            const waUrl = getShareUrl('whatsapp');
+            const waText = encodeURIComponent(shareText + '\n' + waUrl);
             document.getElementById('whatsappShareLink').href = `https://wa.me/?text=${waText}`;
 
             // Telegram - uses t.me/share/url
-            const tgUrl = encodeURIComponent(shareUrl);
+            const tgShareUrl = getShareUrl('telegram');
+            const tgUrl = encodeURIComponent(tgShareUrl);
             const tgText = encodeURIComponent(shareText);
             document.getElementById('telegramShareLink').href = `https://t.me/share/url?url=${tgUrl}&text=${tgText}`;
+
         }
 
         function copyLink() {
-            navigator.clipboard.writeText(getShareUrl()).then(() => showToast('Link copied!'));
+            navigator.clipboard.writeText(getShareUrl('copy')).then(() => showToast('Link copied!'));
         }
 
         function showToast(message) {

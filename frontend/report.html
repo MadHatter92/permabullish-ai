@@ -7,6 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Report - Permabullish</title>
+    <meta name="robots" content="noindex, nofollow">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -976,7 +977,7 @@
         }
 
         // Share functionality
-        function getShareUrl() {
+        function getShareUrl(platform) {
             // Use API view endpoint for direct rendering in in-app browsers
             // This bypasses iframe issues in Telegram, WhatsApp, etc.
             const reportId = new URLSearchParams(window.location.search).get('id');
@@ -986,13 +987,17 @@
                 const apiHost = API_BASE.includes('localhost')
                     ? 'http://localhost:8000/api'
                     : 'https://api.permabullish.com/api';
-                return `${apiHost}/reports/${reportId}/view`;
+                let url = `${apiHost}/reports/${reportId}/view`;
+                // Append UTM tracking params
+                const utmSource = platform || 'share';
+                url += `?utm_source=${utmSource}&utm_medium=report&utm_campaign=${utmSource}_share`;
+                return url;
             }
             return window.location.href;
         }
 
         function shareReport() {
-            const shareUrl = getShareUrl();
+            const shareUrl = getShareUrl('copy');
             const companyName = currentReport ? currentReport.company_name : 'Stock';
             const ticker = currentReport ? currentReport.ticker : '';
             const recommendation = currentReport ? currentReport.recommendation.replace('_', ' ').toUpperCase() : '';
@@ -1056,13 +1061,30 @@
         }
 
         function shareWhatsApp() {
-            const shareUrl = getShareUrl();
+            const shareUrl = getShareUrl('whatsapp');
             const companyName = currentReport ? currentReport.company_name : 'Stock';
-            const ticker = currentReport ? currentReport.ticker : '';
+            const ticker = currentReport ? (currentReport.ticker || '') : '';
             const recommendation = currentReport ? currentReport.recommendation.replace('_', ' ').toUpperCase() : '';
             const language = currentReport ? currentReport.language : 'en';
-            const langLabel = getLanguageLabel(language);
-            const text = `Permabullish AI Research: ${companyName} - ${recommendation} ${langLabel} - NOT FINANCIAL ADVICE\n`;
+
+            // Calculate upside percentage
+            let upsideText = '';
+            if (currentReport && currentReport.ai_target_price && currentReport.current_price && currentReport.current_price > 0) {
+                const upside = ((currentReport.ai_target_price - currentReport.current_price) / currentReport.current_price * 100).toFixed(0);
+                const sign = upside >= 0 ? '+' : '';
+                upsideText = ` | Upside: ${sign}${upside}%`;
+            }
+
+            // Localized share text
+            let text;
+            if (language === 'hi') {
+                text = `\ud83d\udcca *${companyName} (${ticker})*\nAI \u0938\u093f\u092b\u093c\u093e\u0930\u093f\u0936: *${recommendation}*${upsideText}\n\u092a\u0942\u0930\u0940 \u0930\u093f\u092a\u094b\u0930\u094d\u091f \u092f\u0939\u093e\u0901 \u0926\u0947\u0916\u0947\u0902 \ud83d\udc47\n`;
+            } else if (language === 'gu') {
+                text = `\ud83d\udcca *${companyName} (${ticker})*\nAI \u0aad\u0ab2\u0abe\u0aae\u0aa3: *${recommendation}*${upsideText}\n\u0ab8\u0a82\u0aaa\u0ac2\u0ab0\u0acd\u0aa3 \u0ab0\u0abf\u0aaa\u094b\u0ab0\u0acd\u091f \u0a85\u0ab9\u0ac0\u0a82 \u0a9c\u0ac1\u0a93 \ud83d\udc47\n`;
+            } else {
+                text = `\ud83d\udcca *${companyName} (${ticker})*\nAI Verdict: *${recommendation}*${upsideText}\nFull report \ud83d\udc47\n`;
+            }
+
             const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + shareUrl)}`;
 
             // Track WhatsApp share
@@ -1080,13 +1102,29 @@
         }
 
         function shareTelegram() {
-            const shareUrl = getShareUrl();
+            const shareUrl = getShareUrl('telegram');
             const companyName = currentReport ? currentReport.company_name : 'Stock';
-            const ticker = currentReport ? currentReport.ticker : '';
+            const ticker = currentReport ? (currentReport.ticker || '') : '';
             const recommendation = currentReport ? currentReport.recommendation.replace('_', ' ').toUpperCase() : '';
             const language = currentReport ? currentReport.language : 'en';
-            const langLabel = getLanguageLabel(language);
-            const text = `Permabullish AI Research: ${companyName} - ${recommendation} ${langLabel} - NOT FINANCIAL ADVICE`;
+
+            // Calculate upside percentage
+            let upsideText = '';
+            if (currentReport && currentReport.ai_target_price && currentReport.current_price && currentReport.current_price > 0) {
+                const upside = ((currentReport.ai_target_price - currentReport.current_price) / currentReport.current_price * 100).toFixed(0);
+                const sign = upside >= 0 ? '+' : '';
+                upsideText = ` | Upside: ${sign}${upside}%`;
+            }
+
+            let text;
+            if (language === 'hi') {
+                text = `\ud83d\udcca ${companyName} (${ticker}) — AI \u0938\u093f\u092b\u093c\u093e\u0930\u093f\u0936: ${recommendation}${upsideText}`;
+            } else if (language === 'gu') {
+                text = `\ud83d\udcca ${companyName} (${ticker}) — AI \u0aad\u0ab2\u0abe\u0aae\u0aa3: ${recommendation}${upsideText}`;
+            } else {
+                text = `\ud83d\udcca ${companyName} (${ticker}) — AI Verdict: ${recommendation}${upsideText}`;
+            }
+
             const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
 
             // Track Telegram share

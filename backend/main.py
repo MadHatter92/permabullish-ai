@@ -117,6 +117,7 @@ class UserRegister(BaseModel):
     email: str
     password: str
     full_name: str
+    signup_source: str = ""
 
 
 class UserLogin(BaseModel):
@@ -184,6 +185,53 @@ async def health_check():
         "environment": ENVIRONMENT,
         "version": "2.0.0"
     }
+
+
+@app.get("/api/qr")
+async def generate_qr(
+    utm_source: str = "",
+    utm_medium: str = "",
+    utm_campaign: str = "",
+    utm_content: str = ""
+):
+    """Generate a branded QR code pointing to permabullish.com with UTM params."""
+    import qrcode
+    from qrcode.image.styledpil import StyledPilImage
+    from qrcode.image.styles.colormasks import SolidFillColorMask
+    import io
+
+    # Build URL with UTM params
+    base_url = "https://permabullish.com/"
+    params = {}
+    if utm_source: params["utm_source"] = utm_source
+    if utm_medium: params["utm_medium"] = utm_medium
+    if utm_campaign: params["utm_campaign"] = utm_campaign
+    if utm_content: params["utm_content"] = utm_content
+
+    if params:
+        from urllib.parse import urlencode
+        base_url += "?" + urlencode(params)
+
+    # Generate QR code with brand colors
+    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=10, border=2)
+    qr.add_data(base_url)
+    qr.make(fit=True)
+
+    # Navy foreground (#102a43), white background
+    img = qr.make_image(
+        image_factory=StyledPilImage,
+        color_mask=SolidFillColorMask(
+            back_color=(255, 255, 255),
+            front_color=(16, 42, 67)
+        )
+    )
+
+    # Return as PNG
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return Response(content=buffer.getvalue(), media_type="image/png")
 
 
 # Unsubscribe endpoint (no auth required)
@@ -374,7 +422,8 @@ async def register(request: Request, user_data: UserRegister):
     success, message, user = auth.register_user(
         email=user_data.email,
         password=user_data.password,
-        full_name=user_data.full_name
+        full_name=user_data.full_name,
+        signup_source=user_data.signup_source
     )
 
     if not success:
@@ -576,7 +625,7 @@ async def get_current_user_info(current_user: dict = Depends(auth.get_current_us
 
 # Google OAuth Routes
 @app.get("/api/auth/google/login")
-async def google_login(request: Request):
+async def google_login(request: Request, signup_source: str = ""):
     """Initiate Google OAuth flow."""
     logger.info(f"OAuth login initiated. Redirect URI: {GOOGLE_REDIRECT_URI}")
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
@@ -585,6 +634,9 @@ async def google_login(request: Request):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Google OAuth is not configured"
         )
+    # Store signup_source in session so we can use it in the callback
+    if signup_source:
+        request.session["signup_source"] = signup_source
     return await oauth.google.authorize_redirect(request, GOOGLE_REDIRECT_URI)
 
 
@@ -622,11 +674,13 @@ async def google_callback(request: Request):
             )
 
         # Get or create user in database
+        signup_source = request.session.pop("signup_source", "") or "google_oauth"
         user = db.get_or_create_google_user(
             google_id=user_info['sub'],
             email=user_info['email'],
             full_name=user_info.get('name', user_info.get('email', '')),
-            avatar_url=user_info.get('picture')
+            avatar_url=user_info.get('picture'),
+            signup_source=signup_source
         )
         logger.info(f"User authenticated: {user['email']}")
 

@@ -195,7 +195,7 @@ def require_feature(feature: str):
     return _require_feature
 
 
-def register_user(email: str, password: str, full_name: str) -> tuple[bool, str, Optional[dict]]:
+def register_user(email: str, password: str, full_name: str, signup_source: str = "") -> tuple[bool, str, Optional[dict]]:
     """
     Register a new user.
     Returns: (success, message, user_data)
@@ -220,7 +220,7 @@ def register_user(email: str, password: str, full_name: str) -> tuple[bool, str,
 
     # Create user
     password_hash = get_password_hash(password)
-    user_id = db.create_user(email, password_hash, full_name)
+    user_id = db.create_user(email, password_hash, full_name, signup_source=signup_source)
 
     if user_id is None:
         return False, "Failed to create user", None

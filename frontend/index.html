@@ -6,7 +6,46 @@
     <script src="analytics.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Permabullish - AI Stock Research</title>
+    <title>Permabullish - AI Stock Research for 3000+ Indian Stocks</title>
+    <meta name="description" content="AI-powered equity research for 3000+ Indian stocks. Institutional-quality analysis in English, Hindi & Gujarati. Free to start.">
+    <meta name="keywords" content="stock research, Indian stocks, AI stock analysis, equity research, NSE, BSE, stock market India, AI investing, Hindi stock analysis, Gujarati stock analysis">
+    <link rel="canonical" href="https://permabullish.com/">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://permabullish.com/">
+    <meta property="og:title" content="Permabullish - AI Stock Research for Indian Equities">
+    <meta property="og:description" content="AI-powered equity research for 3000+ Indian stocks. Institutional-quality analysis in English, Hindi & Gujarati. Free to start.">
+    <meta property="og:site_name" content="Permabullish">
+    <meta property="og:image" content="https://permabullish.com/og-home.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Permabullish - AI Stock Research for Indian Equities">
+    <meta name="twitter:description" content="AI-powered equity research for 3000+ Indian stocks. Institutional-quality analysis in English, Hindi & Gujarati.">
+    <meta name="twitter:image" content="https://permabullish.com/og-home.png">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Permabullish",
+        "applicationCategory": "FinanceApplication",
+        "description": "AI-powered equity research for 3000+ Indian stocks. Institutional-quality analysis in English, Hindi & Gujarati.",
+        "url": "https://permabullish.com",
+        "operatingSystem": "Web",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR",
+            "description": "Free tier with 5 AI research reports"
+        }
+    }
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -189,6 +228,36 @@
 
     <script src="config.js"></script>
     <script>
+        // Capture UTM parameters on page load and store in localStorage
+        (function captureUTM() {
+            const params = new URLSearchParams(window.location.search);
+            const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
+            const hasUTM = utmKeys.some(k => params.get(k));
+            if (hasUTM) {
+                const utmData = {};
+                utmKeys.forEach(k => { if (params.get(k)) utmData[k] = params.get(k); });
+                utmData.landed_at = new Date().toISOString();
+                localStorage.setItem('utm_data', JSON.stringify(utmData));
+                // Push to GA4 as user properties
+                if (window.gtag) {
+                    gtag('set', 'user_properties', {
+                        utm_source: utmData.utm_source || '',
+                        utm_medium: utmData.utm_medium || '',
+                        utm_campaign: utmData.utm_campaign || ''
+                    });
+                }
+            }
+        })();
+
+        function getSignupSource() {
+            try {
+                const raw = localStorage.getItem('utm_data');
+                if (!raw) return '';
+                const d = JSON.parse(raw);
+                return [d.utm_source || '', d.utm_medium || '', d.utm_campaign || '', d.utm_content || ''].join('|');
+            } catch (e) { return ''; }
+        }
+
         // Check if already logged in
         const token = localStorage.getItem('token');
         if (token) {
@@ -335,7 +404,8 @@
                     body: JSON.stringify({
                         full_name: document.getElementById('signupName').value,
                         email: document.getElementById('signupEmail').value,
-                        password: document.getElementById('signupPassword').value
+                        password: document.getElementById('signupPassword').value,
+                        signup_source: getSignupSource()
                     })
                 });
 
@@ -360,7 +430,11 @@
         }
 
         function signInWithGoogle() {
-            window.location.href = `${API_BASE}/auth/google/login`;
+            const source = getSignupSource();
+            const url = source
+                ? `${API_BASE}/auth/google/login?signup_source=${encodeURIComponent(source)}`
+                : `${API_BASE}/auth/google/login`;
+            window.location.href = url;
         }
     </script>
 </body>

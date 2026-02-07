@@ -154,7 +154,8 @@ def init_database():
                     last_reengagement_email_at TIMESTAMP,
                     reengagement_email_count INTEGER DEFAULT 0,
                     last_expiry_email_at TIMESTAMP,
-                    expiry_email_count INTEGER DEFAULT 0
+                    expiry_email_count INTEGER DEFAULT 0,
+                    signup_source TEXT DEFAULT ''
                 )
             """)
 
@@ -388,6 +389,7 @@ def init_database():
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS reengagement_email_count INTEGER DEFAULT 0",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_expiry_email_at TIMESTAMP",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS expiry_email_count INTEGER DEFAULT 0",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_source TEXT DEFAULT ''",
             ]:
                 try:
                     cursor.execute(col_sql)
@@ -433,7 +435,8 @@ def init_database():
                     last_reengagement_email_at TIMESTAMP,
                     reengagement_email_count INTEGER DEFAULT 0,
                     last_expiry_email_at TIMESTAMP,
-                    expiry_email_count INTEGER DEFAULT 0
+                    expiry_email_count INTEGER DEFAULT 0,
+                    signup_source TEXT DEFAULT ''
                 )
             """)
 
@@ -637,6 +640,7 @@ def init_database():
                 ("reengagement_email_count", "INTEGER DEFAULT 0"),
                 ("last_expiry_email_at", "TIMESTAMP"),
                 ("expiry_email_count", "INTEGER DEFAULT 0"),
+                ("signup_source", "TEXT DEFAULT ''"),
             ]:
                 try:
                     cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}")
@@ -673,23 +677,23 @@ def _dict_from_row(row) -> Optional[dict]:
 
 
 # User Operations
-def create_user(email: str, password_hash: str, full_name: str) -> Optional[int]:
+def create_user(email: str, password_hash: str, full_name: str, signup_source: str = "") -> Optional[int]:
     """Create a new user and return user ID."""
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
         try:
             if USE_POSTGRES:
                 cursor.execute(
-                    "INSERT INTO users (email, password_hash, full_name) VALUES (%s, %s, %s) RETURNING id",
-                    (email, password_hash, full_name)
+                    "INSERT INTO users (email, password_hash, full_name, signup_source) VALUES (%s, %s, %s, %s) RETURNING id",
+                    (email, password_hash, full_name, signup_source)
                 )
                 result = cursor.fetchone()
                 conn.commit()
                 return result['id'] if result else None
             else:
                 cursor.execute(
-                    "INSERT INTO users (email, password_hash, full_name) VALUES (?, ?, ?)",
-                    (email, password_hash, full_name)
+                    "INSERT INTO users (email, password_hash, full_name, signup_source) VALUES (?, ?, ?, ?)",
+                    (email, password_hash, full_name, signup_source)
                 )
                 conn.commit()
                 return cursor.lastrowid
@@ -727,7 +731,7 @@ def get_user_by_google_id(google_id: str) -> Optional[dict]:
         return _dict_from_row(row)
 
 
-def get_or_create_google_user(google_id: str, email: str, full_name: str, avatar_url: str = None) -> dict:
+def get_or_create_google_user(google_id: str, email: str, full_name: str, avatar_url: str = None, signup_source: str = "") -> dict:
     """Get existing Google user or create a new one."""
     # First, try to find by google_id
     user = get_user_by_google_id(google_id)
@@ -764,18 +768,18 @@ def get_or_create_google_user(google_id: str, email: str, full_name: str, avatar
         cursor = get_cursor(conn)
         if USE_POSTGRES:
             cursor.execute(
-                """INSERT INTO users (email, password_hash, full_name, google_id, auth_provider, avatar_url, email_verified)
-                   VALUES (%s, NULL, %s, %s, 'google', %s, TRUE) RETURNING id""",
-                (email, full_name, google_id, avatar_url)
+                """INSERT INTO users (email, password_hash, full_name, google_id, auth_provider, avatar_url, email_verified, signup_source)
+                   VALUES (%s, NULL, %s, %s, 'google', %s, TRUE, %s) RETURNING id""",
+                (email, full_name, google_id, avatar_url, signup_source)
             )
             result = cursor.fetchone()
             conn.commit()
             user_id = result['id']
         else:
             cursor.execute(
-                """INSERT INTO users (email, password_hash, full_name, google_id, auth_provider, avatar_url, email_verified)
-                   VALUES (?, NULL, ?, ?, 'google', ?, 1)""",
-                (email, full_name, google_id, avatar_url)
+                """INSERT INTO users (email, password_hash, full_name, google_id, auth_provider, avatar_url, email_verified, signup_source)
+                   VALUES (?, NULL, ?, ?, 'google', ?, 1, ?)""",
+                (email, full_name, google_id, avatar_url, signup_source)
             )
             conn.commit()
             user_id = cursor.lastrowid

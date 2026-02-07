@@ -38,7 +38,7 @@ def get_new_users(days: int = 7) -> list[dict]:
         cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
 
         query = f"""
-            SELECT id, email, full_name, google_id, auth_provider, created_at
+            SELECT id, email, full_name, google_id, auth_provider, created_at, signup_source
             FROM users
             WHERE created_at >= {p}
         """
@@ -226,6 +226,24 @@ def generate_report(period: str = "daily") -> tuple[str, str]:
             lines.append(f"  {i}. {stock}")
         lines.append("")
 
+    # Signup source breakdown
+    if users:
+        source_counts = {}
+        for u in users:
+            source = u.get("signup_source") or ""
+            if not source:
+                if u.get("google_id"):
+                    source = "google_oauth"
+                else:
+                    source = "(direct)"
+            source_counts[source] = source_counts.get(source, 0) + 1
+
+        lines.append("SIGNUP SOURCE BREAKDOWN")
+        lines.append("-" * 40)
+        for source, count in sorted(source_counts.items(), key=lambda x: x[1], reverse=True):
+            lines.append(f"  {source}: {count}")
+        lines.append("")
+
     # New users
     lines.append(f"NEW USERS ({len(users)})")
     lines.append("-" * 40)
@@ -240,8 +258,11 @@ def generate_report(period: str = "daily") -> tuple[str, str]:
         for i, user in enumerate(users, 1):
             usage = get_usage_stats(user["id"])
             provider = "Google" if user.get("google_id") else "Email"
+            source = user.get("signup_source") or ""
             lines.append(f"{i}. {user['email']}")
             lines.append(f"   Name: {user['full_name']} | Provider: {provider}")
+            if source:
+                lines.append(f"   Source: {source}")
             lines.append(f"   Joined: {user['created_at']}")
             lines.append(f"   Reports: {usage['total_reports']} total, {usage['monthly_generated']} this month")
             if usage.get('companies'):
