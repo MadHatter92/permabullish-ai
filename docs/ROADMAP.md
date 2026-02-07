@@ -1,8 +1,8 @@
 # Permabullish - Product Roadmap
 ## AI Stock Researcher
 
-**Version:** 3.3
-**Last Updated:** February 6, 2026
+**Version:** 3.4
+**Last Updated:** February 7, 2026
 
 ---
 
@@ -362,18 +362,22 @@ Polish and enhance the live product based on initial usage.
   - `/api/unsubscribe` endpoint
   - `frontend/unsubscribe.html` page
 - [x] **Domain Warm-up**
-  - Limited to 100 emails/batch (300/day total)
+  - Started at 100 emails/batch (300/day total)
+  - Increased to 200 emails/batch (600/day total)
   - Batched sending at 9 AM, 2 PM, 6 PM IST
-  - Gradual increase planned weekly
+  - Configurable via `--batch-size` flag
+- [x] **Bounce Cleanup Automation**
+  - Daily cron at 8:30 PM IST (3 PM UTC)
+  - Runs ~2 hours after last promo batch
+  - Marks bounced/failed contacts as inactive
 
 #### Week 2 (Feb 13, 2026)
 - [ ] **Check Google Postmaster Tools**
   - Verify domain reputation status
   - Check spam rate metrics
   - Review authentication status
-- [ ] **Increase sending limits**
-  - If metrics healthy: increase to 200/batch (600/day)
-  - If issues: investigate and adjust
+- [x] **Increase sending limits**
+  - Increased to 200/batch (600/day)
 
 #### Week 3-4 (Feb 20-27, 2026)
 - [ ] **Upgrade DMARC policy**
@@ -729,24 +733,25 @@ Add a stock comparison feature where users can compare two stocks side-by-side w
 ### Objective
 Improve the depth and quality of AI-generated reports with charts, management analysis, and sector-specific insights.
 
-### 7.8.1 Stock Price Charts ⬅️ CURRENT
+### 7.8.1 Stock Price Charts ✅ COMPLETE
 
-- [ ] **Chart Integration**
-  - Add interactive price chart to report page
-  - Show 1M, 3M, 6M, 1Y, 5Y timeframes
-  - Display key moving averages (50-day, 200-day SMA)
-  - Mark support/resistance levels
-  - Volume overlay
+- [x] **Chart Integration**
+  - Interactive price chart on report page using Lightweight Charts v4.1.0
+  - Timeframes: 1M, 3M, 6M, 1Y (default), 5Y
+  - 50-day and 200-day SMA overlay (dashed lines)
+  - Area chart with orange gradient fill
+  - Dark theme matching site design
 
-- [ ] **Technical Signals**
-  - 52-week high/low proximity
-  - Above/below key moving averages
-  - Recent trend direction
+- [x] **Technical Signals**
+  - 52-week high/low displayed in chart footer
+  - MA50 and MA200 values shown
+  - Period return percentage (green/red)
 
-- [ ] **Implementation Options**
-  - Option A: TradingView widget (embed, free tier available)
-  - Option B: Chart.js/Lightweight Charts with Yahoo Finance data
-  - Option C: Third-party chart image API
+- [x] **Implementation**
+  - Used Lightweight Charts (TradingView open-source) + Yahoo Finance data
+  - Backend: `GET /api/stocks/{symbol}/chart` endpoint
+  - Data: `yahoo_finance.py` → `fetch_chart_data()` with MA calculation
+  - Chart injected via iframe in report page, responsive with ResizeObserver
 
 ### 7.8.2 Management Quality Assessment
 
@@ -818,6 +823,84 @@ Improve the depth and quality of AI-generated reports with charts, management an
 - [ ] Management quality section in reports
 - [ ] Sector-specific analysis for top 5 sectors
 - [ ] Enhanced AI prompts for deeper analysis
+
+---
+
+## Phase 7.9: Email/Password Authentication
+**Status:** ✅ COMPLETE
+**Completed:** February 7, 2026
+**Priority:** High
+
+### Objective
+Add email/password authentication alongside Google OAuth, with email verification and password reset flows.
+
+### 7.9.1 Backend - Auth Infrastructure ✅
+
+- [x] Added `email_verified` column to users table (with migrations for both Postgres and SQLite)
+- [x] Added `password_hash` and `auth_provider` columns
+- [x] Created purpose-specific JWT tokens:
+  - `create_verification_token()` - 24-hour expiry, purpose="email_verify"
+  - `create_password_reset_token()` - 1-hour expiry, purpose="password_reset"
+  - `decode_purpose_token()` - validates purpose and expiry
+- [x] Updated `register_user()` to send verification email instead of welcome email
+- [x] Updated `authenticate_user()` to check `email_verified` before login
+- [x] Google OAuth users auto-verified (`email_verified = TRUE`)
+
+### 7.9.2 Backend - New API Endpoints ✅
+
+- [x] `POST /api/auth/register` - Returns verification prompt (no auto-login)
+- [x] `GET /api/auth/verify-email?token=` - Validates token, marks verified, redirects to frontend
+- [x] `POST /api/auth/resend-verification` - Rate limited 3/min, never reveals email existence
+- [x] `POST /api/auth/forgot-password` - Rate limited 3/min, skips Google-only users
+- [x] `POST /api/auth/reset-password` - Rate limited 5/min, validates token, updates password
+
+### 7.9.3 Backend - Email Templates ✅
+
+- [x] `send_verification_email()` - Verification link with spam folder warning
+- [x] `send_password_reset_email()` - Reset link with 1-hour expiry warning
+- [x] Both reuse existing email styling (`get_email_styles()`, `get_footer()`)
+
+### 7.9.4 Frontend - Login Page Update ✅
+
+- [x] Added email/password sign-in form below Google button
+- [x] Sign-up form with toggle (sign-in ↔ sign-up)
+- [x] "Forgot password?" link
+- [x] Error/success message handling
+- [x] On registration: redirects to verify-email.html
+
+### 7.9.5 Frontend - New Pages ✅
+
+- [x] `verify-email.html` - Three modes:
+  - Pending: "Check your email" with resend button
+  - Success: "Email verified!" with sign-in link
+  - Error: Expired/invalid token with resend option
+- [x] `reset-password.html` - Two modes:
+  - Request: Email input → sends reset link
+  - Reset: New password form → updates password
+
+### 7.9.6 Account Linking ✅
+
+- [x] Email/password user → later signs in with Google (same email) → accounts linked
+- [x] Google-only user → tries email/password register → shown "Try signing in with Google"
+- [x] Users with both methods can use either to sign in
+
+### Deliverables
+- ✅ Complete email/password registration with email verification
+- ✅ Password reset flow (forgot → email → reset)
+- ✅ Account linking between Google OAuth and email/password
+- ✅ Rate-limited auth endpoints
+- ✅ Secure token-based verification (no email existence leaks)
+
+### New Files
+- `frontend/verify-email.html` - Email verification page
+- `frontend/reset-password.html` - Password reset page
+
+### Modified Files
+- `backend/database.py` - email_verified column, migrations, helpers
+- `backend/auth.py` - Verification/reset token helpers, updated register/authenticate
+- `backend/email_service.py` - Verification and reset email templates
+- `backend/main.py` - New auth endpoints, updated register flow
+- `frontend/index.html` - Email/password sign-in/sign-up UI
 
 ---
 
@@ -1111,6 +1194,7 @@ Improve application performance, reduce latency, and handle scale efficiently.
 | 7.5 | Security & Best Practices | 🔄 In Progress |
 | 7.6 | Stock Comparison Tool | ✅ Complete |
 | 7.8 | **Report Quality Enhancements** | 🔄 In Progress |
+| 7.9 | Email/Password Authentication | ✅ Complete |
 | 8 | US Market Expansion | 📋 Planning |
 | 9 | Performance Optimization | Backlog |
 | 10 | Future Features | Backlog |
@@ -1212,6 +1296,8 @@ python scripts/fundamentals_sync.py --test --symbol TCS
 - `backend/email_service.py` - Email templates and sending (Resend)
 - `backend/config.py` - Subscription tiers, email config, and settings
 - `frontend/compare.html` - Stock comparison page
+- `frontend/verify-email.html` - Email verification page
+- `frontend/reset-password.html` - Password reset page
 - `frontend/config.js` - Frontend configuration and payment form URLs
 - `docs/ADMIN_GUIDE.md` - Enterprise user management guide
 

@@ -698,11 +698,11 @@ def create_user(email: str, password_hash: str, full_name: str) -> Optional[int]
 
 
 def get_user_by_email(email: str) -> Optional[dict]:
-    """Get user by email."""
+    """Get user by email (case-insensitive)."""
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
         p = placeholder()
-        cursor.execute(f"SELECT * FROM users WHERE email = {p}", (email,))
+        cursor.execute(f"SELECT * FROM users WHERE LOWER(email) = LOWER({p})", (email,))
         row = cursor.fetchone()
         return _dict_from_row(row)
 

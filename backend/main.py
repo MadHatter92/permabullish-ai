@@ -416,7 +416,7 @@ async def login(request: Request, credentials: UserLogin):
             detail=message
         )
 
-    user = db.get_user_by_email(credentials.email)
+    user = db.get_user_by_email(credentials.email.lower().strip())
 
     return TokenResponse(
         access_token=token,

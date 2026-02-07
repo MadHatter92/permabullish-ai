@@ -1,9 +1,9 @@
 # Permabullish - AI Stock Researcher
 ## Product Requirements Document (PRD)
 
-**Version:** 2.5
-**Date:** February 6, 2026
-**Status:** Phase 1-4 Complete, Phase 7 Complete, Phase 5 Partially Complete
+**Version:** 2.6
+**Date:** February 7, 2026
+**Status:** Phase 1-4 Complete, Phase 7 Complete, Phase 5 Partially Complete, Email/Password Auth Complete
 
 ---
 
@@ -342,10 +342,12 @@ This ensures:
 
 - **Provider:** Resend (SMTP alternative to SendGrid)
 - **Sending Domain:** permabullish.com (SPF, DKIM verified)
+- **Batch Size Limit:** 200 emails/batch (configurable via `--batch-size`)
 - **Cron Jobs:**
-  - Re-engagement Morning: 9 AM IST (Batch 0)
-  - Re-engagement Afternoon: 2 PM IST (Batch 1)
-  - Re-engagement Evening: 6 PM IST (Batch 2)
+  - Re-engagement Morning: 9 AM IST (Batch 0, max 200)
+  - Re-engagement Afternoon: 2 PM IST (Batch 1, max 200)
+  - Re-engagement Evening: 6 PM IST (Batch 2, max 200)
+  - Bounce cleanup: 8:30 PM IST daily
   - Expiry reminders: 10:30 AM IST daily
 
 ---
@@ -373,14 +375,22 @@ This ensures:
 
 ### 9.1 Authentication
 
-- **Primary:** Google OAuth 2.0
+- **Google OAuth 2.0:** Primary sign-in method, auto-verified emails
+- **Email/Password:** Full registration flow with email verification
+  - Registration sends verification email (24-hour expiry token)
+  - Users must verify email before signing in
+  - Password hashing via pbkdf2_sha256
+- **Password Reset:** Forgot password flow with reset tokens (1-hour expiry)
+- **Account Linking:** If a user registers with email/password and later signs in with Google (same email), accounts are linked automatically
 - **Session:** JWT tokens (7-day expiry)
-- **No email/password:** Google sign-in only for simplicity
 
 ### 9.2 Security Considerations
 
 - All API endpoints require authentication (except health check)
-- Rate limiting on report generation
+- Rate limiting on report generation and auth endpoints
+- Email verification required before account access
+- Password reset tokens are single-purpose and time-limited
+- Auth responses never reveal whether an email exists (forgot-password, resend-verification)
 - No storage of payment credentials (handled by Cashfree)
 - HTTPS only in production
 
@@ -396,15 +406,21 @@ This ensures:
 | **Database** | PostgreSQL (production) / SQLite (development) |
 | **Frontend** | Static HTML/CSS/JS + Tailwind CSS |
 | **AI** | Anthropic Claude API |
-| **Auth** | Google OAuth + JWT |
+| **Auth** | Google OAuth + Email/Password + JWT |
 | **Payments** | Cashfree |
 | **Hosting** | Render |
 
 ### 10.2 API Endpoints
 
 **Authentication:**
+- `POST /api/auth/register` - Register with email/password (sends verification email)
+- `POST /api/auth/login` - Sign in with email/password
 - `GET /api/auth/google/login` - Initiate Google OAuth
 - `GET /api/auth/google/callback` - OAuth callback
+- `GET /api/auth/verify-email?token=` - Verify email (redirects to frontend)
+- `POST /api/auth/resend-verification` - Resend verification email
+- `POST /api/auth/forgot-password` - Request password reset email
+- `POST /api/auth/reset-password` - Reset password with token
 - `GET /api/auth/me` - Get current user
 
 **Reports:**
@@ -452,14 +468,21 @@ This ensures:
 -- Users
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    google_id VARCHAR(255) UNIQUE NOT NULL,
+    google_id VARCHAR(255) UNIQUE,
     email VARCHAR(255) UNIQUE NOT NULL,
-    name VARCHAR(255),
+    full_name VARCHAR(255),
     avatar_url TEXT,
+    password_hash TEXT,
+    auth_provider VARCHAR(20) DEFAULT 'email',
+    email_verified BOOLEAN DEFAULT FALSE,
     subscription_tier VARCHAR(50) DEFAULT 'free',
     subscription_expires_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    last_activity_at TIMESTAMP,
+    welcome_email_sent BOOLEAN DEFAULT FALSE,
+    last_reengagement_email_at TIMESTAMP,
+    reengagement_email_count INTEGER DEFAULT 0
 );
 
 -- Subscriptions
@@ -575,6 +598,9 @@ CREATE TABLE user_comparisons (
 |----------|-------|---------|
 | Register | 3/minute | Prevent spam signups |
 | Login | 5/minute | Prevent brute force |
+| Resend Verification | 3/minute | Prevent abuse |
+| Forgot Password | 3/minute | Prevent abuse |
+| Reset Password | 5/minute | Prevent brute force |
 | Report Generation | 10/hour | Protect Claude API costs |
 | Comparison | 10/hour | Protect Claude API costs |
 

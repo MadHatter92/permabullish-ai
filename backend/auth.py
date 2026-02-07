@@ -200,6 +200,9 @@ def register_user(email: str, password: str, full_name: str) -> tuple[bool, str,
     Register a new user.
     Returns: (success, message, user_data)
     """
+    # Normalize email to lowercase
+    email = email.lower().strip()
+
     # Validate email format
     if "@" not in email or "." not in email:
         return False, "Invalid email format", None
@@ -236,6 +239,7 @@ def authenticate_user(email: str, password: str) -> tuple[bool, str, Optional[st
     Authenticate user and return token.
     Returns: (success, message, token)
     """
+    email = email.lower().strip()
     user = db.get_user_by_email(email)
 
     if not user:
