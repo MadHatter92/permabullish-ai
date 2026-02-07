@@ -428,6 +428,14 @@
                 utmKeys.forEach(k => { if (params.get(k)) utmData[k] = params.get(k); });
                 utmData.landed_at = new Date().toISOString();
                 localStorage.setItem('utm_data', JSON.stringify(utmData));
+                // Push to GA4 as user properties
+                if (window.gtag) {
+                    gtag('set', 'user_properties', {
+                        utm_source: utmData.utm_source || '',
+                        utm_medium: utmData.utm_medium || '',
+                        utm_campaign: utmData.utm_campaign || ''
+                    });
+                }
             }
         })();
 
@@ -450,6 +458,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const callbackToken = urlParams.get('token');
         const error = urlParams.get('error');
+        const message = urlParams.get('message');
 
         if (callbackToken) {
             localStorage.setItem('token', callbackToken);
@@ -471,7 +480,7 @@
         }
 
         if (error) {
-            showError('Authentication failed. Please try again.');
+            showError(error === 'auth_failed' ? 'Authentication failed. Please try again.' : (message || 'An error occurred.'));
         }
 
         if (urlParams.get('verified') === 'true') {
