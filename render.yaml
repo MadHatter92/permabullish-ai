@@ -136,6 +136,8 @@ services:
         fromDatabase:
           name: permabullish-db
           property: connectionString
+      - key: ENVIRONMENT
+        value: production
       - key: REPORT_EMAIL_TO
         value: mail@mayaskara.com
       - key: RESEND_API_KEY
@@ -156,6 +158,8 @@ services:
         fromDatabase:
           name: permabullish-db
           property: connectionString
+      - key: ENVIRONMENT
+        value: production
       - key: REPORT_EMAIL_TO
         value: mail@mayaskara.com
       - key: RESEND_API_KEY
@@ -178,6 +182,8 @@ services:
         fromDatabase:
           name: permabullish-db
           property: connectionString
+      - key: ENVIRONMENT
+        value: production
       - key: RESEND_API_KEY
         sync: false
 
@@ -197,6 +203,8 @@ services:
         fromDatabase:
           name: permabullish-db
           property: connectionString
+      - key: ENVIRONMENT
+        value: production
       - key: RESEND_API_KEY
         sync: false
 
@@ -216,6 +224,8 @@ services:
         fromDatabase:
           name: permabullish-db
           property: connectionString
+      - key: ENVIRONMENT
+        value: production
       - key: RESEND_API_KEY
         sync: false
 
@@ -236,6 +246,8 @@ services:
         fromDatabase:
           name: permabullish-db
           property: connectionString
+      - key: ENVIRONMENT
+        value: production
       - key: RESEND_API_KEY
         sync: false
 
@@ -255,6 +267,8 @@ services:
         fromDatabase:
           name: permabullish-db
           property: connectionString
+      - key: ENVIRONMENT
+        value: production
       - key: RESEND_API_KEY
         sync: false
 
@@ -274,6 +288,8 @@ services:
         fromDatabase:
           name: permabullish-db
           property: connectionString
+      - key: ENVIRONMENT
+        value: production
 
 databases:
   # Production Database
