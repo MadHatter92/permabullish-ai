@@ -215,7 +215,7 @@
                     </div>
                     <div>
                         <p class="text-white font-semibold text-sm sm:text-base" id="nudgeTitle">Unlock More Research Power</p>
-                        <p class="text-gray-300 text-xs sm:text-sm mt-1" id="nudgeText">Get 50 reports/month with Basic. Your free reports don't reset - upgrade for monthly refresh.</p>
+                        <p class="text-gray-300 text-xs sm:text-sm mt-1" id="nudgeText">Get 100 reports/month with Pro. Your free reports don't reset - upgrade for monthly refresh.</p>
                         <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-400">
                             <span class="flex items-center gap-1">
                                 <svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
@@ -564,7 +564,7 @@
                     if (usagePercent >= 60) {
                         // More urgent messaging when 60%+ used
                         nudgeTitle.textContent = `Only ${status.reports_remaining} Free Reports Left`;
-                        nudgeText.textContent = "Your free reports are limited and don't reset. Upgrade now for 50 reports every month.";
+                        nudgeText.textContent = "Your free reports are limited and don't reset. Upgrade now for 100 reports every month.";
                     }
                 } else if (status.tier !== 'free') {
                     // Hide nudge for paid users

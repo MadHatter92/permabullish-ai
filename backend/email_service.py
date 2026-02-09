@@ -473,7 +473,7 @@ def send_subscription_expiry_email(
                     <li>AI-generated equity research in seconds</li>
                     <li>Coverage of 3000+ Indian stocks</li>
                     <li>Target prices, risk analysis, and more</li>
-                    <li>Plans starting at just ₹625/month</li>
+                    <li>Plans starting at just ₹417/month</li>
                 </ul>
             </div>
 
