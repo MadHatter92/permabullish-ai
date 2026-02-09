@@ -14,4 +14,4 @@ Disallow: /verify-email.html
 Disallow: /reset-password.html
 Disallow: /unsubscribe.html
 
-Sitemap: https://permabullish.com/sitemap.xml
+Sitemap: https://www.permabullish.com/sitemap.xml
