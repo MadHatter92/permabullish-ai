@@ -96,7 +96,7 @@ def get_header() -> str:
     """
 
 
-def format_report_cards(reports: List[Dict]) -> str:
+def format_report_cards(reports: List[Dict], email_type: str = "transactional") -> str:
     """Format report cards for email."""
     if not reports:
         return ""
@@ -105,8 +105,9 @@ def format_report_cards(reports: List[Dict]) -> str:
     for report in reports[:3]:
         rec = report.get('recommendation', 'HOLD').lower().replace(' ', '-')
         rec_class = f"rec-{rec}"
+        report_url = utm_url(f"{BASE_URL}/report.html?id={report['id']}", email_type, "report_card")
         cards_html += f"""
-        <a href="{BASE_URL}/report.html?id={report['id']}" style="text-decoration: none; color: inherit;">
+        <a href="{report_url}" style="text-decoration: none; color: inherit;">
             <div class="report-card">
                 <h4>{report.get('company_name', report.get('ticker', 'Unknown'))}</h4>
                 <p>
@@ -159,7 +160,7 @@ def send_email(to_email: str, subject: str, html_content: str) -> bool:
 def send_welcome_email(user_email: str, first_name: str, sample_reports: List[Dict]) -> bool:
     """Send welcome email to new user."""
 
-    report_cards = format_report_cards(sample_reports)
+    report_cards = format_report_cards(sample_reports, "welcome")
     footer = get_footer(user_email)
 
     html = f"""
@@ -189,7 +190,7 @@ def send_welcome_email(user_email: str, first_name: str, sample_reports: List[Di
             <p><strong>Your free account includes 5 research reports</strong> to help you explore the platform.</p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">Generate Your First Report</a>
+                <a href="{utm_url(BASE_URL + '/generate.html', 'welcome', 'first_report')}" class="button">Generate Your First Report</a>
             </p>
 
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -362,7 +363,7 @@ def send_purchase_email(
             </div>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/dashboard.html" class="button">Go to Dashboard</a>
+                <a href="{utm_url(BASE_URL + '/dashboard.html', 'purchase', 'go_to_dashboard')}" class="button">Go to Dashboard</a>
             </p>
 
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -464,7 +465,7 @@ def send_subscription_expiry_email(
             {message}
 
             <p style="text-align: center; margin: 30px 0;">
-                <a href="{BASE_URL}/pricing.html" class="button">{cta_text}</a>
+                <a href="{utm_url(BASE_URL + '/pricing.html', 'expiry', 'renew')}" class="button">{cta_text}</a>
             </p>
 
             <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -503,8 +504,14 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
 
     Templates 1-14 for daily rotation, template 15 for weekly.
     """
-    report_cards = format_report_cards(sample_reports)
+    report_cards = format_report_cards(sample_reports, "reengagement")
     footer = get_footer(user_email)
+
+    # Pre-build UTM-tagged URLs for templates
+    gen_url = utm_url(f"{BASE_URL}/generate.html", "reengagement", f"t{template_num}")
+    gen_hi_url = utm_url(f"{BASE_URL}/generate.html?lang=hi", "reengagement", f"t{template_num}")
+    gen_gu_url = utm_url(f"{BASE_URL}/generate.html?lang=gu", "reengagement", f"t{template_num}")
+    pricing_url = utm_url(f"{BASE_URL}/pricing.html", "reengagement", f"t{template_num}")
 
     templates = {
         # Template 1: Generic - Reminder
@@ -523,7 +530,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             a stock you've been curious about?</p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">Generate a Report Now</a>
+                <a href="{gen_url}" class="button">Generate a Report Now</a>
             </p>
 
             <h3>Popular reports this week:</h3>
@@ -553,7 +560,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>Generate a report before your next client call. Walk in with conviction.</p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">Try It Free</a>
+                <a href="{gen_url}" class="button">Try It Free</a>
             </p>
 
             <h3>See AI research in action:</h3>
@@ -584,7 +591,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             that institutional investors rely on.</p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">Try It Now - It's Free</a>
+                <a href="{gen_url}" class="button">Try It Now - It's Free</a>
             </p>
 
             <h3>See AI analysis in action:</h3>
@@ -610,7 +617,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>No more scrambling before client meetings. No more <em>"let me get back to you on that."</em></p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">Generate Your First Report</a>
+                <a href="{gen_url}" class="button">Generate Your First Report</a>
             </p>
 
             <h3>Example reports:</h3>
@@ -636,7 +643,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p><strong>What stocks are you curious about?</strong></p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">Research Any Stock Free</a>
+                <a href="{gen_url}" class="button">Research Any Stock Free</a>
             </p>
             """
         ),
@@ -664,7 +671,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             They just need to see you come prepared.</p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">See Sample Reports</a>
+                <a href="{gen_url}" class="button">See Sample Reports</a>
             </p>
 
             <h3>Level the playing field:</h3>
@@ -693,7 +700,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>चाहे आप खुद के लिए रिसर्च कर रहे हों या clients के लिए — <strong>हिंदी में समझना आसान है।</strong></p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html?lang=hi" class="button">हिंदी में रिपोर्ट बनाएं</a>
+                <a href="{gen_hi_url}" class="button">हिंदी में रिपोर्ट बनाएं</a>
             </p>
 
             <h3>देखें AI रिसर्च कैसे काम करती है:</h3>
@@ -726,7 +733,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>ગુજરાતના રોકાણકારો માટે — અમદાવાદ, સુરત, રાજકોટ, વડોદરા — <strong>તમારી ભાષામાં રિસર્ચ.</strong></p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html?lang=gu" class="button">ગુજરાતીમાં રિપોર્ટ બનાવો</a>
+                <a href="{gen_gu_url}" class="button">ગુજરાતીમાં રિપોર્ટ બનાવો</a>
             </p>
 
             <h3>જુઓ AI રિસર્ચ કેવી રીતે કામ કરે છે:</h3>
@@ -759,7 +766,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             </ul>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">Get AI Insights Now</a>
+                <a href="{gen_url}" class="button">Get AI Insights Now</a>
             </p>
 
             <h3>Recent AI analysis:</h3>
@@ -788,7 +795,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>Don't let competitors out-research you.</p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">Get Your Edge</a>
+                <a href="{gen_url}" class="button">Get Your Edge</a>
             </p>
 
             <h3>See what AI research looks like:</h3>
@@ -817,7 +824,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>जब clients research को सच में समझते हैं, तो वे faster decisions लेते हैं।</p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html?lang=hi" class="button">हिंदी में रिपोर्ट बनाएं</a>
+                <a href="{gen_hi_url}" class="button">हिंदी में रिपोर्ट बनाएं</a>
             </p>
 
             <h3>देखें AI रिसर्च:</h3>
@@ -850,7 +857,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>જ્યારે તમારા clients ગુજરાતીમાં research વાંચે છે, ત્યારે તેઓ વધુ deeply engage થાય છે અને faster decide કરે છે.</p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html?lang=gu" class="button">ગુજરાતીમાં રિપોર્ટ બનાવો</a>
+                <a href="{gen_gu_url}" class="button">ગુજરાતીમાં રિપોર્ટ બનાવો</a>
             </p>
 
             <h3>જુઓ AI રિસર્ચ:</h3>
@@ -881,7 +888,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>All of this in a comprehensive report that takes seconds to generate.</p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">Generate Your Free Report</a>
+                <a href="{gen_url}" class="button">Generate Your Free Report</a>
             </p>
 
             <h3>Example reports:</h3>
@@ -911,7 +918,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>Better conversations. More trades. Happier clients.</p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">Start Free</a>
+                <a href="{gen_url}" class="button">Start Free</a>
             </p>
 
             <h3>See AI research in action:</h3>
@@ -936,12 +943,12 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             Pick a stock you're interested in and see what AI thinks.</p>
 
             <p style="text-align: center;">
-                <a href="{BASE_URL}/generate.html" class="button">Research a Stock</a>
+                <a href="{gen_url}" class="button">Research a Stock</a>
             </p>
 
             <p>Or upgrade to Pro for unlimited AI insights:</p>
             <p style="text-align: center;">
-                <a href="{BASE_URL}/pricing.html" style="color: #e8913a;">View Plans →</a>
+                <a href="{pricing_url}" style="color: #e8913a;">View Plans →</a>
             </p>
             """
         ),
@@ -1076,6 +1083,15 @@ def get_featured_reports_for_email(day_of_year: int = 1) -> List[Dict]:
         })
 
     return formatted
+
+
+def utm_url(url: str, medium: str, campaign: str = "") -> str:
+    """Append UTM parameters to a URL."""
+    sep = "&" if "?" in url else "?"
+    result = f"{url}{sep}utm_source=email&utm_medium={medium}"
+    if campaign:
+        result += f"&utm_campaign={campaign}"
+    return result
 
 
 def get_first_name(full_name: str) -> str:
