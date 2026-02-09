@@ -37,7 +37,7 @@ from config import (
     SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
     GOOGLE_REDIRECT_URI, FRONTEND_URL, CORS_ORIGINS, ENVIRONMENT,
     SUBSCRIPTION_TIERS, CASHFREE_APP_ID, CASHFREE_SECRET_KEY,
-    FEATURED_REPORT_TICKERS
+    FEATURED_REPORT_IDS
 )
 import cashfree
 import share_card
@@ -514,7 +514,8 @@ async def verify_email(token: str):
     # Now send welcome email (post-verification)
     try:
         from email_service import send_welcome_email, get_featured_reports_for_email, get_first_name
-        sample_reports = get_featured_reports_for_email()
+        from datetime import datetime
+        sample_reports = get_featured_reports_for_email(datetime.now().timetuple().tm_yday)
         first_name = get_first_name(user.get("full_name", ""))
         if send_welcome_email(user["email"], first_name, sample_reports):
             db.mark_welcome_email_sent(user_id)
@@ -1189,7 +1190,7 @@ async def get_comparison_by_id(
 @app.get("/api/reports/featured")
 async def get_featured_reports():
     """Get featured sample reports for new users to see."""
-    reports = db.get_featured_reports(FEATURED_REPORT_TICKERS)
+    reports = db.get_featured_reports_by_ids(FEATURED_REPORT_IDS)
     return reports
 
 

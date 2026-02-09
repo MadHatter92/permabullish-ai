@@ -788,7 +788,7 @@ def get_or_create_google_user(google_id: str, email: str, full_name: str, avatar
     if is_new_user:
         try:
             from email_service import send_welcome_email, get_featured_reports_for_email, get_first_name
-            sample_reports = get_featured_reports_for_email()
+            sample_reports = get_featured_reports_for_email(datetime.now().timetuple().tm_yday)
             first_name = get_first_name(full_name)
             if send_welcome_email(email, first_name, sample_reports):
                 mark_welcome_email_sent(user_id)
@@ -2041,6 +2041,33 @@ def get_featured_reports(tickers: List[str]) -> List[dict]:
 
         rows = cursor.fetchall()
         return [_dict_from_row(row) for row in rows]
+
+
+def get_featured_reports_by_ids(report_ids: List[int]) -> List[dict]:
+    """Get cached reports by their IDs, preserving input order."""
+    if not report_ids:
+        return []
+
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+
+        placeholders = ", ".join([p] * len(report_ids))
+
+        cursor.execute(f"""
+            SELECT
+                id, ticker, exchange, company_name, sector,
+                current_price, ai_target_price, recommendation, generated_at
+            FROM report_cache
+            WHERE id IN ({placeholders})
+        """, tuple(report_ids))
+
+        rows = cursor.fetchall()
+        reports = [_dict_from_row(row) for row in rows]
+
+        # Preserve input order
+        id_to_report = {r["id"]: r for r in reports}
+        return [id_to_report[rid] for rid in report_ids if rid in id_to_report]
 
 
 # ============================================

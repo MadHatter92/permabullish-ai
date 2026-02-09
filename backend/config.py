@@ -84,8 +84,8 @@ CASHFREE_ENV = os.getenv("CASHFREE_ENV", "sandbox")  # sandbox or production
 # Resend Email Service
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 
-# Featured reports for emails (ticker symbols) - Easy to modify
-FEATURED_REPORT_TICKERS = ["INFY", "SWIGGY", "DIXON"]
+# Featured report IDs for emails - rotated daily for variety
+FEATURED_REPORT_IDS = [71, 92, 89, 90, 91, 38, 35, 88]
 
 # Report freshness threshold (days)
 REPORT_FRESHNESS_DAYS = 15

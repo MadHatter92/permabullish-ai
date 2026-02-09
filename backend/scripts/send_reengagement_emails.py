@@ -143,7 +143,7 @@ def main():
     print(f"[RE-ENGAGEMENT] Batch size limit: {batch_size_info}")
 
     # Get featured reports for emails
-    sample_reports = get_featured_reports_for_email()
+    sample_reports = get_featured_reports_for_email(day_of_year)
     print(f"[RE-ENGAGEMENT] Loaded {len(sample_reports)} featured reports")
 
     # Get eligible users

@@ -9,7 +9,7 @@ from datetime import datetime
 import pytz
 import logging
 
-from config import RESEND_API_KEY, FEATURED_REPORT_TICKERS
+from config import RESEND_API_KEY, FEATURED_REPORT_IDS
 
 logger = logging.getLogger(__name__)
 
@@ -1045,19 +1045,27 @@ def should_send_reengagement(
     return False
 
 
-def get_featured_reports_for_email() -> List[Dict]:
+def get_featured_reports_for_email(day_of_year: int = 1) -> List[Dict]:
     """
     Get featured reports from database for use in emails.
+    Rotates which 3 of 8 curated reports are shown, based on day_of_year.
     Returns formatted report data suitable for email templates.
     """
     # Import here to avoid circular imports
     import database as db
 
-    reports = db.get_featured_reports(FEATURED_REPORT_TICKERS)
+    all_reports = db.get_featured_reports_by_ids(FEATURED_REPORT_IDS)
+
+    # Rotate: pick 3 reports using sliding window based on day of year
+    if len(all_reports) > 3:
+        start = (day_of_year * 3) % len(all_reports)
+        selected = [all_reports[(start + i) % len(all_reports)] for i in range(3)]
+    else:
+        selected = all_reports
 
     # Format for email templates
     formatted = []
-    for report in reports:
+    for report in selected:
         formatted.append({
             "id": report.get("id"),
             "ticker": report.get("ticker"),
