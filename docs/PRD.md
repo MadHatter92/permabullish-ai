@@ -192,9 +192,10 @@ The product operates on a subscription model with tiered access, allowing users 
 |------|---------|----------|
 | **Guest** | 1 (lifetime) | Basic access, no account required |
 | **Free** | 5 (lifetime) | Full reports, watchlist, history |
-| **Basic** | 50/month | All Free features |
-| **Pro** | 100/month | All Basic + priority generation |
+| **Pro** | 100/month | All Free + priority generation |
 | **Enterprise** | Unlimited | All features + API access + dedicated support |
+
+*Note: Basic tier (50 reports/month) was retired February 2026. Existing Basic subscribers remain active until expiry.*
 
 ### 6.2 Target Audience Segments
 
@@ -210,13 +211,12 @@ The product operates on a subscription model with tiered access, allowing users 
 |------|---------|----------|--------|------------|
 | **Guest** | Free | - | - | - |
 | **Free** | Free | - | - | - |
-| **Basic** | ₹999 | ~~₹6,000~~ ₹3,999 | ~~₹12,000~~ ₹7,499 | ₹12.50-₹20 |
-| **Pro** | ₹1,499 | ~~₹9,000~~ ₹5,999 | ~~₹18,000~~ ₹9,999 | ₹8.33-₹15 |
+| **Pro** | ₹749 | ~~₹11,999~~ ₹2,999 | ~~₹23,999~~ ₹4,999 | ₹4.17-₹7.49 |
 | **Enterprise** | Contact us | - | - | - |
 
-**Savings:**
-- 6 Months: 33% off monthly price
-- Yearly: 38% off (Basic) / 44% off (Pro)
+**Savings (vs struck price):**
+- 6 Months: 75% off
+- Yearly: 79% off
 
 **Payment Gateway:** Cashfree
 - Accepts UPI, credit/debit cards, net banking

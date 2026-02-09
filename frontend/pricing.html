@@ -137,11 +137,11 @@
             </button>
             <button id="6monthsBtn" onclick="setBillingPeriod('6months')"
                 class="px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all billing-btn whitespace-nowrap">
-                6 Months <span class="text-green-400 text-xs ml-1">-75%</span>
+                6 Months <span class="text-green-400 text-xs ml-1">-33%</span>
             </button>
             <button id="yearlyBtn" onclick="setBillingPeriod('yearly')"
                 class="px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all billing-btn relative whitespace-nowrap">
-                Yearly <span class="bg-green-500 text-white text-xs px-1.5 sm:px-2 py-0.5 rounded-full ml-1 font-bold">-79%</span>
+                Yearly <span class="bg-green-500 text-white text-xs px-1.5 sm:px-2 py-0.5 rounded-full ml-1 font-bold">-44%</span>
             </button>
             <!-- Best Value badge -->
             <div class="absolute -top-3 right-0 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold shadow-lg hidden sm:block">
@@ -338,7 +338,7 @@
             if (period === 'monthly') {
                 proEquivEl.style.display = 'none';
             } else {
-                const savings = period === 'yearly' ? '79%' : '75%';
+                const savings = period === 'yearly' ? '44%' : '33%';
                 proEquivEl.style.display = 'block';
                 proEquivEl.innerHTML = `Just ₹${monthlyEquiv.pro[period]}/month <span class="text-xs opacity-75">(save ${savings})</span>`;
             }

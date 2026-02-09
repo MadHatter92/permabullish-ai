@@ -148,10 +148,11 @@ Implement tiered subscription system with usage limits.
 ### 2.3 Pricing Page
 
 - [x] Design pricing page with tier comparison (`frontend/pricing.html`)
-- [x] Show: Free (3 reports), Basic (10/mo), Pro (50/mo), Enterprise (contact us)
+- [x] Show: Free (5 reports), Pro (100/mo), Enterprise (contact us)
 - [x] Add payment period options: 1 month, 6 months, 12 months
 - [x] Display savings percentages for longer periods
 - [x] "Contact us" for Enterprise tier
+- [x] Simplified to Free + Pro + Enterprise (Basic retired Feb 2026)
 
 ### 2.4 Upgrade Flow
 
@@ -182,8 +183,7 @@ Integrate Cashfree for subscription payments.
 - [x] Created Cashfree merchant account
 - [x] Obtained API credentials (App ID, Secret Key)
 - [x] **Used Payment Forms instead of Payment Gateway** (due to domain whitelisting requirements)
-- [x] Created 6 payment forms for all plan/period combinations:
-  - Basic: Monthly, 6-Months, Yearly
+- [x] Created payment forms for Pro plan (Basic retired Feb 2026):
   - Pro: Monthly, 6-Months, Yearly
 - [x] Configured webhook endpoints
 
@@ -475,7 +475,7 @@ Improve stock data quality and coverage.
 ---
 
 ## Phase 5: Pricing Analysis
-**Status:** Partially Complete
+**Status:** ✅ COMPLETE
 **Priority:** Medium
 **Dependencies:** Phase 2, Phase 3
 
@@ -501,10 +501,10 @@ Determine optimal pricing based on token consumption and costs.
 
 ### 5.3 Pricing Strategy
 
-- [ ] Research competitor pricing
-- [ ] Validate current pricing (Basic ₹199/mo, Pro ₹499/mo)
-- [ ] Analyze discount levels for 6/12 month subscriptions
-- [ ] Adjust pricing if needed based on analysis
+- [x] Research competitor pricing
+- [x] Simplified to Pro-only paid tier (Basic retired Feb 2026)
+- [x] New Pro pricing: ₹749/mo, ₹2,999/6mo, ₹4,999/yr
+- [x] Struck prices: ₹1,999, ₹11,999, ₹23,999
 
 ### Deliverables
 - Token usage analytics
@@ -1002,7 +1002,6 @@ Launch a US-focused version of Permabullish at us.permabullish.com, providing AI
   | Tier | Monthly | 6 Months | Yearly |
   |------|---------|----------|--------|
   | Free | $0 (5 reports) | - | - |
-  | Basic | $9.99 | $49.99 | $89.99 |
   | Pro | $19.99 | $99.99 | $179.99 |
 
 ### 8.5 Hosting & Infrastructure
@@ -1188,7 +1187,7 @@ Improve application performance, reduce latency, and handle scale efficiently.
 | 3.5 | Production Launch | ✅ Complete |
 | 3.6 | Post-Launch Improvements | ✅ Complete |
 | 4 | Data Enhancement | ✅ Complete |
-| 5 | Pricing Analysis | Partial |
+| 5 | Pricing Analysis | ✅ Complete |
 | 6 | ~~Landing Page~~ Mobile UX | Pending |
 | 7 | Multi-Language | ✅ Complete |
 | 7.5 | Security & Best Practices | 🔄 In Progress |
