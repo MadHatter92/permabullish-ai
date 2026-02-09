@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-75Y271369Q"></script>
+    <script src="/analytics.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Stock Analysis — AI Research for Nifty 50 Stocks | Permabullish</title>
+    <meta name="description" content="AI-powered stock analysis for Nifty 50 Indian stocks. Get buy/sell recommendations, target prices, investment thesis, and risk assessment for top Indian companies.">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="canonical" href="https://www.permabullish.com/stocks/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.permabullish.com/stocks/">
+    <meta property="og:title" content="Indian Stock Analysis — AI Research for Nifty 50 Stocks">
+    <meta property="og:description" content="AI-powered stock analysis for Nifty 50 Indian stocks. Buy/sell recommendations, target prices, and risk assessment.">
+    <meta property="og:site_name" content="Permabullish">
+    <meta property="og:image" content="https://www.permabullish.com/og-home.png">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Indian Stock Analysis — AI Research for Nifty 50">
+    <meta name="twitter:description" content="AI-powered stock analysis for Nifty 50 Indian stocks.">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #102a43 0%, #1e3a5f 50%, #243b53 100%); }
+        body { font-family: 'DM Sans', 'Inter', system-ui, sans-serif; }
+        .font-display { font-family: 'DM Serif Display', Georgia, serif; }
+        .gradient-text { background: linear-gradient(135deg, #e8913a, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        a { transition: all 0.2s ease-out; }
+        .sector-tab.active { background: #e8913a; color: white; border-color: #e8913a; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    
+    <nav class="py-4 px-4 sm:px-6">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <a href="/" class="text-2xl font-display text-white no-underline">
+                Perma<span class="text-[#e8913a]">bullish</span>
+            </a>
+            <div class="flex items-center gap-3 sm:gap-4">
+                <a href="/pricing.html" class="text-sm text-[#9fb3c8] hover:text-white transition-colors">Pricing</a>
+                <a href="/stocks/" class="text-sm text-[#9fb3c8] hover:text-white transition-colors">Stocks</a>
+                <a href="/?utm_source=seo&utm_medium=nav" class="bg-[#e8913a] hover:bg-[#d97316] text-white px-4 py-2 rounded-lg text-sm font-medium transition-all no-underline">
+                    Get Started Free
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="py-12 sm:py-16 px-4 sm:px-6">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-10">
+                <h1 class="text-3xl sm:text-4xl font-display text-white mb-4">
+                    AI Stock Analysis for <span class="gradient-text">Nifty 50</span>
+                </h1>
+                <p class="text-[#9fb3c8] max-w-2xl mx-auto">Browse AI-powered research reports for India's top 50 stocks. Each report includes a recommendation, target price, investment thesis, and risk assessment.</p>
+            </div>
+
+            <!-- Sector filters -->
+            <div class="flex flex-wrap gap-2 justify-center mb-8">
+                <button class="sector-tab active bg-[#e8913a] text-white px-4 py-1.5 rounded-full text-sm font-medium transition-all" data-sector="all">All</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Automobile">Automobile</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Capital Goods">Capital Goods</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Construction Materials">Construction Materials</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Consumer Durables">Consumer Durables</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Diversified">Diversified</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Energy">Energy</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="FMCG">FMCG</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Financial Services">Financial Services</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Healthcare">Healthcare</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Information Technology">Information Technology</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Infrastructure">Infrastructure</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Metals &amp; Mining">Metals &amp; Mining</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Power">Power</button>
+<button class="sector-tab bg-[#1e3a5f]/60 text-[#9fb3c8] border border-[#334e68] px-4 py-1.5 rounded-full text-sm font-medium hover:border-[#e8913a]/50 transition-all" data-sector="Telecom">Telecom</button>
+
+            </div>
+
+            <!-- Stock grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="stockGrid">
+                
+        <a href="/stocks/adanient/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Diversified">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Adani Enterprises Limited</div>
+                    <div class="text-[#829ab1] text-sm">ADANIENT &middot; Diversified</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/adaniports/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Infrastructure">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Adani Ports and Special Economic Zone Limited</div>
+                    <div class="text-[#829ab1] text-sm">ADANIPORTS &middot; Infrastructure</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/apollohosp/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Healthcare">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Apollo Hospitals Enterprise Limited</div>
+                    <div class="text-[#829ab1] text-sm">APOLLOHOSP &middot; Healthcare</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/asianpaint/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Consumer Durables">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Asian Paints Limited</div>
+                    <div class="text-[#829ab1] text-sm">ASIANPAINT &middot; Consumer Durables</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/axisbank/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Financial Services">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Axis Bank Limited</div>
+                    <div class="text-[#829ab1] text-sm">AXISBANK &middot; Financial Services</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹1,373</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹1,650</span></span>
+                </div>
+        </a>
+        <a href="/stocks/bajaj-auto/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Automobile">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Bajaj Auto Limited</div>
+                    <div class="text-[#829ab1] text-sm">BAJAJ-AUTO &middot; Automobile</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/bajfinance/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Financial Services">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Bajaj Finance Limited</div>
+                    <div class="text-[#829ab1] text-sm">BAJFINANCE &middot; Financial Services</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹964</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹1,250</span></span>
+                </div>
+        </a>
+        <a href="/stocks/bajajfinsv/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Financial Services">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Bajaj Finserv Limited</div>
+                    <div class="text-[#829ab1] text-sm">BAJAJFINSV &middot; Financial Services</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/bpcl/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Energy">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Bharat Petroleum Corporation Limited</div>
+                    <div class="text-[#829ab1] text-sm">BPCL &middot; Energy</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/bhartiartl/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Telecom">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Bharti Airtel Limited</div>
+                    <div class="text-[#829ab1] text-sm">BHARTIARTL &middot; Telecom</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹1,951</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹2,400</span></span>
+                </div>
+        </a>
+        <a href="/stocks/britannia/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="FMCG">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Britannia Industries Limited</div>
+                    <div class="text-[#829ab1] text-sm">BRITANNIA &middot; FMCG</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/cipla/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Healthcare">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Cipla Limited</div>
+                    <div class="text-[#829ab1] text-sm">CIPLA &middot; Healthcare</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/coalindia/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Metals &amp; Mining">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Coal India Limited</div>
+                    <div class="text-[#829ab1] text-sm">COALINDIA &middot; Metals &amp; Mining</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/divislab/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Healthcare">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Divi&#x27;s Laboratories Limited</div>
+                    <div class="text-[#829ab1] text-sm">DIVISLAB &middot; Healthcare</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/drreddy/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Healthcare">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Dr. Reddy&#x27;s Laboratories Limited</div>
+                    <div class="text-[#829ab1] text-sm">DRREDDY &middot; Healthcare</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/eichermot/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Automobile">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Eicher Motors Limited</div>
+                    <div class="text-[#829ab1] text-sm">EICHERMOT &middot; Automobile</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/grasim/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Diversified">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Grasim Industries Limited</div>
+                    <div class="text-[#829ab1] text-sm">GRASIM &middot; Diversified</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/hcltech/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Information Technology">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">HCL Technologies Limited</div>
+                    <div class="text-[#829ab1] text-sm">HCLTECH &middot; Information Technology</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹1,696</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹1,850</span></span>
+                </div>
+        </a>
+        <a href="/stocks/hdfcbank/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Financial Services">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">HDFC Bank Limited</div>
+                    <div class="text-[#829ab1] text-sm">HDFCBANK &middot; Financial Services</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹935</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹1,180</span></span>
+                </div>
+        </a>
+        <a href="/stocks/hdfclife/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Financial Services">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">HDFC Life Insurance Company Limited</div>
+                    <div class="text-[#829ab1] text-sm">HDFCLIFE &middot; Financial Services</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/heromotoco/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Automobile">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Hero MotoCorp Limited</div>
+                    <div class="text-[#829ab1] text-sm">HEROMOTOCO &middot; Automobile</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/hindalco/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Metals &amp; Mining">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Hindalco Industries Limited</div>
+                    <div class="text-[#829ab1] text-sm">HINDALCO &middot; Metals &amp; Mining</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/hindunilvr/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="FMCG">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Hindustan Unilever Limited</div>
+                    <div class="text-[#829ab1] text-sm">HINDUNILVR &middot; FMCG</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹2,373</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹2,800</span></span>
+                </div>
+        </a>
+        <a href="/stocks/icicibank/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Financial Services">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">ICICI Bank Limited</div>
+                    <div class="text-[#829ab1] text-sm">ICICIBANK &middot; Financial Services</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹1,368</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹1,650</span></span>
+                </div>
+        </a>
+        <a href="/stocks/itc/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="FMCG">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">ITC Limited</div>
+                    <div class="text-[#829ab1] text-sm">ITC &middot; FMCG</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/indusindbk/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Financial Services">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">IndusInd Bank Limited</div>
+                    <div class="text-[#829ab1] text-sm">INDUSINDBK &middot; Financial Services</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/infy/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Information Technology">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Infosys Limited</div>
+                    <div class="text-[#829ab1] text-sm">INFY &middot; Information Technology</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹1,641</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹2,100</span></span>
+                </div>
+        </a>
+        <a href="/stocks/jswsteel/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Metals &amp; Mining">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">JSW Steel Limited</div>
+                    <div class="text-[#829ab1] text-sm">JSWSTEEL &middot; Metals &amp; Mining</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹1,218</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹1,450</span></span>
+                </div>
+        </a>
+        <a href="/stocks/kotakbank/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Financial Services">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Kotak Mahindra Bank Limited</div>
+                    <div class="text-[#829ab1] text-sm">KOTAKBANK &middot; Financial Services</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹407</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹480</span></span>
+                </div>
+        </a>
+        <a href="/stocks/lt/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Capital Goods">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Larsen &amp; Toubro Limited</div>
+                    <div class="text-[#829ab1] text-sm">LT &middot; Capital Goods</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹3,884</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹4,500</span></span>
+                </div>
+        </a>
+        <a href="/stocks/m&m/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Automobile">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Mahindra &amp; Mahindra Limited</div>
+                    <div class="text-[#829ab1] text-sm">M&amp;M &middot; Automobile</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/maruti/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Automobile">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Maruti Suzuki India Limited</div>
+                    <div class="text-[#829ab1] text-sm">MARUTI &middot; Automobile</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹14,484</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹17,500</span></span>
+                </div>
+        </a>
+        <a href="/stocks/ntpc/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Power">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">NTPC Limited</div>
+                    <div class="text-[#829ab1] text-sm">NTPC &middot; Power</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹356</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹410</span></span>
+                </div>
+        </a>
+        <a href="/stocks/nestleind/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="FMCG">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Nestle India Limited</div>
+                    <div class="text-[#829ab1] text-sm">NESTLEIND &middot; FMCG</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/ongc/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Energy">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Oil &amp; Natural Gas Corporation Limited</div>
+                    <div class="text-[#829ab1] text-sm">ONGC &middot; Energy</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/powergrid/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Power">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Power Grid Corporation of India Limited</div>
+                    <div class="text-[#829ab1] text-sm">POWERGRID &middot; Power</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/reliance/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Energy">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Reliance Industries Limited</div>
+                    <div class="text-[#829ab1] text-sm">RELIANCE &middot; Energy</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹1,395</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹1,750</span></span>
+                </div>
+        </a>
+        <a href="/stocks/sbilife/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Financial Services">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">SBI Life Insurance Company Limited</div>
+                    <div class="text-[#829ab1] text-sm">SBILIFE &middot; Financial Services</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/shriramfin/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Financial Services">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Shriram Finance Limited</div>
+                    <div class="text-[#829ab1] text-sm">SHRIRAMFIN &middot; Financial Services</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/sbin/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Financial Services">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">State Bank of India</div>
+                    <div class="text-[#829ab1] text-sm">SBIN &middot; Financial Services</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹1,065</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹1,250</span></span>
+                </div>
+        </a>
+        <a href="/stocks/sunpharma/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Healthcare">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Sun Pharmaceutical Industries Limited</div>
+                    <div class="text-[#829ab1] text-sm">SUNPHARMA &middot; Healthcare</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹1,610</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹1,850</span></span>
+                </div>
+        </a>
+        <a href="/stocks/tcs/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Information Technology">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Tata Consultancy Services Limited</div>
+                    <div class="text-[#829ab1] text-sm">TCS &middot; Information Technology</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹3,171</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹3,900</span></span>
+                </div>
+        </a>
+        <a href="/stocks/tataconsum/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="FMCG">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Tata Consumer Products Limited</div>
+                    <div class="text-[#829ab1] text-sm">TATACONSUM &middot; FMCG</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/tatamotors/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Automobile">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Tata Motors Limited</div>
+                    <div class="text-[#829ab1] text-sm">TATAMOTORS &middot; Automobile</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹350</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹450</span></span>
+                </div>
+        </a>
+        <a href="/stocks/tatasteel/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Metals &amp; Mining">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Tata Steel Limited</div>
+                    <div class="text-[#829ab1] text-sm">TATASTEEL &middot; Metals &amp; Mining</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/techm/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Information Technology">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Tech Mahindra Limited</div>
+                    <div class="text-[#829ab1] text-sm">TECHM &middot; Information Technology</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/titan/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Consumer Durables">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Titan Company Limited</div>
+                    <div class="text-[#829ab1] text-sm">TITAN &middot; Consumer Durables</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹3,977</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹4,500</span></span>
+                </div>
+        </a>
+        <a href="/stocks/trent/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Consumer Durables">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Trent Limited</div>
+                    <div class="text-[#829ab1] text-sm">TRENT &middot; Consumer Durables</div>
+                </div>
+                <span class="bg-[#334e68]/50 text-[#829ab1] text-xs px-2 py-0.5 rounded-full">Pending</span>
+            </div>
+            
+        </a>
+        <a href="/stocks/ultracemco/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Construction Materials">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">UltraTech Cement Limited</div>
+                    <div class="text-[#829ab1] text-sm">ULTRACEMCO &middot; Construction Materials</div>
+                </div>
+                <span class="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">STRONG BUY</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹12,694</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹15,500</span></span>
+                </div>
+        </a>
+        <a href="/stocks/wipro/" class="stock-card bg-[#1e3a5f]/60 border border-[#334e68] rounded-xl p-5 hover:border-[#e8913a]/50 transition-all block no-underline" data-sector="Information Technology">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <div class="text-white font-semibold">Wipro Limited</div>
+                    <div class="text-[#829ab1] text-sm">WIPRO &middot; Information Technology</div>
+                </div>
+                <span class="bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full font-medium">SELL</span>
+            </div>
+            
+                <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#334e68]">
+                    <span class="text-[#829ab1]">Price: <span class="text-white">₹237</span></span>
+                    <span class="text-[#829ab1]">Target: <span class="text-[#e8913a]">₹200</span></span>
+                </div>
+        </a>
+            </div>
+        </div>
+    </section>
+
+    
+    <footer class="py-8 text-center px-4">
+        <div class="mb-4">
+            <a href="/stocks/" class="text-sm text-[#9fb3c8] hover:text-white transition-colors">Browse All Stocks</a>
+            <span class="text-[#334e68] mx-2">|</span>
+            <a href="/pricing.html" class="text-sm text-[#9fb3c8] hover:text-white transition-colors">Pricing</a>
+            <span class="text-[#334e68] mx-2">|</span>
+            <a href="/" class="text-sm text-[#9fb3c8] hover:text-white transition-colors">Home</a>
+        </div>
+        <p class="text-xs text-[#627d98] leading-relaxed max-w-2xl mx-auto">
+            <span class="font-medium">Disclaimer:</span> This is not financial advice. All information is for educational purposes only. We do not guarantee accuracy or completeness. Always do your own research and consult a qualified financial advisor before making investment decisions.
+        </p>
+        <p class="text-xs text-[#829ab1] mt-3">
+            <a href="mailto:mail@mayaskara.com" class="hover:text-white transition-colors">Contact Us</a>
+        </p>
+    </footer>
+
+    <script>
+        document.querySelectorAll('.sector-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.sector-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const sector = tab.dataset.sector;
+                document.querySelectorAll('.stock-card').forEach(card => {
+                    if (sector === 'all' || card.dataset.sector === sector) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

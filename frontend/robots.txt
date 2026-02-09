@@ -1,15 +1,13 @@
 User-agent: *
 Allow: /
-Allow: /pricing.html
-Allow: /language_preview.html
+Allow: /stocks/
 
 Disallow: /dashboard.html
 Disallow: /generate.html
 Disallow: /report.html
-Disallow: /compare.html
 Disallow: /checkout.html
-Disallow: /subscription.html
 Disallow: /payment-status.html
+Disallow: /subscription.html
 Disallow: /verify-email.html
 Disallow: /reset-password.html
 Disallow: /unsubscribe.html
