@@ -394,11 +394,11 @@ Polish and enhance the live product based on initial usage.
   - Optional: VMC certificate (~$1,500/year)
   - Shows brand logo next to emails in Gmail
 
-#### Content Improvements (Backlog)
-- [ ] Change from address from `noreply@` to `hello@permabullish.com`
-- [ ] Add plain text version to emails (multipart)
-- [ ] Reduce links per email (currently 5-8, target 2-3)
-- [ ] Remove spam trigger words ("Free" in CTAs)
+#### Content Improvements ✅
+- [x] Changed from address from `noreply@` to `hello@permabullish.com`
+- [x] Added plain text version to all emails (multipart via Resend `text` param)
+- [x] Reduced links per email (report cards non-clickable, removed secondary CTAs)
+- [x] Removed spam trigger words ("Free" removed from 5 CTA buttons)
 
 ### Deliverables
 - ✅ Complete email automation system
@@ -1048,114 +1048,88 @@ Launch a US-focused version of Permabullish at us.permabullish.com, providing AI
 ---
 
 ## Phase 9: Performance Optimization
-**Status:** Backlog
+**Status:** 🔄 IN PROGRESS
 **Priority:** Medium
 
 ### Objective
 Improve application performance, reduce latency, and handle scale efficiently.
 
-### 9.1 Caching Improvements
-
-- [ ] **Redis Cache Layer**
-  - Persistent cache across restarts (currently in-memory)
-  - Shared cache across multiple instances
-  - TTL-based expiration for different data types
+### 9.1 Quick Wins (Low Effort, High Impact)
 
 - [ ] **Chart Data Caching**
-  - Cache historical price data (doesn't change)
-  - Only fetch latest day's data on subsequent requests
-  - Reduce Yahoo Finance API calls by 50%
+  - In-memory TTL cache for chart endpoint responses
+  - Cache key: `{ticker}:{period}`, TTL: 5 minutes (intraday freshness)
+  - Historical prices don't change — only latest candle updates
+  - Eliminates repeated Yahoo Finance API calls for same stock/period
+  - Moving averages cached with chart data (no recalculation)
+  - Estimated reduction: ~90% of chart API calls
 
-- [ ] **Pre-warm Popular Stocks**
-  - Cache top 50 Nifty stocks on startup
-  - Background refresh during low-traffic periods
+- [ ] **Database Indexes**
+  - `report_cache(ticker, exchange)` — report lookups on every generation
+  - `user_reports(user_id)` — dashboard report history
+  - `watchlist(user_id)` — watchlist listing
+  - `watchlist(user_id, ticker, exchange)` — watchlist membership check
+  - Zero-risk, instant query speedup on all dashboard/report pages
 
-### 9.2 API Response Optimization
+- [ ] **GZip Compression (API)**
+  - Add `GZipMiddleware` to FastAPI — one line of code
+  - ~70% reduction in API response transfer size
+  - Especially impactful for report HTML responses (large payloads)
 
-- [ ] **Parallel Provider Calls**
-  - Fetch Yahoo + Groww simultaneously
-  - Use first successful response
-  - Cut latency in half when primary fails
+- [ ] **Static Asset Cache Headers**
+  - Increase `max-age` from 3600 (1 hour) to 86400 (1 day) in `render.yaml`
+  - CSS/JS/images rarely change — longer cache = fewer requests
+  - Use query string cache-busting for deployments if needed
 
-- [ ] **Response Compression**
-  - Enable Gzip/Brotli for all responses
-  - ~70% reduction in transfer size
+### 9.2 Medium Effort (Half-Day Each)
 
-- [ ] **Lazy Loading**
-  - Return basic data immediately
-  - Stream fundamentals asynchronously
+- [ ] **Parallel Provider Fallback**
+  - Currently: Yahoo → Groww → Tickertape → Alpha Vantage **sequentially** (10-15s timeout each)
+  - Fix: Try all available providers in parallel via ThreadPoolExecutor
+  - Use first successful response, cancel the rest
+  - Worst-case latency: 15s (one timeout) instead of 45s+ (three timeouts)
 
-### 9.3 Report Generation
+- [ ] **In-Memory Report Cache (LRU)**
+  - TTLCache for recently viewed reports (last 100-200 reports)
+  - Avoids PostgreSQL round-trip for repeat views within same session
+  - Especially helpful for shared report links (viral traffic pattern)
 
-- [ ] **Background Job Queue**
-  - Move report generation to Celery/RQ worker
-  - Non-blocking API responses
-  - Better handling of concurrent requests
+- [ ] **Comparison Analysis Parallelization**
+  - Stock data fetching already parallel (ThreadPoolExecutor)
+  - But individual stock analyses are generated sequentially
+  - Fix: Generate both analyses in parallel when neither is cached
 
-- [ ] **Incremental Updates**
-  - Only regenerate sections that changed
-  - Cache AI analysis separately from data
-
-- [ ] **Template Caching**
-  - Pre-compile Jinja templates
-  - Reduce render time
-
-### 9.4 Frontend Optimization
-
-- [ ] **Asset Optimization**
-  - Minify CSS/JS
-  - WebP images with lazy loading
-  - Critical CSS inlining
-
-- [ ] **Chart Library CDN**
-  - Load Lightweight Charts from CDN
-  - Remove inline script injection
-
-- [ ] **Service Worker**
-  - Cache static assets
-  - Offline support for viewed reports
-
-### 9.5 Database Optimization
-
-- [ ] **Query Optimization**
-  - Add indexes for frequent lookups
-  - Analyze slow queries with EXPLAIN
-
-- [ ] **Connection Pooling**
-  - PgBouncer for PostgreSQL
-  - Reduce connection overhead
-
-- [ ] **Read Replicas** (if needed)
-  - Separate read-heavy operations
-  - Scale report viewing independently
-
-### 9.6 Infrastructure
+### 9.3 Larger Efforts (1-2 Days Each)
 
 - [ ] **CDN for Static Assets**
-  - Cloudflare or CloudFront
-  - Edge caching globally
+  - Cloudflare free tier in front of `permabullish.com`
+  - Global edge caching, automatic compression, DDoS protection
+  - Reduces latency for users outside the Render region
 
-- [ ] **Auto-scaling**
-  - Multiple Render instances
-  - Load balancing
+- [ ] **Background Report Generation**
+  - Return "generating..." status immediately, poll for completion
+  - Frees Gunicorn workers for other requests during AI generation
+  - Better UX with progress indicator instead of blocking wait
 
-- [ ] **Health Checks**
-  - Database connectivity monitoring
-  - External API status checks
-  - Automated alerts
+- [ ] **Increase Gunicorn Workers**
+  - Currently 2 workers — only 2 concurrent report generations before queueing
+  - Increase to 4 workers (depends on Render plan memory)
+  - Doubles concurrent request throughput
 
-### Quick Wins (Low Effort, High Impact)
-1. Chart data caching - Historical prices don't change
-2. Response compression - 70% smaller responses
-3. Parallel provider calls - Halve fallback latency
-4. Pre-warm top 50 stocks - Faster popular stock lookups
+### 9.4 Future / Backlog
+
+- [ ] **Redis Cache Layer** — Persistent cache across restarts, shared across instances
+- [ ] **Pre-warm Popular Stocks** — Cache top 50 Nifty stocks on startup
+- [ ] **Connection Pooling** — PgBouncer for PostgreSQL
+- [ ] **Service Worker** — Offline support for viewed reports
+- [ ] **Asset Optimization** — Minify CSS/JS, WebP images, critical CSS inlining
 
 ### Deliverables
-- [ ] Redis caching layer
-- [ ] Optimized API response times (<500ms p95)
-- [ ] Background job processing
-- [ ] CDN-served static assets
-- [ ] Comprehensive monitoring
+- [ ] Chart endpoint cached (90% fewer Yahoo Finance calls)
+- [ ] Database indexes on high-traffic queries
+- [ ] API response compression enabled
+- [ ] Provider fallback parallelized
+- [ ] Optimized API response times
 
 ---
 

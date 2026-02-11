@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import json
 import logging
+import time
 
 from config import NSE_SUFFIX, BSE_SUFFIX, ALPHA_VANTAGE_API_KEY
 from stock_providers import get_stock_manager, StockDataManager
@@ -13,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 # Cache for stock list
 _stock_list_cache: Optional[List[Dict]] = None
+
+# In-memory cache for chart data: {cache_key: {"data": response, "timestamp": time.time()}}
+_chart_cache: Dict[str, Dict[str, Any]] = {}
+CHART_CACHE_TTL = 300  # 5 minutes
 
 
 def _load_stock_list() -> List[Dict]:
@@ -578,7 +583,7 @@ def calculate_upside(current_price: float, target_price: float) -> float:
 
 def fetch_chart_data(symbol: str, exchange: str = "NSE", period: str = "1y") -> Optional[Dict[str, Any]]:
     """
-    Fetch historical price data for charts.
+    Fetch historical price data for charts. Results are cached in-memory for 5 minutes.
 
     Args:
         symbol: Stock ticker symbol
@@ -588,6 +593,13 @@ def fetch_chart_data(symbol: str, exchange: str = "NSE", period: str = "1y") -> 
     Returns:
         Dictionary with OHLC data, volume, and calculated indicators
     """
+    # Check in-memory cache
+    cache_key = f"{symbol.upper()}:{exchange.upper()}:{period}"
+    cached = _chart_cache.get(cache_key)
+    if cached and (time.time() - cached["timestamp"]) < CHART_CACHE_TTL:
+        logger.info(f"Chart cache HIT for {cache_key}")
+        return cached["data"]
+
     ticker_symbol = get_ticker_symbol(symbol, exchange)
 
     # Map period to yfinance format
@@ -662,7 +674,7 @@ def fetch_chart_data(symbol: str, exchange: str = "NSE", period: str = "1y") -> 
         current_ma50 = round(ma50[-1]["value"], 2) if ma50 else None
         current_ma200 = round(ma200[-1]["value"], 2) if ma200 else None
 
-        return {
+        result = {
             "symbol": symbol,
             "exchange": exchange,
             "period": period,
@@ -679,6 +691,19 @@ def fetch_chart_data(symbol: str, exchange: str = "NSE", period: str = "1y") -> 
                 "data_points": len(price_data)
             }
         }
+
+        # Store in cache
+        _chart_cache[cache_key] = {"data": result, "timestamp": time.time()}
+        logger.info(f"Chart cache MISS for {cache_key}, cached ({len(_chart_cache)} entries)")
+
+        # Evict stale entries periodically (keep cache bounded)
+        if len(_chart_cache) > 500:
+            now = time.time()
+            stale_keys = [k for k, v in _chart_cache.items() if now - v["timestamp"] > CHART_CACHE_TTL]
+            for k in stale_keys:
+                del _chart_cache[k]
+
+        return result
 
     except Exception as e:
         logger.error(f"Failed to fetch chart data for {symbol}: {e}")
