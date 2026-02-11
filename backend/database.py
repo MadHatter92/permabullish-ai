@@ -339,6 +339,11 @@ def init_database():
                 CREATE INDEX IF NOT EXISTS idx_fundamentals_symbol ON stock_fundamentals(symbol)
             """)
 
+            # Performance indexes for high-traffic queries
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_report_cache_ticker_exchange ON report_cache(ticker, exchange)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_reports_user_id ON user_reports(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_watchlist_user_id ON watchlist(user_id)")
+
             # Comparison cache - stores comparison results
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS comparison_cache (
@@ -594,6 +599,11 @@ def init_database():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            # Performance indexes for high-traffic queries
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_report_cache_ticker_exchange ON report_cache(ticker, exchange)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_reports_user_id ON user_reports(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_watchlist_user_id ON watchlist(user_id)")
 
             # Comparison cache - stores comparison results
             cursor.execute("""

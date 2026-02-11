@@ -5,6 +5,7 @@ Generate institutional-quality equity research reports for Indian stocks.
 
 from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
@@ -64,6 +65,9 @@ app = FastAPI(
     redoc_url=None if ENVIRONMENT == "production" else "/redoc",
     openapi_url=None if ENVIRONMENT == "production" else "/openapi.json",
 )
+
+# GZip compression for API responses (minimum 500 bytes to compress)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # CORS middleware for frontend
 app.add_middleware(
