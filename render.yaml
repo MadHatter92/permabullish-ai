@@ -59,6 +59,12 @@ services:
         value: public, max-age=86400
     routes:
       - type: redirect
+        source: /broker
+        destination: /brokers/
+      - type: redirect
+        source: /broker/
+        destination: /brokers/
+      - type: redirect
         source: /brokers
         destination: /brokers/
       - type: rewrite
@@ -119,6 +125,12 @@ services:
     rootDir: frontend
     staticPublishPath: .
     routes:
+      - type: redirect
+        source: /broker
+        destination: /brokers/
+      - type: redirect
+        source: /broker/
+        destination: /brokers/
       - type: redirect
         source: /brokers
         destination: /brokers/

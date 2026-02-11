@@ -97,10 +97,69 @@ The product operates on a subscription model with tiered access, allowing users 
 ## 4. Target Users
 
 - **Primary:** Indian retail investors researching NSE/BSE stocks
-- **Secondary:** Financial advisors, wealth managers, and investment enthusiasts
-- **Tertiary:** Stock brokers, sub-brokers, and Associated Persons (APs) serving retail clients
+- **Secondary:** Sub-brokers, Authorized Persons (APs), and independent financial intermediaries
+- **Tertiary:** Financial advisors, wealth managers, and investment enthusiasts
 - **Geography:** India (initial focus)
 - **Languages:** English, Hindi (हिंदी), Gujarati (ગુજરાતી), Kannada (ಕನ್ನಡ)
+
+### 4.1 Broker / AP Segment
+
+**Market Size:** India has an estimated 50,000-100,000+ Authorized Persons (APs) across all brokerages. Angel One alone has 11,000+ APs. ICICI Securities has 1,484 APs across 30 states.
+
+**Who they are:** Sub-brokers and APs are independent salespeople who pitch stocks to retail clients. They work under parent brokerages (Angel One, ICICI Direct, Motilal Oswal, HDFC Securities, Kotak, IIFL, etc.) and earn commissions on trades.
+
+**Their core problem:** They have no research team. Parent brokerages provide centralized research reports covering a limited universe of stocks, in English only. When a client calls about a stock not in coverage, the AP Googles it and wings it. Most of their clients speak Hindi, Gujarati, or other vernacular languages and can't read English research from platforms like Screener or Trendlyne.
+
+**What they need:** On-demand, client-ready research content they can generate in 60 seconds and forward on WhatsApp — in the language their client speaks.
+
+**Landing page:** `permabullish.com/brokers` (same product, broker-focused messaging)
+
+---
+
+## 4.2 Market Positioning & Competitive Landscape
+
+### Category: Vertical AI Content Enablement
+
+Permabullish sits at the intersection of three established categories:
+
+| Category | What it means | How Permabullish fits |
+|----------|---------------|----------------------|
+| **Sales Enablement** | Tools that help salespeople sell (Seismic, Highspot — $6B+ market, 16-20% CAGR) | Helps sub-brokers/APs sell more effectively to clients |
+| **Content Generation** | On-demand client-facing deliverables (Storydoc, Better Proposals) | Generates the actual research report, not just formats |
+| **Research-as-a-Service** | Domain-specific intelligence, professionally packaged (CFRA RaaS) | Embeds deep financial analysis — valuation, technicals, risk assessment |
+
+Most sales enablement tools are **horizontal** (work across industries) and automate the *format* (slides, proposals). Permabullish is **vertical** — it automates both the *content intelligence* and the *format* for one specific domain.
+
+### Closest Analogues in Other Industries
+
+| Industry | Tool | What it does | Parallel to Permabullish |
+|----------|------|--------------|--------------------------|
+| **Real Estate** | Cloud CMA (Lone Wolf) | Pulls MLS data, generates branded property analysis reports for agents to share with clients | Closest analogue — "professional property report in 60 seconds" |
+| **Insurance** | OPUS Illustrations, EZLynx | Generates side-by-side product comparisons for agents to share with prospects | Similar output format — comparison reports |
+| **Pharma** | Veeva CLM | Provides compliant, pre-approved content for reps to share with doctors via iPad | Similar distribution model — professional content for field salespeople |
+| **Automotive** | Salesbook | iPad app that generates personalized vehicle comparison offers during showroom visits | Similar real-time generation during client interaction |
+
+### What Major Indian Brokerages Provide APs Today
+
+| Brokerage | What APs Get | Key Limitations |
+|-----------|-------------|-----------------|
+| **Angel One (NXT)** | Client management dashboard, generic research reports, marketing templates | Centralized content, English only, not on-demand per-stock |
+| **Motilal Oswal** | Pre-written research reports, training platform (Paathshala) | Covers limited stock universe, English only |
+| **ICICI Direct** | Research reports through platform, 3-in-1 account | English only, not formatted for WhatsApp distribution |
+
+**The gap Permabullish fills:** No brokerage offers on-demand, vernacular, WhatsApp-ready research for any stock. Adjacent tools (Smallcase, Tickertape, Trendlyne, StockInsights.ai) are investor/analyst tools — none are designed as sales enablement for the person pitching the client.
+
+### Permabullish Differentiation
+
+| Dimension | Traditional Brokerage Tools | Permabullish |
+|-----------|---------------------------|--------------|
+| Content creation | Human-created by central team | AI-generated on demand |
+| Stock coverage | Limited universe (few hundred) | 3,000+ NSE/BSE stocks |
+| Languages | English only | Hindi, Gujarati, Kannada, English |
+| Target user | Institutional analysts | Independent sub-brokers/APs |
+| Distribution | Broker portal, email | WhatsApp (India's primary channel) |
+| Time to value | Pre-written, may be stale | 60 seconds, real-time data |
+| Pricing | Bundled with brokerage fees | Affordable for individual APs |
 
 ---
 
