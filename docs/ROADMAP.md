@@ -1056,30 +1056,25 @@ Improve application performance, reduce latency, and handle scale efficiently.
 
 ### 9.1 Quick Wins (Low Effort, High Impact)
 
-- [ ] **Chart Data Caching**
+- [x] **Chart Data Caching** ✅
   - In-memory TTL cache for chart endpoint responses
-  - Cache key: `{ticker}:{period}`, TTL: 5 minutes (intraday freshness)
-  - Historical prices don't change — only latest candle updates
-  - Eliminates repeated Yahoo Finance API calls for same stock/period
-  - Moving averages cached with chart data (no recalculation)
+  - Cache key: `{ticker}:{exchange}:{period}`, TTL: 5 minutes
+  - Eliminates repeated Yahoo Finance API calls and MA recalculations
+  - Auto-evicts stale entries when cache exceeds 500 entries
   - Estimated reduction: ~90% of chart API calls
 
-- [ ] **Database Indexes**
+- [x] **Database Indexes** ✅
   - `report_cache(ticker, exchange)` — report lookups on every generation
   - `user_reports(user_id)` — dashboard report history
   - `watchlist(user_id)` — watchlist listing
-  - `watchlist(user_id, ticker, exchange)` — watchlist membership check
-  - Zero-risk, instant query speedup on all dashboard/report pages
+  - Added to both Postgres and SQLite init, created on next deploy/restart
 
-- [ ] **GZip Compression (API)**
-  - Add `GZipMiddleware` to FastAPI — one line of code
+- [x] **GZip Compression (API)** ✅
+  - `GZipMiddleware` added to FastAPI (minimum_size=500 bytes)
   - ~70% reduction in API response transfer size
-  - Especially impactful for report HTML responses (large payloads)
 
-- [ ] **Static Asset Cache Headers**
-  - Increase `max-age` from 3600 (1 hour) to 86400 (1 day) in `render.yaml`
-  - CSS/JS/images rarely change — longer cache = fewer requests
-  - Use query string cache-busting for deployments if needed
+- [x] **Static Asset Cache Headers** ✅
+  - Increased `max-age` from 3600 (1 hour) to 86400 (1 day) in `render.yaml`
 
 ### 9.2 Medium Effort (Half-Day Each)
 
