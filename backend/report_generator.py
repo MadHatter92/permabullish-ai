@@ -239,9 +239,12 @@ Remember: Great analysts have OPINIONS. Don't hedge everything. Take a stand!
 Return ONLY valid JSON, no other text."""
 
     try:
+        # Non-English scripts (Hindi, Gujarati, Kannada) use 2-4x more tokens per character
+        token_limit = 4096 if language != 'en' else 2048
+
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=2000,
+            max_tokens=token_limit,
             messages=[
                 {"role": "user", "content": prompt}
             ]
@@ -254,6 +257,10 @@ Return ONLY valid JSON, no other text."""
 
         # Log token usage
         print(f"[TOKEN USAGE] Input: {input_tokens}, Output: {output_tokens}, Total: {total_tokens}")
+
+        # Check if response was truncated
+        if response.stop_reason == "max_tokens":
+            print(f"[WARNING] Response truncated at {token_limit} tokens for language '{language}'. Output may be incomplete.")
 
         # Extract JSON from response
         response_text = response.content[0].text.strip()
@@ -624,9 +631,12 @@ IMPORTANT:
 Return ONLY valid JSON, no other text."""
 
     try:
+        # Non-English scripts need more tokens
+        token_limit = 3072 if language != 'en' else 1500
+
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=1500,
+            max_tokens=token_limit,
             messages=[
                 {"role": "user", "content": prompt}
             ]
