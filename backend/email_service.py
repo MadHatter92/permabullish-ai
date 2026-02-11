@@ -3,6 +3,7 @@ Email Service for Permabullish
 Handles transactional and re-engagement emails via Resend.
 """
 
+import re
 import resend
 from typing import Optional, List, Dict
 from datetime import datetime
@@ -120,6 +121,27 @@ def format_report_cards(reports: List[Dict], email_type: str = "transactional") 
     return cards_html
 
 
+def html_to_plain_text(html: str) -> str:
+    """Convert HTML email content to plain text for multipart sending."""
+    text = html
+    # Convert links to "text (url)" format
+    text = re.sub(r'<a[^>]+href="([^"]*)"[^>]*>(.*?)</a>', r'\2 (\1)', text)
+    # Convert line breaks and block elements to newlines
+    text = re.sub(r'<br\s*/?>', '\n', text)
+    text = re.sub(r'</p>', '\n\n', text)
+    text = re.sub(r'</li>', '\n', text)
+    text = re.sub(r'<li[^>]*>', '  - ', text)
+    text = re.sub(r'</h[1-6]>', '\n\n', text)
+    text = re.sub(r'<hr[^>]*>', '\n---\n', text)
+    # Strip all remaining HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    # Clean up HTML entities
+    text = text.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+    # Collapse multiple blank lines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
 def send_email(to_email: str, subject: str, html_content: str) -> bool:
     """Send an email via Resend with proper headers for deliverability."""
     import urllib.parse
@@ -138,6 +160,7 @@ def send_email(to_email: str, subject: str, html_content: str) -> bool:
             "to": [to_email],
             "subject": subject,
             "html": html_content,
+            "text": html_to_plain_text(html_content),
             "headers": {
                 # List-Unsubscribe header helps with Gmail deliverability
                 "List-Unsubscribe": f"<{unsubscribe_url}>",
