@@ -493,8 +493,8 @@ def send_subscription_expiry_email(
 
 
 # =============================================================================
-# RE-ENGAGEMENT EMAILS (14 Templates + Weekly)
-# Interspersed: Generic, Broker-focused, Hindi, and Gujarati
+# RE-ENGAGEMENT EMAILS (16 Templates + Weekly)
+# Interspersed: Generic, Broker-focused, Hindi, Gujarati, and Kannada
 # =============================================================================
 
 def get_reengagement_template(template_num: int, first_name: str, sample_reports: List[Dict], user_email: str = "") -> tuple:
@@ -511,6 +511,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
     gen_url = utm_url(f"{BASE_URL}/generate.html", "reengagement", f"t{template_num}")
     gen_hi_url = utm_url(f"{BASE_URL}/generate.html?lang=hi", "reengagement", f"t{template_num}")
     gen_gu_url = utm_url(f"{BASE_URL}/generate.html?lang=gu", "reengagement", f"t{template_num}")
+    gen_kn_url = utm_url(f"{BASE_URL}/generate.html?lang=kn", "reengagement", f"t{template_num}")
     pricing_url = utm_url(f"{BASE_URL}/pricing.html", "reengagement", f"t{template_num}")
 
     templates = {
@@ -952,6 +953,72 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             </p>
             """
         ),
+
+        # Template 16: Kannada - Introduction
+        16: (
+            "ಈಗ ಕನ್ನಡದಲ್ಲಿ AI ಸ್ಟಾಕ್ ರಿಸರ್ಚ್",
+            f"""
+            <h2>ನಮಸ್ಕಾರ,</h2>
+
+            <p><strong>ಈಗ AI ಸ್ಟಾಕ್ ರಿಸರ್ಚ್ ಕನ್ನಡದಲ್ಲಿ ಲಭ್ಯವಿದೆ.</strong></p>
+
+            <p>Permabullish ಈಗ ಕನ್ನಡದಲ್ಲಿ comprehensive stock reports generate ಮಾಡುತ್ತದೆ.</p>
+
+            <p>ನಮ್ಮ AI ರಿಪೋರ್ಟ್‌ಗಳಲ್ಲಿ ಇವೆ:</p>
+            <ul>
+                <li><strong>ತ್ರೈಮಾಸಿಕ ಫಲಿತಾಂಶಗಳ ವಿಶ್ಲೇಷಣೆ</strong> — Quarterly earnings analysis</li>
+                <li><strong>ಮೌಲ್ಯಮಾಪನ ಮೆಟ್ರಿಕ್ಸ್</strong> — P/E, P/B ಮತ್ತು industry comparison</li>
+                <li><strong>AI Target Price</strong> — 12 ತಿಂಗಳ ಗುರಿ ಬೆಲೆ</li>
+                <li><strong>ರಿಸ್ಕ್ ಅಸೆಸ್‌ಮೆಂಟ್</strong> — ಹೂಡಿಕೆಯ ಅಪಾಯಗಳು</li>
+            </ul>
+
+            <p>ನೀವು ನಿಮಗಾಗಿ ರಿಸರ್ಚ್ ಮಾಡುತ್ತಿರಲಿ ಅಥವಾ clients ಗಾಗಿ — <strong>ಕನ್ನಡದಲ್ಲಿ ಅರ್ಥಮಾಡಿಕೊಳ್ಳುವುದು ಸುಲಭ.</strong></p>
+
+            <p style="text-align: center;">
+                <a href="{gen_kn_url}" class="button">ಕನ್ನಡದಲ್ಲಿ ರಿಪೋರ್ಟ್ ರಚಿಸಿ</a>
+            </p>
+
+            <h3>AI ರಿಸರ್ಚ್ ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ ನೋಡಿ:</h3>
+            {report_cards}
+
+            <p style="text-align: center; color: #1e3a5f; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                ಪ್ರತಿಯೊಬ್ಬ ಹೂಡಿಕೆದಾರರಿಗೂ ಅರ್ಥವಾಗುವ ರಿಸರ್ಚ್ ಸಿಗಬೇಕು.
+            </p>
+            """
+        ),
+
+        # Template 17: Kannada - Broker Angle
+        17: (
+            "ನಿಮ್ಮ Kannada-speaking clients ಗಾಗಿ",
+            f"""
+            <h2>ನಮಸ್ಕಾರ,</h2>
+
+            <p>ನಿಮ್ಮ ಎಷ್ಟು clients ಕನ್ನಡದಲ್ಲಿ stock analysis ಓದಲು ಇಷ್ಟಪಡುತ್ತಾರೆ?</p>
+
+            <p>Karnataka ನ ಹೂಡಿಕೆದಾರರಿಗೆ — Bengaluru, Mysuru, Hubli, Mangaluru — ಕನ್ನಡ ಕೇವಲ comfortable ಅಲ್ಲ,
+            ಅವರು ಹಣದ ಬಗ್ಗೆ ಯೋಚಿಸುವ ಭಾಷೆ ಅದು.</p>
+
+            <p><strong>ಈಗ ನೀವು ನೀಡಬಹುದು:</strong></p>
+            <ul>
+                <li>ಕನ್ನಡದಲ್ಲಿ AI research reports</li>
+                <li>Institutional-quality analysis</li>
+                <li>Target prices ಮತ್ತು risk assessment ಅವರಿಗೆ ಅರ್ಥವಾಗುವಂತೆ</li>
+            </ul>
+
+            <p>Clients research ಅನ್ನು ನಿಜವಾಗಿ ಅರ್ಥಮಾಡಿಕೊಂಡಾಗ, ಅವರು faster decisions ತೆಗೆದುಕೊಳ್ಳುತ್ತಾರೆ.</p>
+
+            <p style="text-align: center;">
+                <a href="{gen_kn_url}" class="button">ಕನ್ನಡದಲ್ಲಿ ರಿಪೋರ್ಟ್ ರಚಿಸಿ</a>
+            </p>
+
+            <h3>AI ರಿಸರ್ಚ್ ನೋಡಿ:</h3>
+            {report_cards}
+
+            <p style="text-align: center; color: #1e3a5f; margin: 20px 0;">
+                ನಿಮ್ಮ clients ಗೆ ಅವರಿಗೆ ಅರ್ಥವಾಗುವ research ನೀಡಿ.
+            </p>
+            """
+        ),
     }
 
     # Default to template 1 if invalid
@@ -999,12 +1066,14 @@ def get_template_for_day(days_since_signup: int, email_count: int) -> int:
     """
     Determine which template to use based on days since signup and emails sent.
 
-    Days 1-14: Daily emails, rotate templates 1-14 (generic, broker, Hindi, Gujarati)
-    Days 15+: Weekly emails, use template 15
+    Days 1-16: Daily emails, rotate templates 1-14, 16, 17 (generic, broker, Hindi, Gujarati, Kannada)
+    Days 17+: Weekly emails, use template 15
     """
-    if days_since_signup <= 14:
-        # Daily phase: rotate templates 1-14
-        return (email_count % 14) + 1
+    # Daily templates: 1-14 (original) + 16-17 (Kannada), skip 15 (weekly digest)
+    daily_templates = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17]
+    if days_since_signup <= len(daily_templates):
+        # Daily phase: rotate through daily templates
+        return daily_templates[email_count % len(daily_templates)]
     else:
         # Weekly phase: use template 15
         return 15

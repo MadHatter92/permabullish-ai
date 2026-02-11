@@ -160,6 +160,10 @@
                         class="lang-btn px-3 py-1.5 text-sm font-medium bg-white text-gray-600 hover:bg-gray-50 transition-all border-l border-gray-200">
                         ગુજરાતી
                     </button>
+                    <button type="button" onclick="selectLanguage('kn')" id="lang-kn"
+                        class="lang-btn px-3 py-1.5 text-sm font-medium bg-white text-gray-600 hover:bg-gray-50 transition-all border-l border-gray-200">
+                        ಕನ್ನಡ
+                    </button>
                 </div>
             </div>
 
@@ -752,7 +756,7 @@
                     comparisonResult.comparison_cache_id = cached.id;
 
                     // Set language from cached comparison
-                    if (cached.language && ['en', 'hi', 'gu'].includes(cached.language)) {
+                    if (cached.language && ['en', 'hi', 'gu', 'kn'].includes(cached.language)) {
                         selectLanguage(cached.language);
                     }
 
@@ -779,7 +783,7 @@
             loadCachedComparison(paramId);
         } else {
             // Normal flow: pre-select stocks if provided
-            if (paramLang && ['en', 'hi', 'gu'].includes(paramLang)) {
+            if (paramLang && ['en', 'hi', 'gu', 'kn'].includes(paramLang)) {
                 selectLanguage(paramLang);
             }
             if (paramA) {

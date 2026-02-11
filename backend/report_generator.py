@@ -110,6 +110,14 @@ Generate the ENTIRE report in Gujarati language using Gujarati script.
 - Keep numbers, percentages, and currency symbols (₹, %) in standard format
 - Write in natural, conversational Gujarati that a retail investor would understand
 - Example: "HDFC Bank ભારતની સૌથી મોટી private sector bank છે જે consistent growth અને strong asset quality માટે જાણીતી છે।"
+''',
+    'kn': '''
+LANGUAGE INSTRUCTION - KANNADA (ಕನ್ನಡ):
+Generate the ENTIRE report in Kannada language using Kannada script.
+- Keep these terms in English: company names, ticker symbols, P/E, P/B, ROE, ROCE, CAGR, YoY, QoQ, EPS, NPA, CASA, ARPU, EBITDA, FII, DII, IPO, M&A, and all financial abbreviations
+- Keep numbers, percentages, and currency symbols (₹, %) in standard format
+- Write in natural, conversational Kannada that a retail investor would understand
+- Example: "Infosys ಭಾರತದ ಅತಿದೊಡ್ಡ IT services ಕಂಪನಿಗಳಲ್ಲಿ ಒಂದಾಗಿದ್ದು, consistent revenue growth ಮತ್ತು strong client relationships ಗೆ ಹೆಸರುವಾಸಿಯಾಗಿದೆ."
 '''
 }
 
@@ -121,7 +129,7 @@ def generate_ai_analysis(stock_data: Dict[str, Any], language: str = 'en') -> Di
 
     Args:
         stock_data: Dictionary containing stock information
-        language: Language code - 'en' (English), 'hi' (Hindi), 'gu' (Gujarati)
+        language: Language code - 'en' (English), 'hi' (Hindi), 'gu' (Gujarati), 'kn' (Kannada)
     """
     print(f"[ReportGenerator] Generating analysis with language: {language}")
 
@@ -729,7 +737,7 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any], l
     Args:
         stock_data: Dictionary containing stock information
         analysis: AI-generated analysis
-        language: Language code - 'en' (English), 'hi' (Hindi), 'gu' (Gujarati)
+        language: Language code - 'en' (English), 'hi' (Hindi), 'gu' (Gujarati), 'kn' (Kannada)
     """
 
     basic = stock_data.get("basic_info", {})
@@ -802,20 +810,23 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any], l
     report_date = datetime.now().strftime("%B %d, %Y")
 
     # Language-specific settings
-    html_lang = {'en': 'en', 'hi': 'hi', 'gu': 'gu'}.get(language, 'en')
+    html_lang = {'en': 'en', 'hi': 'hi', 'gu': 'gu', 'kn': 'kn'}.get(language, 'en')
 
-    # Extra fonts for Hindi/Gujarati
+    # Extra fonts for Hindi/Gujarati/Kannada
     extra_fonts = ''
     if language == 'hi':
         extra_fonts = '&family=Noto+Sans+Devanagari:wght@400;500;600;700'
     elif language == 'gu':
         extra_fonts = '&family=Noto+Sans+Gujarati:wght@400;500;600;700'
+    elif language == 'kn':
+        extra_fonts = '&family=Noto+Sans+Kannada:wght@400;500;600;700'
 
     # Font family based on language
     font_family = {
         'en': "'DM Sans', 'Inter', system-ui, -apple-system, sans-serif",
         'hi': "'Noto Sans Devanagari', 'DM Sans', 'Inter', system-ui, sans-serif",
-        'gu': "'Noto Sans Gujarati', 'DM Sans', 'Inter', system-ui, sans-serif"
+        'gu': "'Noto Sans Gujarati', 'DM Sans', 'Inter', system-ui, sans-serif",
+        'kn': "'Noto Sans Kannada', 'DM Sans', 'Inter', system-ui, sans-serif"
     }.get(language, "'DM Sans', 'Inter', system-ui, -apple-system, sans-serif")
 
     html = f'''<!DOCTYPE html>

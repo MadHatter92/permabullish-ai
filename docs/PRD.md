@@ -100,7 +100,7 @@ The product operates on a subscription model with tiered access, allowing users 
 - **Secondary:** Financial advisors, wealth managers, and investment enthusiasts
 - **Tertiary:** Stock brokers, sub-brokers, and Associated Persons (APs) serving retail clients
 - **Geography:** India (initial focus)
-- **Languages:** English, Hindi (हिंदी), Gujarati (ગુજરાતી)
+- **Languages:** English, Hindi (हिंदी), Gujarati (ગુજરાતી), Kannada (ಕನ್ನಡ)
 
 ---
 
@@ -129,7 +129,7 @@ The product operates on a subscription model with tiered access, allowing users 
 - Cached reports are shared across all users for efficiency
 
 **Languages:**
-- English, Hindi, Gujarati (toggle selection on generate page)
+- English, Hindi, Gujarati, Kannada (toggle selection on generate page)
 
 ### 5.5 Stock Comparison Tool
 
@@ -203,7 +203,7 @@ The product operates on a subscription model with tiered access, allowing users 
 |---------|-------------|----------------|
 | **Retail Investors** | Individual stock traders | Educational, feature highlights |
 | **Brokers & Sub-Brokers** | Stock brokers, sub-brokers, Associated Persons (APs) | Client tools, time savings, competitive edge |
-| **Regional Users** | Hindi and Gujarati speaking investors | Multilingual content, regional relevance |
+| **Regional Users** | Hindi, Gujarati, and Kannada speaking investors | Multilingual content, regional relevance |
 
 ### 6.3 Pricing (INR)
 
@@ -243,7 +243,7 @@ The product operates on a subscription model with tiered access, allowing users 
 | **Re-engagement** | Inactivity (7+ days) | Win back inactive users |
 | **Expiry Reminder** | Subscription ending | Encourage renewal |
 
-### 7.2 Re-engagement Email Templates (14 + 1 Weekly)
+### 7.2 Re-engagement Email Templates (16 + 1 Weekly)
 
 | # | Type | Subject | Audience |
 |---|------|---------|----------|
@@ -262,6 +262,8 @@ The product operates on a subscription model with tiered access, allowing users 
 | 13 | Generic | Did you know Permabullish can do this? | All |
 | 14 | Broker | Better research = more client trades | Brokers, Sub-brokers, APs |
 | 15 | Weekly | Weekly: Your AI market insights | All (weekly digest) |
+| 16 | Kannada | ಈಗ ಕನ್ನಡದಲ್ಲಿ AI ಸ್ಟಾಕ್ ರಿಸರ್ಚ್ | Kannada speakers |
+| 17 | Kannada | ನಿಮ್ಮ Kannada-speaking clients ಗಾಗಿ | Kannada speakers (broker angle) |
 
 ### 7.3 Re-engagement Eligibility Criteria
 
@@ -289,15 +291,15 @@ A registered user receives re-engagement emails only when ALL of the following c
 
 ### 7.4 Email Schedule
 
-- **Days 1-14 after signup (Daily Phase):**
+- **Days 1-16 after signup (Daily Phase):**
   - One email per day maximum
   - Only if inactive for 7+ days
-  - Templates 1-14 rotate in sequence
-- **Days 15-180 after signup (Weekly Phase):**
+  - Templates 1-14, 16-17 rotate in sequence
+- **Days 17-180 after signup (Weekly Phase):**
   - One email per week maximum
   - Only if inactive for 7+ days
   - Template 15 (weekly digest) used
-- Templates rotate: 1→2→3→...→14→1→...
+- Templates rotate: 1→2→3→...→14→16→17→1→...
 
 ### 7.5 External Contacts System
 

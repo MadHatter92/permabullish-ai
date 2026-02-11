@@ -208,6 +208,10 @@
                         class="lang-btn px-3 py-1.5 text-sm font-medium bg-white text-gray-600 hover:bg-gray-50 transition-all border-l border-gray-200">
                         ગુજરાતી
                     </button>
+                    <button type="button" onclick="selectLanguage('kn')" id="lang-kn"
+                        class="lang-btn px-3 py-1.5 text-sm font-medium bg-white text-gray-600 hover:bg-gray-50 transition-all border-l border-gray-200">
+                        ಕನ್ನಡ
+                    </button>
                 </div>
             </div>
 
@@ -351,6 +355,10 @@
             const ticker = urlParams.get('ticker');
             const exchange = urlParams.get('exchange') || 'NSE';
             forceRegenerate = urlParams.get('regenerate') === 'true';
+            const paramLang = urlParams.get('lang');
+            if (paramLang && ['en', 'hi', 'gu', 'kn'].includes(paramLang)) {
+                selectLanguage(paramLang);
+            }
 
             if (ticker) {
                 // Pre-select stock from URL

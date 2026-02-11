@@ -1,8 +1,8 @@
 # Permabullish - Product Roadmap
 ## AI Stock Researcher
 
-**Version:** 3.4
-**Last Updated:** February 7, 2026
+**Version:** 3.5
+**Last Updated:** February 9, 2026
 
 ---
 
@@ -289,15 +289,16 @@ Polish and enhance the live product based on initial usage.
   - Plan details, expiry date, reports per month
   - Triggered from verify endpoint and webhooks
 - [x] **Re-engagement Email System (Enhanced)**
-  - **14 rotating templates + weekly digest** (expanded from 5)
+  - **16 rotating templates + weekly digest** (expanded from 5)
   - Template categories:
     - 5 generic templates for retail investors
     - 5 broker-focused templates targeting brokers, sub-brokers, APs
     - 2 Hindi language templates (हिंदी)
     - 2 Gujarati language templates (ગુજરાતી)
+    - 2 Kannada language templates (ಕನ್ನಡ)
     - 1 weekly digest template
-  - Days 1-14: Daily emails (if inactive 7+ days)
-  - Days 15-180: Weekly emails (if inactive 7+ days)
+  - Days 1-16: Daily emails (if inactive 7+ days)
+  - Days 17-180: Weekly emails (if inactive 7+ days)
   - Cron script: `scripts/send_reengagement_emails.py`
   - IST timezone support
   - Rate limiting: 0.6s delay between sends (Resend API: 2 req/sec)
@@ -549,12 +550,12 @@ Ensure perfect mobile experience across all screens.
 **Priority:** Low
 
 ### Objective
-Add Hindi and Gujarati language support for reports.
+Add Hindi, Gujarati, and Kannada language support for reports.
 
 ### 7.1 Language Selection ✅
 
 - [x] Add language toggle to report generation page
-- [x] Options: English (EN), Hindi (हिंदी), Gujarati (ગુજરાતી)
+- [x] Options: English (EN), Hindi (हिंदी), Gujarati (ગુજરાતી), Kannada (ಕನ್ನಡ)
 - [x] Mobile-friendly toggle buttons
 - [x] Each language cached separately per stock
 
@@ -563,17 +564,17 @@ Add Hindi and Gujarati language support for reports.
 - [x] Modified AI prompt with language-specific instructions
 - [x] Technical/financial terms kept in English (P/E, ROE, etc.)
 - [x] Company names in English
-- [x] Added Noto Sans Devanagari and Gujarati fonts
+- [x] Added Noto Sans Devanagari, Gujarati, and Kannada fonts
 
 ### 7.3 UI Integration ✅
 
 - [x] Language badge shown on report history (dashboard)
-- [x] Different colored badges (orange for Hindi, green for Gujarati)
+- [x] Different colored badges (orange for Hindi, green for Gujarati, purple for Kannada)
 - [x] Language passed through API to backend
 
 ### Deliverables
 - ✅ Language selection UI on generate page
-- ✅ Reports generated in Hindi and Gujarati
+- ✅ Reports generated in Hindi, Gujarati, and Kannada
 - ✅ Proper font rendering with Google Fonts
 - ✅ Language indicator in report history
 
@@ -1158,7 +1159,269 @@ Improve application performance, reduce latency, and handle scale efficiently.
 
 ---
 
-## Phase 10: Future Features (Post-Launch)
+## Phase 10: WhatsApp Bot + Voice Interface (Sarvam AI)
+**Status:** Planning
+**Priority:** High
+**Target:** Q2-Q3 2026
+
+### Objective
+Build a WhatsApp-based interface for generating and receiving stock research reports via text and voice, powered by Sarvam AI for multi-language voice capabilities.
+
+### 10.1 WhatsApp Business API Integration
+
+- [ ] **WhatsApp Business Account Setup**
+  - Register WhatsApp Business account
+  - Choose BSP (Business Solution Provider): Gupshup, Twilio, or Meta Cloud API
+  - Set up webhook endpoint for incoming messages
+  - Configure message templates for outbound reports
+
+- [ ] **Bot Command Handler**
+  - `backend/whatsapp/` module
+  - Parse incoming messages: stock ticker, comparison requests, language preference
+  - Map to existing report/comparison generation APIs
+  - Handle conversation state (which stock? which language? compare with?)
+  - Rate limiting per phone number (tied to user account)
+
+- [ ] **Message Formatting**
+  - Convert HTML reports to WhatsApp-friendly format (markdown subset)
+  - Summary card: ticker, recommendation, target price, upside
+  - "Full report" link to web version
+  - Share card image attached as media message
+
+- [ ] **User Account Linking**
+  - Link WhatsApp number to existing Permabullish account
+  - OTP verification flow
+  - Quota tracking (same limits as web — Free: 5, Pro: 100)
+  - Upgrade prompts when quota exhausted (link to pricing page)
+
+### 10.2 Sarvam AI — Voice Report Delivery (TTS)
+
+- [ ] **Sarvam TTS Integration**
+  - `backend/sarvam/` module with `text_to_speech()` function
+  - API: Sarvam Bulbul v2 (₹15/10K chars) or v3 (₹30/10K chars)
+  - Generate audio summary of report (2-3 min narration)
+  - Supported languages: English, Hindi, Gujarati (+ 8 more Indian languages)
+  - 25+ voice options across languages
+
+- [ ] **Audio Report Format**
+  - Condensed script: Company overview → Key metrics → Bull/Bear case → Verdict
+  - ~500-800 words per audio summary (~2-3 minutes)
+  - Separate prompt to generate "spoken" version of report (conversational tone)
+  - Cache audio files (S3 or Render disk) to avoid regeneration
+
+- [ ] **WhatsApp Voice Delivery**
+  - Send audio report as WhatsApp voice note
+  - User types ticker → gets text summary + audio as follow-up
+  - Option: "Send me the audio" command after receiving text report
+
+### 10.3 Sarvam AI — Voice Input (STT)
+
+- [ ] **Voice Query Processing**
+  - Accept WhatsApp voice notes as stock queries
+  - Sarvam STT API (₹30/hr) to transcribe voice → text
+  - Language detection (Sarvam Language ID API)
+  - Extract stock name/ticker from transcription
+  - Handle code-mixed queries ("Reliance ka report bhejo" → RELIANCE, Hindi)
+
+- [ ] **Voice-to-Voice Flow**
+  - User sends voice note: "Tell me about TCS"
+  - STT → extract ticker → generate report → TTS → send audio response
+  - Full voice-in, voice-out research experience
+  - Response language matches input language (auto-detect)
+
+### 10.4 Sarvam AI — Translation Enhancement
+
+- [ ] **Real-time Translation**
+  - Sarvam Translate API (₹20/10K chars) for on-the-fly report translation
+  - Alternative to generating reports in-language via Claude (cheaper for short texts)
+  - Use for WhatsApp summary translations (keep Claude for full reports)
+
+- [ ] **Transliteration**
+  - Sarvam Transliterate API for romanized Hindi/Gujarati input
+  - "Reliance ka report bhejo" (romanized Hindi) → understood correctly
+  - Useful for WhatsApp users who type in English script
+
+### 10.5 Conversational Interface
+
+- [ ] **Multi-turn Conversations**
+  - Session management per WhatsApp number
+  - Follow-up questions: "What about the risks?" → risk section from last report
+  - "Compare it with INFY" → uses last queried stock as Stock A
+  - "Ab Hindi mein bhejo" → resend last report in Hindi
+
+- [ ] **Quick Actions**
+  - `/report TCS` — Generate report
+  - `/compare TCS INFY` — Compare stocks
+  - `/audio TCS` — Audio report
+  - `/lang hindi` — Set preferred language
+  - `/help` — List commands
+  - `/watchlist` — View watchlist
+
+### 10.6 Cost Estimates
+
+| Service | Pricing | Est. Monthly Cost |
+|---------|---------|-------------------|
+| WhatsApp BSP (Gupshup) | ₹0.50-1.50/conversation | ₹500-2,000 (1K conversations) |
+| Sarvam TTS (Bulbul v2) | ₹15/10K chars | ₹750 (500 audio reports × 1K chars) |
+| Sarvam STT | ₹30/hr | ₹150 (300 voice queries × ~3 sec each) |
+| Sarvam Translate | ₹20/10K chars | ₹200 (100 translations) |
+| Audio storage (S3) | ~$1/GB | Negligible |
+| **Total estimated** | | **₹1,600-3,100/mo** |
+
+### 10.7 Implementation Phases
+
+1. **MVP (2 weeks):** Text-only WhatsApp bot — send ticker, receive summary + web link
+2. **Voice Out (1 week):** Add Sarvam TTS — audio report delivery in 3 languages
+3. **Voice In (1 week):** Add Sarvam STT — accept voice queries
+4. **Conversational (2 weeks):** Multi-turn, follow-ups, quick actions
+5. **Polish (1 week):** Error handling, rate limiting, analytics
+
+### Deliverables
+- [ ] WhatsApp bot live and linked to user accounts
+- [ ] Text report summaries via WhatsApp
+- [ ] Audio reports in English, Hindi, Gujarati (Sarvam TTS)
+- [ ] Voice queries via WhatsApp voice notes (Sarvam STT)
+- [ ] Multi-turn conversational interface
+- [ ] Quota enforcement tied to user subscription
+
+### New Environment Variables
+- `WHATSAPP_BSP_API_KEY` — WhatsApp Business API credentials
+- `SARVAM_API_KEY` — Sarvam AI API key
+- `SARVAM_TTS_MODEL` — Bulbul v2 or v3
+- `S3_BUCKET_AUDIO` — Audio file storage (optional)
+
+### New Files
+- `backend/whatsapp/handler.py` — Webhook handler and message router
+- `backend/whatsapp/formatter.py` — Report → WhatsApp message formatting
+- `backend/sarvam/tts.py` — Text-to-speech integration
+- `backend/sarvam/stt.py` — Speech-to-text integration
+- `backend/sarvam/translate.py` — Translation and transliteration
+
+---
+
+## Phase 10.5: Broker & Sub-Broker Outreach System
+**Status:** 🔄 IN PROGRESS
+**Priority:** High
+**Target:** February-March 2026
+
+### Objective
+Build a data pipeline and outreach system to reach stock brokers, sub-brokers, and authorized persons (APs) across India via Telegram and WhatsApp — their preferred communication channels.
+
+### 10.5.1 Data Collection ✅ COMPLETE
+
+- [x] **SEBI Broker Scraper** (`scripts/scrape_sebi_brokers.py`)
+  - Scrapes SEBI registered stock broker directory
+  - 1,300+ unique brokers with emails, phones, addresses
+  - Output: `sebi_brokers.csv`
+
+- [x] **Multi-Broker Locator Scraper** (`scripts/scrape_broker_locators.py`)
+  - Scrapes sub-broker/AP locator pages for Angel One, Motilal Oswal, Sharekhan, IIFL
+  - Location-based search with phone numbers, addresses, landmarks
+  - Reusable for any city: `--search "Mumbai, Maharashtra, India"`
+  - Output: `brokers_{city}.csv`
+
+- [x] **Bulk API Scrapers**
+  - ICICI Direct APs: 1,312 records (`scripts/scrape_icicidirect_aps.py`)
+  - 5Paisa APs: 94 records (`scripts/scrape_5paisa_ap.py`)
+  - Kotak Securities: 1,000 branches/franchisees with emails (`scripts/scrape_kotak_branches.py`)
+  - HDFC Securities: 161 branches with manager contacts (`scripts/scrape_hdfc_securities.py`)
+
+- [x] **Top 10 cities nationwide scrape** ✅ COMPLETE
+  - Angel One + Motilal Oswal + Sharekhan + IIFL across 10 cities
+  - **2,133 unique sub-brokers/APs** with phone numbers, addresses, landmarks
+  - Master CSV: `scripts/master_brokers.csv`
+  - City breakdown:
+    | City | Count |
+    |------|-------|
+    | Ahmedabad | 457 |
+    | Mumbai | 305 |
+    | Bengaluru | 261 |
+    | Kolkata | 242 |
+    | Pune | 209 |
+    | Jaipur | 169 |
+    | Hyderabad | 143 |
+    | New Delhi | 140 |
+    | Lucknow | 107 |
+    | Chennai | 100 |
+  - By broker: Motilal Oswal (1,116), Sharekhan (515), Angel One (426), IIFL (76)
+
+### 10.5.2 Telegram Outreach ❌ NOT VIABLE
+
+- [x] **Telegram Number Checker** (`scripts/check_telegram_numbers.py`) ✅ Built & Tested
+  - Uses Telegram Client API (telethon) with `contacts.importContacts`
+  - Batch processing with resume support, rate limiting, auto-cleanup
+  - **Result: 1 out of 2,133 numbers on Telegram (0.05%)**
+  - Broker locator numbers are office/auto-dialer numbers, not personal mobiles
+  - **Conclusion: Telegram cold outreach is not viable for broker contacts**
+
+### 10.5.3 In-Person Outreach (PRIMARY STRATEGY) 🔄 IN PROGRESS
+
+**"Do things that don't scale"** — Physical visits to every sub-broker and AP, starting with Bengaluru.
+
+- [x] **Bengaluru broker database** — 261 sub-brokers with full addresses, landmarks, phone numbers, hours
+- [x] **Route-optimized visit list** — Brokers grouped by area/pincode for efficient daily routes
+- [x] **Visit tracker spreadsheet** — Tracking: visited Y/N, interested Y/N, personal number, notes
+- [x] **Printable leave-behind** — QR code to website + Telegram group, product summary
+
+**Visit plan:**
+- Target: 10-15 visits per day, 3-4 weeks to cover Bengaluru
+- Approach: Walk in → demo product live on phone → show Hindi/Gujarati reports → collect personal number
+- Goal: Get personal WhatsApp/phone number + sign them up on the spot
+- After Bengaluru: Expand to other cities using same playbook
+
+**Why this works:**
+- Sub-brokers are local business owners — they respect in-person meetings
+- Live demo is 100x more convincing than cold messages
+- Personal numbers collected → WhatsApp/Telegram group invites actually work
+- Trust-building that no digital outreach can match
+
+### 10.5.4 WhatsApp Outreach (After In-Person)
+
+- [ ] **WhatsApp Business API Setup**
+  - Provider: Interakt, Wati, or AiSensy
+  - Template message approval from Meta
+  - Message: "Give your clients institutional-quality research in their language"
+
+- [ ] **WhatsApp Broadcast System**
+  - Import personal numbers collected from in-person visits
+  - Send template messages (₹0.50-1/msg)
+  - Track delivery, read receipts, responses
+
+### 10.5.5 Email Outreach (Supplementary)
+
+- [x] **Corporate email database** — 1,400+ emails (SEBI brokers, IIFL/HDFC managers)
+- [x] **5 broker-focused email templates** (already built)
+- [ ] Scale sending as domain warms up: 200 → 400 → 600/day
+
+### Data Files
+```
+backend/scripts/
+├── scrape_broker_locators.py          # Multi-broker locator scraper
+├── scrape_sebi_brokers.py             # SEBI registered brokers
+├── scrape_angelone_brokers.py         # Angel One specific (legacy)
+├── scrape_icicidirect_aps.py          # ICICI Direct APs
+├── scrape_5paisa_ap.py                # 5Paisa APs
+├── scrape_kotak_branches.py           # Kotak branches/franchisees
+├── scrape_hdfc_securities.py          # HDFC Securities branches
+├── combine_broker_csvs.py             # Combine city CSVs → master list
+├── check_telegram_numbers.py          # Telegram number checker (telethon)
+├── master_brokers.csv                 # 2,133 unique brokers (all cities)
+├── telegram_results.csv               # Telegram check results
+├── brokers_bengaluru_karnataka_india.csv  # Per-city CSVs (10 cities)
+├── brokers_mumbai_maharashtra_india.csv
+├── brokers_ahmedabad_gujarat_india.csv
+├── ... (8 more city CSVs)
+├── sebi_brokers.csv
+├── kotak_branches.csv
+├── hdfc_securities_branches.csv
+├── icicidirect_authorized_persons.csv
+├── fivepaisa_authorized_persons.csv
+└── angelone_brokers.csv
+```
+
+---
+
+## Phase 11: Future Features (Post-Launch)
 **Status:** Backlog
 **Priority:** Low
 
@@ -1173,6 +1436,7 @@ Improve application performance, reduce latency, and handle scale efficiently.
 - [ ] **Mobile app:** Native iOS/Android
 - [x] **International stocks:** US market ✅ (Phase 8)
 - [ ] **Performance optimization:** Caching, CDN, background jobs (Phase 9)
+- [x] **WhatsApp bot + voice interface:** Sarvam AI integration ✅ (Phase 10)
 
 ---
 
@@ -1196,7 +1460,8 @@ Improve application performance, reduce latency, and handle scale efficiently.
 | 7.9 | Email/Password Authentication | ✅ Complete |
 | 8 | US Market Expansion | 📋 Planning |
 | 9 | Performance Optimization | Backlog |
-| 10 | Future Features | Backlog |
+| 10 | WhatsApp Bot + Voice (Sarvam AI) | 📋 Planning |
+| 11 | Future Features | Backlog |
 
 ---
 
@@ -1317,7 +1582,7 @@ python scripts/fundamentals_sync.py --test --symbol TCS
 1. **Payment Forms vs Gateway:** Using Cashfree Payment Forms due to domain whitelisting requirements for Payment Gateway
 2. **Recurring payments:** Not implemented - users pay upfront for subscription period
 3. **Enterprise users:** Created manually via admin API endpoints
-4. **Chat feature:** Explicitly deferred to post-launch (Phase 8)
+4. **Chat feature:** Subsumed by WhatsApp bot interface (Phase 10)
 
 ---
 

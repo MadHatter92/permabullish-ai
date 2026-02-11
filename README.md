@@ -10,7 +10,7 @@ AI-powered equity research reports for Indian stocks. Get institutional-quality 
 - **Subscription Tiers**: Guest (1 report), Free (5 reports), Basic (50/mo), Pro (100/mo)
 - **Google Sign-In**: Simple authentication with Google OAuth
 - **Watchlist**: Track stocks and generate reports on demand
-- **Multi-Language**: English now, Hindi & Gujarati coming soon
+- **Multi-Language**: English, Hindi, Gujarati & Kannada
 
 ## Tech Stack
 

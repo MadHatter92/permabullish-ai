@@ -129,7 +129,7 @@ class GenerateReportRequest(BaseModel):
     symbol: str
     exchange: str = "NSE"
     force_regenerate: bool = False  # Force regeneration even if cached
-    language: str = "en"  # Language: 'en' (English), 'hi' (Hindi), 'gu' (Gujarati)
+    language: str = "en"  # Language: 'en' (English), 'hi' (Hindi), 'gu' (Gujarati), 'kn' (Kannada)
 
 
 class WatchlistAddRequest(BaseModel):
@@ -811,7 +811,7 @@ async def generate_report(
     logger.info(f"Generate report request: {ticker}/{exchange}, language={language} (raw: {report_request.language})")
 
     # Validate language
-    if language not in ['en', 'hi', 'gu']:
+    if language not in ['en', 'hi', 'gu', 'kn']:
         logger.warning(f"Invalid language '{language}', defaulting to 'en'")
         language = 'en'
 
@@ -1437,7 +1437,7 @@ async def get_report_direct_view(report_cache_id: int):
     </div>
     <div class="footer">
         <p>AI-powered stock research by <a href="{FRONTEND_URL}">Permabullish</a></p>
-        <p style="margin-top: 4px;">Available in English, हिंदी & ગુજરાતી</p>
+        <p style="margin-top: 4px;">Available in English, हिंदी, ગુજરાતી & ಕನ್ನಡ</p>
         <p style="margin-top: 8px;">Not financial advice. For educational purposes only.</p>
     </div>
     <div class="bottom-bar">
