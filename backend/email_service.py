@@ -106,9 +106,7 @@ def format_report_cards(reports: List[Dict], email_type: str = "transactional") 
     for report in reports[:3]:
         rec = report.get('recommendation', 'HOLD').lower().replace(' ', '-')
         rec_class = f"rec-{rec}"
-        report_url = utm_url(f"{BASE_URL}/report.html?id={report['id']}", email_type, "report_card")
         cards_html += f"""
-        <a href="{report_url}" style="text-decoration: none; color: inherit;">
             <div class="report-card">
                 <h4>{report.get('company_name', report.get('ticker', 'Unknown'))}</h4>
                 <p>
@@ -116,7 +114,6 @@ def format_report_cards(reports: List[Dict], email_type: str = "transactional") 
                     &nbsp; AI Target: ₹{report.get('ai_target_price', 0):,.0f}
                 </p>
             </div>
-        </a>
         """
     return cards_html
 
@@ -550,7 +547,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             Our AI has been analyzing thousands of stocks — and your personalized insights are
             just a click away.</p>
 
-            <p><strong>You still have free reports available.</strong> Why not use one to research
+            <p><strong>You still have reports available.</strong> Why not use one to research
             a stock you've been curious about?</p>
 
             <p style="text-align: center;">
@@ -584,7 +581,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>Generate a report before your next client call. Walk in with conviction.</p>
 
             <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Try It Free</a>
+                <a href="{gen_url}" class="button">Try It Now</a>
             </p>
 
             <h3>See AI research in action:</h3>
@@ -615,7 +612,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             that institutional investors rely on.</p>
 
             <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Try It Now - It's Free</a>
+                <a href="{gen_url}" class="button">Try It Now</a>
             </p>
 
             <h3>See AI analysis in action:</h3>
@@ -667,7 +664,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p><strong>What stocks are you curious about?</strong></p>
 
             <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Research Any Stock Free</a>
+                <a href="{gen_url}" class="button">Research Any Stock</a>
             </p>
             """
         ),
@@ -912,7 +909,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>All of this in a comprehensive report that takes seconds to generate.</p>
 
             <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Generate Your Free Report</a>
+                <a href="{gen_url}" class="button">Generate a Report</a>
             </p>
 
             <h3>Example reports:</h3>
@@ -942,7 +939,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>Better conversations. More trades. Happier clients.</p>
 
             <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Start Free</a>
+                <a href="{gen_url}" class="button">Get Started</a>
             </p>
 
             <h3>See AI research in action:</h3>
@@ -963,16 +960,11 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
 
             {report_cards}
 
-            <p><strong>Your account is still active</strong> with free reports available.
+            <p><strong>Your account is still active</strong> with reports available.
             Pick a stock you're interested in and see what AI thinks.</p>
 
             <p style="text-align: center;">
                 <a href="{gen_url}" class="button">Research a Stock</a>
-            </p>
-
-            <p>Or upgrade to Pro for unlimited AI insights:</p>
-            <p style="text-align: center;">
-                <a href="{pricing_url}" style="color: #e8913a;">View Plans →</a>
             </p>
             """
         ),
