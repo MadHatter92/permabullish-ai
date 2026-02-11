@@ -58,9 +58,9 @@ services:
         name: Cache-Control
         value: public, max-age=86400
     routes:
-      - type: rewrite
+      - type: redirect
         source: /brokers
-        destination: /brokers/index.html
+        destination: /brokers/
       - type: rewrite
         source: /brokers/
         destination: /brokers/index.html
@@ -119,9 +119,9 @@ services:
     rootDir: frontend
     staticPublishPath: .
     routes:
-      - type: rewrite
+      - type: redirect
         source: /brokers
-        destination: /brokers/index.html
+        destination: /brokers/
       - type: rewrite
         source: /brokers/
         destination: /brokers/index.html
