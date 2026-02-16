@@ -1301,6 +1301,86 @@ async def get_report_direct_view(report_cache_id: int):
     og_description = f"AI-powered research report for {company_name}. Target: ₹{target_price:,.0f} | Current: ₹{current_price:,.0f}"
     og_image = f"https://api.permabullish.com/api/reports/{report_cache_id}/og-image"
 
+    # Content gate: truncate report at thesis-grid (Bull/Bear case)
+    # Show header + investment thesis, gate everything after
+    report_url = f"{FRONTEND_URL}/report.html?id={report_cache_id}"
+    gate_marker = '<div class="thesis-grid">'
+    gate_idx = report_html.find(gate_marker)
+    if gate_idx > 0:
+        # Keep everything up to thesis-grid, close the open section-content and section divs
+        gated_html = report_html[:gate_idx] + "</div></section>"
+        gate_css = """
+        .content-gate {
+            position: relative;
+            margin-top: -60px;
+            padding-top: 80px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.95) 40%, rgba(255,255,255,1) 50%);
+            text-align: center;
+            padding-bottom: 2rem;
+        }
+        .gate-card {
+            max-width: 420px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+        }
+        .gate-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #102a43;
+            margin: 0 0 0.5rem 0;
+        }
+        .gate-card p {
+            color: #627d98;
+            margin: 0 0 1.5rem 0;
+            font-size: 0.95rem;
+        }
+        .gate-btn {
+            display: block;
+            width: 100%;
+            padding: 14px 20px;
+            background: #1e3a5f;
+            color: white !important;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            text-align: center;
+        }
+        .gate-btn:hover { background: #102a43; }
+        .gate-email-link {
+            display: block;
+            margin-top: 12px;
+            color: #e8913a;
+            font-size: 0.875rem;
+            text-decoration: none;
+        }
+        .gate-note {
+            margin-top: 12px;
+            font-size: 0.75rem;
+            color: #9fb3c8;
+        }
+        """
+        gate_block = f"""
+        <div class="content-gate">
+            <div class="gate-card">
+                <h3>Continue Reading</h3>
+                <p>Sign in to unlock the full analysis &mdash; bull/bear case, financials, valuation &amp; more.</p>
+                <a href="{report_url}" class="gate-btn">Continue Reading &rarr;</a>
+                <a href="{FRONTEND_URL}/#signup" class="gate-email-link">or sign up with email</a>
+                <div class="gate-note">No credit card required</div>
+            </div>
+        </div>
+        """
+    else:
+        # Fallback: no thesis-grid found, show full report
+        gated_html = report_html
+        gate_css = ""
+        gate_block = ""
+
     # Wrap report in a minimal standalone page with back navigation
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1343,10 +1423,6 @@ async def get_report_direct_view(report_cache_id: int):
             align-items: center;
             gap: 4px;
         }}
-        .nav-title {{
-            font-weight: 600;
-            font-size: 14px;
-        }}
         .btn {{
             background: #e8913a;
             color: white;
@@ -1370,50 +1446,6 @@ async def get_report_direct_view(report_cache_id: int):
             color: #e8913a;
             text-decoration: none;
         }}
-        .cta-section {{
-            background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
-            padding: 24px 16px;
-            text-align: center;
-            color: white;
-        }}
-        .cta-section h3 {{
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }}
-        .cta-section p {{
-            font-size: 14px;
-            color: #9fb3c8;
-            margin-bottom: 16px;
-        }}
-        .cta-buttons {{
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-width: 300px;
-            margin: 0 auto;
-        }}
-        .btn-primary {{
-            background: #e8913a;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 600;
-            text-align: center;
-        }}
-        .btn-secondary {{
-            background: rgba(255,255,255,0.1);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 500;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
-        }}
         .bottom-bar {{
             position: sticky;
             bottom: 0;
@@ -1432,23 +1464,18 @@ async def get_report_direct_view(report_cache_id: int):
         .bottom-link {{
             color: #6b7280;
         }}
+        {gate_css}
     </style>
 </head>
 <body>
     <nav class="nav">
         <a href="{FRONTEND_URL}" style="font-weight: 600; font-size: 14px;">Permabullish</a>
-        <a href="{FRONTEND_URL}/generate.html" class="btn">Try Free</a>
+        <a href="{report_url}" class="btn">Read Full Report</a>
     </nav>
     <div class="report-content">
-        {report_html}
+        {gated_html}
     </div>
-    <div class="cta-section">
-        <h3>Like this report?</h3>
-        <p>Get AI-powered research on 3000+ Indian stocks</p>
-        <div class="cta-buttons">
-            <a href="{FRONTEND_URL}" class="btn-primary">Sign Up Free</a>
-        </div>
-    </div>
+    {gate_block}
     <div class="footer">
         <p>AI-powered stock research by <a href="{FRONTEND_URL}">Permabullish</a></p>
         <p style="margin-top: 4px;">Available in English, हिंदी, ગુજરાતી & ಕನ್ನಡ</p>
@@ -1456,7 +1483,7 @@ async def get_report_direct_view(report_cache_id: int):
     </div>
     <div class="bottom-bar">
         <a href="{FRONTEND_URL}" class="bottom-link">Home</a>
-        <a href="{FRONTEND_URL}/generate.html" class="btn" style="padding: 8px 16px; font-size: 13px;">Generate Report</a>
+        <a href="{report_url}" class="btn" style="padding: 8px 16px; font-size: 13px;">Read Full Report</a>
     </div>
 </body>
 </html>"""
