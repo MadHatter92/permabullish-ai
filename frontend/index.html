@@ -459,7 +459,13 @@
         // Check if already logged in
         const token = localStorage.getItem('token');
         if (token) {
-            window.location.href = 'dashboard.html';
+            const returnTo = localStorage.getItem('return_to');
+            if (returnTo) {
+                localStorage.removeItem('return_to');
+                window.location.href = returnTo;
+            } else {
+                window.location.href = 'dashboard.html';
+            }
         }
 
         // Check for token in URL (from OAuth callback)
@@ -482,9 +488,24 @@
                     else analytics.trackLogin('google');
                     analytics.setUserProperties(user);
                 }
-                window.location.href = 'dashboard.html';
+                // Redirect back to report if return_to is set, otherwise dashboard
+                const returnTo = localStorage.getItem('return_to');
+                if (returnTo) {
+                    localStorage.removeItem('return_to');
+                    window.location.href = returnTo;
+                } else {
+                    window.location.href = 'dashboard.html';
+                }
             })
-            .catch(() => window.location.href = 'dashboard.html');
+            .catch(() => {
+                const returnTo = localStorage.getItem('return_to');
+                if (returnTo) {
+                    localStorage.removeItem('return_to');
+                    window.location.href = returnTo;
+                } else {
+                    window.location.href = 'dashboard.html';
+                }
+            });
         }
 
         if (error) {
@@ -574,7 +595,14 @@
                     analytics.trackLogin('email');
                     analytics.setUserProperties(data.user);
                 }
-                window.location.href = 'dashboard.html';
+                // Redirect back to report if return_to is set, otherwise dashboard
+                const returnTo = localStorage.getItem('return_to');
+                if (returnTo) {
+                    localStorage.removeItem('return_to');
+                    window.location.href = returnTo;
+                } else {
+                    window.location.href = 'dashboard.html';
+                }
             } catch (err) {
                 showError('Network error. Please try again.');
             } finally {
@@ -621,10 +649,20 @@
 
         function signInWithGoogle() {
             const source = getSignupSource();
-            const url = source
-                ? `${API_BASE}/auth/google/login?signup_source=${encodeURIComponent(source)}`
+            const params = new URLSearchParams();
+            if (source) params.set('signup_source', source);
+            // If we have a return_to URL (from report content gate), convert it to a relative path
+            const returnTo = localStorage.getItem('return_to');
+            if (returnTo) {
+                try {
+                    const returnUrl = new URL(returnTo, window.location.origin);
+                    params.set('return_to', returnUrl.pathname + returnUrl.search);
+                } catch (e) { /* ignore invalid URLs */ }
+            }
+            const qs = params.toString();
+            window.location.href = qs
+                ? `${API_BASE}/auth/google/login?${qs}`
                 : `${API_BASE}/auth/google/login`;
-            window.location.href = url;
         }
     </script>
 </body>

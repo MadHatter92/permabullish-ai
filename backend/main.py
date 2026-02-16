@@ -630,7 +630,7 @@ async def get_current_user_info(current_user: dict = Depends(auth.get_current_us
 
 # Google OAuth Routes
 @app.get("/api/auth/google/login")
-async def google_login(request: Request, signup_source: str = ""):
+async def google_login(request: Request, signup_source: str = "", return_to: str = ""):
     """Initiate Google OAuth flow."""
     logger.info(f"OAuth login initiated. Redirect URI: {GOOGLE_REDIRECT_URI}")
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
@@ -642,6 +642,9 @@ async def google_login(request: Request, signup_source: str = ""):
     # Store signup_source in session so we can use it in the callback
     if signup_source:
         request.session["signup_source"] = signup_source
+    # Store return_to path (must be relative) so callback can redirect back
+    if return_to and return_to.startswith("/"):
+        request.session["return_to"] = return_to
     return await oauth.google.authorize_redirect(request, GOOGLE_REDIRECT_URI)
 
 
@@ -694,9 +697,16 @@ async def google_callback(request: Request):
             data={"sub": str(user["id"]), "email": user["email"]}
         )
 
-        # Redirect to frontend with token (use 302 for OAuth compatibility)
-        redirect_url = f"{FRONTEND_URL}/dashboard.html?token={access_token}"
-        logger.info(f"Redirecting to dashboard for user: {user['email']}")
+        # Check if user should be redirected back to a specific page (e.g. shared report)
+        return_to = request.session.pop("return_to", "")
+        if return_to and return_to.startswith("/"):
+            # Append token as query param (handle existing query string)
+            separator = "&" if "?" in return_to else "?"
+            redirect_url = f"{FRONTEND_URL}{return_to}{separator}token={access_token}"
+            logger.info(f"Redirecting to return_to={return_to} for user: {user['email']}")
+        else:
+            redirect_url = f"{FRONTEND_URL}/dashboard.html?token={access_token}"
+            logger.info(f"Redirecting to dashboard for user: {user['email']}")
         return RedirectResponse(url=redirect_url, status_code=302)
 
     except Exception as e:
