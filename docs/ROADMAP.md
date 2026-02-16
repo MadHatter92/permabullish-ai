@@ -1,8 +1,8 @@
 # Permabullish - Product Roadmap
 ## AI Stock Researcher
 
-**Version:** 3.5
-**Last Updated:** February 9, 2026
+**Version:** 3.6
+**Last Updated:** February 16, 2026
 
 ---
 
@@ -905,6 +905,61 @@ Add email/password authentication alongside Google OAuth, with email verificatio
 
 ---
 
+## Phase 7.95: Shared Report Content Gate (Conversion Optimization)
+**Status:** ✅ COMPLETE
+**Completed:** February 16, 2026
+**Priority:** High
+
+### Objective
+Gate shared report content for unauthenticated users to drive sign-ups. Show the intro/thesis readable, then blur everything from Bull/Bear Case onward with a sign-up CTA overlay. After signing in, the user lands back on the same report.
+
+### 7.95.1 Content Gate ✅
+
+- [x] **Blur + CTA overlay** injected into report iframe for guests
+  - Finds `.thesis-grid` (Bull/Bear case container) in iframe DOM
+  - Applies CSS `blur(8px)` to thesis-grid, all subsequent sections, and footer
+  - Gradient fade-to-white overlay with CTA card before blurred content
+  - CTA includes: "Continue Reading" heading, Google sign-in button, email signup link, "No credit card required" note
+- [x] **Replaced guest nudge banner** — removed the dismissible top banner in favour of inline content gate (higher conversion surface)
+- [x] **GA4 tracking events**
+  - `content_gate_shown` — fired when gate overlay is injected (ticker, report_id)
+  - `content_gate_cta_clicked` — fired on Google or email CTA click (cta_type)
+
+### 7.95.2 Return-to-Report after Sign-In ✅
+
+- [x] **Google OAuth flow**
+  - `signInWithGoogle()` in report.html passes `return_to=/report.html?id=X` to backend
+  - Backend `google_login` stores `return_to` in session (validated: must start with `/`)
+  - Backend `google_callback` redirects to `{FRONTEND_URL}{return_to}?token=X` instead of dashboard
+  - report.html `handleOAuthReturn()` IIFE detects `?token=` param, stores in localStorage, cleans URL
+- [x] **Email auth flow**
+  - `gateSignUpWithEmail()` stores `window.location.href` in `localStorage.return_to`
+  - index.html checks `localStorage.return_to` after successful login/register
+  - Redirects to stored URL instead of dashboard.html, then removes key
+  - Also works when user clicks Google sign-in on index.html (passes return_to to backend)
+- [x] **Security: open redirect prevention**
+  - Backend validates `return_to` starts with `/` (relative path only)
+  - No external URLs accepted
+
+### What's NOT Affected
+- `/api/reports/{id}/view` endpoint (Telegram/Instagram direct rendering) — unchanged
+- Logged-in users — no blur, no CTA, full report as before
+- Report generation flow — unchanged
+- Normal dashboard redirect — still works when no `return_to` is set
+
+### Deliverables
+- ✅ Content gate with blur + CTA overlay on shared reports for guests
+- ✅ Return-to-report flow for both Google OAuth and email auth
+- ✅ GA4 conversion tracking events
+- ✅ No breaking changes to existing flows
+
+### Modified Files
+- `frontend/report.html` — Content gate, OAuth return handling, removed guest nudge
+- `frontend/index.html` — return_to redirect after login/register/OAuth
+- `backend/main.py` — return_to param in Google OAuth login/callback
+
+---
+
 ## Phase 8: US Market Expansion (us.permabullish.com)
 **Status:** Planning
 **Priority:** High
@@ -1427,6 +1482,7 @@ backend/scripts/
 | 7.6 | Stock Comparison Tool | ✅ Complete |
 | 7.8 | **Report Quality Enhancements** | 🔄 In Progress |
 | 7.9 | Email/Password Authentication | ✅ Complete |
+| 7.95 | **Shared Report Content Gate** | ✅ Complete |
 | 8 | US Market Expansion | 📋 Planning |
 | 9 | Performance Optimization | Backlog |
 | 10 | WhatsApp Bot + Voice (Sarvam AI) | 📋 Planning |

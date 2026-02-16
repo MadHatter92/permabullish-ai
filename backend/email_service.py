@@ -121,6 +121,8 @@ def format_report_cards(reports: List[Dict], email_type: str = "transactional") 
 def html_to_plain_text(html: str) -> str:
     """Convert HTML email content to plain text for multipart sending."""
     text = html
+    # Strip <style> blocks entirely (content + tags) before processing
+    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
     # Convert links to "text (url)" format
     text = re.sub(r'<a[^>]+href="([^"]*)"[^>]*>(.*?)</a>', r'\2 (\1)', text)
     # Convert line breaks and block elements to newlines

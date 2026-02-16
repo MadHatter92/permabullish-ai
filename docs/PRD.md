@@ -1,9 +1,9 @@
 # Permabullish - AI Stock Researcher
 ## Product Requirements Document (PRD)
 
-**Version:** 2.6
-**Date:** February 7, 2026
-**Status:** Phase 1-4 Complete, Phase 7 Complete, Phase 5 Partially Complete, Email/Password Auth Complete
+**Version:** 2.7
+**Date:** February 16, 2026
+**Status:** Phase 1-4 Complete, Phase 7 Complete, Phase 5 Partially Complete, Email/Password Auth Complete, Content Gate Complete
 
 ---
 
@@ -75,6 +75,12 @@ The product operates on a subscription model with tiered access, allowing users 
 - ✅ Cost estimation (~₹3/report baseline)
 - ✅ Enhanced cron reports with cost data
 - ⏳ Final pricing tiers (pending business decision)
+
+### Shared Report Content Gate ✅ (Completed Feb 16, 2026)
+- ✅ Blur + CTA overlay on shared reports for unauthenticated users
+- ✅ Return-to-report flow for Google OAuth and email auth
+- ✅ GA4 tracking events (content_gate_shown, content_gate_cta_clicked)
+- ✅ Open redirect prevention on return_to param
 
 ### Phase 6: Analytics & User Tracking (Pending)
 - Guest-to-signup attribution (link anonymous usage to new accounts)
@@ -214,6 +220,28 @@ Most sales enablement tools are **horizontal** (work across industries) and auto
 - Color-coded metrics table (green = winner)
 - Sticky bottom share bar
 - Mobile responsive layout
+
+### 5.6 Shared Report Content Gate (Conversion)
+
+**Purpose:** Gate shared report content for unauthenticated visitors to drive sign-ups while giving them a taste of the analysis quality.
+
+**What guests see:**
+- Header, chart, and Investment Thesis paragraph — fully readable
+- Everything from Bull/Bear Case onward — blurred (CSS `blur(8px)`) with no interaction
+- CTA overlay with gradient fade: "Continue Reading" + Google sign-in + email signup link
+
+**Sign-in return flow:**
+- After signing in (Google or email), user lands back on the same report — not the dashboard
+- Google OAuth: `return_to` param stored in backend session, used in callback redirect
+- Email auth: `return_to` stored in `localStorage`, checked after login/register in index.html
+
+**What's NOT gated:**
+- Logged-in users see the full report (no blur, no CTA)
+- Direct view endpoint (`/api/reports/{id}/view`) for Telegram/Instagram — renders its own HTML, unaffected
+
+**Analytics:**
+- `content_gate_shown` — GA4 event when gate is displayed (ticker, report_id)
+- `content_gate_cta_clicked` — GA4 event on CTA interaction (cta_type: google/email)
 
 ### 5.2 User Dashboard
 
@@ -437,10 +465,12 @@ This ensures:
 ### 9.1 Authentication
 
 - **Google OAuth 2.0:** Primary sign-in method, auto-verified emails
+  - Supports `return_to` query param — after OAuth callback, redirects to specified relative path instead of dashboard (used by shared report content gate)
 - **Email/Password:** Full registration flow with email verification
   - Registration sends verification email (24-hour expiry token)
   - Users must verify email before signing in
   - Password hashing via pbkdf2_sha256
+  - Supports `localStorage.return_to` — after login/register, redirects back to stored URL (used by shared report content gate)
 - **Password Reset:** Forgot password flow with reset tokens (1-hour expiry)
 - **Account Linking:** If a user registers with email/password and later signs in with Google (same email), accounts are linked automatically
 - **Session:** JWT tokens (7-day expiry)
@@ -452,6 +482,7 @@ This ensures:
 - Email verification required before account access
 - Password reset tokens are single-purpose and time-limited
 - Auth responses never reveal whether an email exists (forgot-password, resend-verification)
+- OAuth `return_to` param validated as relative path (must start with `/`) to prevent open redirect
 - No storage of payment credentials (handled by Cashfree)
 - HTTPS only in production
 
