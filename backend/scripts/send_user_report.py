@@ -292,7 +292,7 @@ def send_via_resend(to_email: str, subject: str, body: str) -> bool:
 
     try:
         params = {
-            "from": "Permabullish <onboarding@resend.dev>",
+            "from": "Permabullish <hello@permabullish.com>",
             "to": [to_email],
             "subject": subject,
             "text": body,
