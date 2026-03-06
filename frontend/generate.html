@@ -320,6 +320,8 @@
 
         // Redirect to login if not authenticated
         if (!isLoggedIn) {
+            // Preserve current URL so user returns here after login
+            localStorage.setItem('return_to', window.location.pathname + window.location.search);
             window.location.href = 'index.html';
         }
 
