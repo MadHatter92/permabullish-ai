@@ -907,10 +907,24 @@ def get_usage(user_id: int) -> dict:
     """Get user's usage based on their subscription tier."""
     user = get_user_by_id(user_id)
     tier = user.get("subscription_tier", "free") if user else "free"
-    tier_config = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free"])
 
-    is_lifetime = tier_config.get("is_lifetime", False)
-    reports_limit = tier_config.get("reports_limit", 3)
+    # Treat expired paid subscriptions as throttled: 3 reports/month goodwill
+    is_expired = False
+    if tier != "free":
+        expires_at = user.get("subscription_expires_at") if user else None
+        if expires_at:
+            if isinstance(expires_at, str):
+                expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00').replace(' ', 'T'))
+            if datetime.now() > expires_at.replace(tzinfo=None):
+                is_expired = True
+
+    tier_config = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free"])
+    if is_expired:
+        reports_limit = 3
+        is_lifetime = False
+    else:
+        is_lifetime = tier_config.get("is_lifetime", False)
+        reports_limit = tier_config.get("reports_limit", 3)
 
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
