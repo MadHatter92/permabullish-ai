@@ -21,7 +21,7 @@ resend.api_key = RESEND_API_KEY
 IST = pytz.timezone('Asia/Kolkata')
 
 # Email configuration
-FROM_EMAIL = "Permabullish <hello@permabullish.com>"
+FROM_EMAIL = "Maya from Permabullish <hello@permabullish.com>"
 REPLY_TO_EMAIL = "mail@mayaskara.com"
 BASE_URL = "https://permabullish.com"
 
