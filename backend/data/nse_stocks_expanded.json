@@ -2160,7 +2160,7 @@
     "isin": "INE702C01027"
   },
   {
-    "symbol": "LTIM",
+    "symbol": "LTM",
     "company_name": "LTIMindtree Limited",
     "industry": "Computers - Software & Consulting",
     "isin": "INE214T01019"
@@ -3336,8 +3336,8 @@
     "isin": "INE551W01018"
   },
   {
-    "symbol": "INFIBEAM",
-    "company_name": "Infibeam Avenues Limited",
+    "symbol": "CCAVENUE",
+    "company_name": "AvenuesAI Limited",
     "industry": "Financial Technology (Fintech)",
     "isin": "INE483S01020"
   },

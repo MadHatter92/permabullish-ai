@@ -2080,6 +2080,25 @@ def get_featured_reports_by_ids(report_ids: List[int]) -> List[dict]:
         return [id_to_report[rid] for rid in report_ids if rid in id_to_report]
 
 
+def get_recent_reports(limit: int = 12) -> List[dict]:
+    """Get the most recent cached reports for email rotation."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+
+        cursor.execute("""
+            SELECT
+                id, ticker, exchange, company_name, sector,
+                current_price, ai_target_price, recommendation, generated_at
+            FROM report_cache
+            WHERE recommendation IS NOT NULL
+            ORDER BY generated_at DESC
+            LIMIT ?
+        """.replace("?", "%s" if USE_POSTGRES else "?"), (limit,))
+
+        rows = cursor.fetchall()
+        return [_dict_from_row(row) for row in rows]
+
+
 # ============================================
 # Stock Fundamentals Operations
 # ============================================

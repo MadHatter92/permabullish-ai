@@ -1141,13 +1141,23 @@ def should_send_reengagement(
 def get_featured_reports_for_email(day_of_year: int = 1) -> List[Dict]:
     """
     Get featured reports from database for use in emails.
-    Rotates which 3 of 8 curated reports are shown, based on day_of_year.
-    Returns formatted report data suitable for email templates.
+    Uses curated FEATURED_REPORT_IDS if enough exist, otherwise falls back
+    to recent reports from report_cache. Rotates which 3 are shown daily.
     """
     # Import here to avoid circular imports
     import database as db
 
+    # Try curated list first, fall back to recent reports
     all_reports = db.get_featured_reports_by_ids(FEATURED_REPORT_IDS)
+    if len(all_reports) < 6:
+        # Not enough curated reports survive — use recent reports instead
+        recent = db.get_recent_reports(12)
+        # Merge: curated first, then recent (deduplicated)
+        seen_ids = {r["id"] for r in all_reports}
+        for r in recent:
+            if r["id"] not in seen_ids:
+                all_reports.append(r)
+                seen_ids.add(r["id"])
 
     # Rotate: pick 3 reports using sliding window based on day of year
     if len(all_reports) > 3:
