@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import logging
 
-from config import NSE_SUFFIX, BSE_SUFFIX, is_us_exchange
+from config import NSE_SUFFIX, BSE_SUFFIX, FMP_API_KEY, is_us_exchange
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -702,6 +702,124 @@ class GrowwProvider(StockDataProvider):
             return []
 
 
+class FMPProvider(StockDataProvider):
+    """Fetches US stock data from Financial Modeling Prep API (US-only fallback)."""
+
+    name = "FMP"
+
+    def __init__(self, api_key: str = ""):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        """FMP is available only if we have an API key and aren't rate limited."""
+        if not self.api_key:
+            return False
+        return super().is_available()
+
+    def fetch_stock_data(self, symbol: str, exchange: str = "NSE") -> Optional[Dict[str, Any]]:
+        """Fetch stock data from FMP (US stocks only)."""
+        if not is_us_exchange(exchange):
+            return None
+
+        try:
+            from data_sources.fmp import get_company_profile, get_ratios, get_quote
+
+            profile = get_company_profile(symbol)
+            if not profile:
+                return None
+
+            quote = get_quote(symbol)
+            ratios_data = get_ratios(symbol, period="quarter", limit=1)
+            latest_ratios = ratios_data[0] if ratios_data else {}
+
+            current_price = 0
+            previous_close = 0
+            day_high = 0
+            day_low = 0
+            volume = 0
+            change_percent = 0
+
+            if quote:
+                current_price = quote.get("price", profile.get("price", 0))
+                previous_close = quote.get("previousClose", 0)
+                day_high = quote.get("dayHigh", 0)
+                day_low = quote.get("dayLow", 0)
+                volume = quote.get("volume", 0)
+                change_percent = quote.get("changesPercentage", 0)
+            else:
+                current_price = profile.get("price", 0)
+
+            stock_data = {
+                "basic_info": {
+                    "company_name": profile.get("companyName", symbol),
+                    "ticker": symbol.upper(),
+                    "exchange": exchange,
+                    "sector": profile.get("sector", "N/A"),
+                    "industry": profile.get("industry", "N/A"),
+                    "website": profile.get("website", ""),
+                    "description": profile.get("description", ""),
+                    "employees": profile.get("fullTimeEmployees", 0),
+                    "country": profile.get("country", "USA"),
+                },
+                "price_info": {
+                    "current_price": current_price,
+                    "previous_close": previous_close,
+                    "open": quote.get("open", 0) if quote else 0,
+                    "day_high": day_high,
+                    "day_low": day_low,
+                    "fifty_two_week_high": profile.get("range", "0-0").split("-")[-1].strip() if profile.get("range") else 0,
+                    "fifty_two_week_low": profile.get("range", "0-0").split("-")[0].strip() if profile.get("range") else 0,
+                    "volume": volume,
+                },
+                "valuation": {
+                    "market_cap": profile.get("mktCap", 0),
+                    "pe_ratio": latest_ratios.get("priceEarningsRatio", profile.get("pe", 0)),
+                    "pb_ratio": latest_ratios.get("priceToBookRatio", 0),
+                    "dividend_yield": latest_ratios.get("dividendYield", profile.get("lastDiv", 0)),
+                    "eps": quote.get("eps", 0) if quote else 0,
+                    "book_value": profile.get("bookValuePerShare", 0),
+                },
+                "financials": {
+                    "revenue": 0,
+                    "profit_margin": latest_ratios.get("netProfitMargin", 0),
+                    "operating_margin": latest_ratios.get("operatingProfitMargin", 0),
+                    "roe": latest_ratios.get("returnOnEquity", 0),
+                    "roa": latest_ratios.get("returnOnAssets", 0),
+                    "debt_to_equity": latest_ratios.get("debtEquityRatio", 0),
+                    "current_ratio": latest_ratios.get("currentRatio", 0),
+                },
+                "analyst": {
+                    "target_price": profile.get("targetMeanPrice", 0),
+                    "recommendation": "",
+                    "num_analysts": 0,
+                },
+                "provider": self.name,
+            }
+
+            # Parse 52-week range safely
+            try:
+                range_str = profile.get("range", "")
+                if range_str and "-" in range_str:
+                    parts = range_str.split("-")
+                    stock_data["price_info"]["fifty_two_week_low"] = float(parts[0].strip())
+                    stock_data["price_info"]["fifty_two_week_high"] = float(parts[-1].strip())
+            except (ValueError, IndexError):
+                pass
+
+            return stock_data
+
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "rate" in error_msg or "429" in error_msg:
+                self.mark_rate_limited(30)
+            logger.error(f"FMP error for {symbol}: {e}")
+            return None
+
+    def search_stocks(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """FMP search not used (we use local stock list)."""
+        return []
+
+
 class AlphaVantageProvider(StockDataProvider):
     """Fetches data from Alpha Vantage API (fallback)."""
 
@@ -845,6 +963,11 @@ class StockDataManager:
             TickertapeProvider(),
         ]
 
+        # FMP as US stock fallback (before Alpha Vantage)
+        if FMP_API_KEY:
+            self.providers.append(FMPProvider(FMP_API_KEY))
+            logger.info("FMP provider initialized with API key")
+
         if alpha_vantage_key:
             self.providers.append(AlphaVantageProvider(alpha_vantage_key))
             logger.info("Alpha Vantage provider initialized with API key")
@@ -872,6 +995,9 @@ class StockDataManager:
         for provider in self.providers:
             # Skip India-only providers (Groww, Tickertape) for US stocks
             if is_us_exchange(exchange) and provider.name in ("Groww", "Tickertape"):
+                continue
+            # Skip US-only provider (FMP) for Indian stocks
+            if not is_us_exchange(exchange) and provider.name == "FMP":
                 continue
 
             if not provider.is_available():

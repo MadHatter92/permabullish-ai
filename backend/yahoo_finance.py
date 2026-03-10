@@ -160,7 +160,68 @@ def fetch_stock_data(symbol: str, exchange: str = "NSE") -> Optional[Dict[str, A
         except Exception as e:
             logger.warning(f"Screener enrichment failed for {symbol}: {e}")
 
+    # Enrich US stocks with FMP fundamentals if available
+    if is_us_exchange(exchange):
+        try:
+            fmp_data = _get_fmp_fundamentals(symbol)
+            if fmp_data:
+                basic_data = _merge_fmp_data(basic_data, fmp_data)
+                logger.info(f"Enriched {symbol} with FMP fundamentals")
+        except Exception as e:
+            logger.warning(f"FMP enrichment failed for {symbol}: {e}")
+
     return basic_data
+
+
+def _get_fmp_fundamentals(symbol: str) -> Optional[Dict[str, Any]]:
+    """Get FMP fundamentals for US stocks (from cache or live API)."""
+    try:
+        from config import FMP_API_KEY
+        if not FMP_API_KEY:
+            return None
+        from data_sources.fmp import fetch_us_fundamentals
+        return fetch_us_fundamentals(symbol)
+    except Exception as e:
+        logger.warning(f"Failed to get FMP fundamentals for {symbol}: {e}")
+        return None
+
+
+def _merge_fmp_data(primary: Dict[str, Any], fmp: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge FMP fundamentals into primary stock data for US stocks."""
+    result = primary.copy()
+
+    # Add FMP-specific data similar to screener_data
+    fmp_additions = {
+        "screener_data": {
+            "quarterly_results": fmp.get("quarterly_results", []),
+            "profit_loss": fmp.get("profit_loss", []),
+            "balance_sheet": fmp.get("balance_sheet", []),
+            "cash_flow": fmp.get("cash_flow", []),
+            "shareholding": [],
+            "pros": [],
+            "cons": [],
+            "source_url": fmp.get("source_url", ""),
+            "last_updated": str(fmp.get("last_updated", "")),
+        }
+    }
+    result.update(fmp_additions)
+
+    # Fill in missing valuation metrics
+    if "valuation" not in result:
+        result["valuation"] = {}
+    valuation = result["valuation"]
+    if not valuation.get("pe_ratio") and fmp.get("pe_ratio"):
+        valuation["pe_ratio"] = fmp["pe_ratio"]
+    if not valuation.get("pb_ratio") and fmp.get("pb_ratio"):
+        valuation["pb_ratio"] = fmp["pb_ratio"]
+
+    # Fill returns
+    if "returns" not in result:
+        result["returns"] = {}
+    if not result["returns"].get("roe") and fmp.get("roe"):
+        result["returns"]["roe"] = fmp["roe"]
+
+    return result
 
 
 def _get_screener_fundamentals(symbol: str) -> Optional[Dict[str, Any]]:
