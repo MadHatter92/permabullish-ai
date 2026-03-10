@@ -788,6 +788,31 @@ class FMPProvider(StockDataProvider):
                     "debt_to_equity": latest_ratios.get("debtEquityRatio", 0),
                     "current_ratio": latest_ratios.get("currentRatio", 0),
                 },
+                "returns": {
+                    "roe": latest_ratios.get("returnOnEquity", 0),
+                    "roa": latest_ratios.get("returnOnAssets", 0),
+                },
+                "per_share": {
+                    "eps": quote.get("eps", 0) if quote else 0,
+                    "book_value": profile.get("bookValuePerShare", 0),
+                },
+                "dividends": {
+                    "dividend_yield": latest_ratios.get("dividendYield", 0),
+                    "dividend_rate": profile.get("lastDiv", 0),
+                },
+                "balance_sheet": {
+                    "debt_to_equity": latest_ratios.get("debtEquityRatio", 0),
+                    "current_ratio": latest_ratios.get("currentRatio", 0),
+                },
+                "ownership": {
+                    "institution_holding": 0,
+                    "insider_holding": 0,
+                },
+                "analyst_data": {
+                    "target_mean_price": profile.get("targetMeanPrice", 0),
+                    "recommendation": "",
+                    "num_analysts": 0,
+                },
                 "analyst": {
                     "target_price": profile.get("targetMeanPrice", 0),
                     "recommendation": "",

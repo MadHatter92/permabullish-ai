@@ -221,6 +221,19 @@ def _merge_fmp_data(primary: Dict[str, Any], fmp: Dict[str, Any]) -> Dict[str, A
     if not result["returns"].get("roe") and fmp.get("roe"):
         result["returns"]["roe"] = fmp["roe"]
 
+    # Fill financials from ratios if available
+    ratios = fmp.get("ratios", {})
+    if ratios:
+        if "financials" not in result:
+            result["financials"] = {}
+        fin = result["financials"]
+        if not fin.get("profit_margin") and ratios.get("netProfitMargin"):
+            fin["profit_margin"] = ratios["netProfitMargin"]
+        if not fin.get("operating_margin") and ratios.get("operatingProfitMargin"):
+            fin["operating_margin"] = ratios["operatingProfitMargin"]
+        if not fin.get("roe") and ratios.get("returnOnEquity"):
+            fin["roe"] = ratios["returnOnEquity"]
+
     return result
 
 

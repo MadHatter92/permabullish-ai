@@ -457,6 +457,10 @@ def prepare_data_summary(stock_data: Dict[str, Any], exchange: str = "NSE") -> D
         summary["roic"] = returns.get("roe")  # ROIC approximation from ROE for US
         summary["institutional_ownership"] = ownership.get("institution_holding")
         summary["insider_ownership"] = ownership.get("insider_holding")
+        # Include FMP quarterly data if available (stored in screener_data for US)
+        fmp_quarterly = _format_screener_quarterly(screener.get("quarterly_results", []))[:4]
+        if fmp_quarterly and not summary.get("quarterly_results"):
+            summary["quarterly_results"] = fmp_quarterly
     else:
         # India-specific: market cap in INR, ROCE, shareholding, Screener data
         summary["market_cap_inr"] = valuation.get("market_cap")
