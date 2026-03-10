@@ -49,6 +49,21 @@ else:
 NSE_SUFFIX = ".NS"
 BSE_SUFFIX = ".BO"
 
+# US Exchanges (no suffix needed for Yahoo Finance)
+US_EXCHANGES = {"NYSE", "NASDAQ"}
+INDIAN_EXCHANGES = {"NSE", "BSE"}
+
+def is_us_exchange(exchange: str) -> bool:
+    """Check if an exchange is a US exchange."""
+    return exchange.upper() in US_EXCHANGES
+
+def is_indian_exchange(exchange: str) -> bool:
+    """Check if an exchange is an Indian exchange."""
+    return exchange.upper() in INDIAN_EXCHANGES
+
+# Financial Modeling Prep API (US stock fundamentals)
+FMP_API_KEY = os.getenv("FMP_API_KEY", "")
+
 # Alpha Vantage API (backup stock data provider)
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "")
 

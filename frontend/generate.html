@@ -519,22 +519,26 @@
                     if (stocks.length === 0) {
                         results.innerHTML = `
                             <div class="p-4 text-center text-gray-500">
-                                No stocks found. Try entering the exact NSE symbol.
+                                No stocks found. Try entering the exact ticker symbol (e.g., RELIANCE, AAPL).
                             </div>
                         `;
                     } else {
-                        results.innerHTML = stocks.map(stock => `
-                            <div onclick="selectStock('${stock.symbol}', '${stock.name}', '${stock.sector}')"
+                        results.innerHTML = stocks.map(stock => {
+                            const exchange = stock.exchange || 'NSE';
+                            const exchangeBadge = exchange === 'NSE' ? 'bg-blue-100 text-blue-700' :
+                                                  exchange === 'BSE' ? 'bg-purple-100 text-purple-700' :
+                                                  exchange === 'NASDAQ' ? 'bg-green-100 text-green-700' :
+                                                  'bg-yellow-100 text-yellow-700';
+                            return `
+                            <div onclick="selectStock('${stock.symbol}', '${stock.name}', '${stock.sector}', '${exchange}')"
                                 class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 flex items-center justify-between">
                                 <div>
                                     <p class="font-medium text-gray-900">${stock.name}</p>
                                     <p class="text-sm text-gray-500">${stock.symbol} | ${stock.sector}</p>
                                 </div>
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                </svg>
+                                <span class="text-xs font-medium px-2 py-0.5 rounded ${exchangeBadge}">${exchange}</span>
                             </div>
-                        `).join('');
+                        `}).join('');
 
                         // Track search
                         if (window.analytics) {
@@ -589,8 +593,11 @@
                 document.getElementById('previewTicker').textContent = data.symbol || symbol;
                 document.getElementById('previewName').textContent = data.company_name || name || symbol;
                 document.getElementById('previewSector').textContent = data.sector || sector || '-';
-                document.getElementById('previewPrice').textContent = `₹${data.current_price?.toLocaleString('en-IN', {maximumFractionDigits: 2}) || '0'}`;
-                document.getElementById('previewMarketCap').textContent = formatMarketCap(data.market_cap);
+                const isUS = ['NYSE', 'NASDAQ'].includes(exchange);
+                const curr = isUS ? '$' : '₹';
+                const locale = isUS ? 'en-US' : 'en-IN';
+                document.getElementById('previewPrice').textContent = `${curr}${data.current_price?.toLocaleString(locale, {maximumFractionDigits: 2}) || '0'}`;
+                document.getElementById('previewMarketCap').textContent = formatMarketCap(data.market_cap, exchange);
                 document.getElementById('previewPE').textContent = `${data.pe_ratio?.toFixed(1) || '0'}x`;
 
                 // Check for cached report
@@ -841,8 +848,15 @@
             }
         }
 
-        function formatMarketCap(cap) {
+        function formatMarketCap(cap, exchange = 'NSE') {
             if (!cap) return 'N/A';
+            const isUS = ['NYSE', 'NASDAQ'].includes(exchange);
+            if (isUS) {
+                if (cap >= 1e12) return `$${(cap/1e12).toFixed(2)}T`;
+                if (cap >= 1e9) return `$${(cap/1e9).toFixed(2)}B`;
+                if (cap >= 1e6) return `$${(cap/1e6).toFixed(1)}M`;
+                return `$${cap.toLocaleString('en-US')}`;
+            }
             if (cap >= 1e12) return `₹${(cap/1e12).toFixed(2)}L Cr`;
             if (cap >= 1e9) return `₹${(cap/1e7).toFixed(0)} Cr`;
             if (cap >= 1e7) return `₹${(cap/1e7).toFixed(2)} Cr`;

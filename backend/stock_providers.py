@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import logging
 
-from config import NSE_SUFFIX, BSE_SUFFIX
+from config import NSE_SUFFIX, BSE_SUFFIX, is_us_exchange
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -101,6 +101,8 @@ class YahooFinanceProvider(StockDataProvider):
     def _get_ticker_symbol(self, symbol: str, exchange: str) -> str:
         """Convert to Yahoo Finance format."""
         symbol = symbol.upper().strip().replace(".NS", "").replace(".BO", "")
+        if is_us_exchange(exchange):
+            return symbol  # US tickers need no suffix for Yahoo Finance
         if exchange.upper() == "NSE":
             return f"{symbol}{NSE_SUFFIX}"
         elif exchange.upper() == "BSE":
@@ -116,11 +118,12 @@ class YahooFinanceProvider(StockDataProvider):
             info = ticker.info
 
             if not info or info.get("regularMarketPrice") is None:
-                # Try other exchange
-                alt_exchange = "BSE" if exchange == "NSE" else "NSE"
-                ticker_symbol = self._get_ticker_symbol(symbol, alt_exchange)
-                ticker = yf.Ticker(ticker_symbol)
-                info = ticker.info
+                # Try other exchange (only for Indian stocks)
+                if not is_us_exchange(exchange):
+                    alt_exchange = "BSE" if exchange == "NSE" else "NSE"
+                    ticker_symbol = self._get_ticker_symbol(symbol, alt_exchange)
+                    ticker = yf.Ticker(ticker_symbol)
+                    info = ticker.info
 
                 if not info or info.get("regularMarketPrice") is None:
                     return None
@@ -135,7 +138,7 @@ class YahooFinanceProvider(StockDataProvider):
                     "website": info.get("website", ""),
                     "description": info.get("longBusinessSummary", ""),
                     "employees": info.get("fullTimeEmployees", 0),
-                    "country": info.get("country", "India"),
+                    "country": info.get("country", "USA" if is_us_exchange(exchange) else "India"),
                 },
                 "price_info": {
                     "current_price": info.get("regularMarketPrice", info.get("currentPrice", 0)),
@@ -867,6 +870,10 @@ class StockDataManager:
 
         # Try each provider
         for provider in self.providers:
+            # Skip India-only providers (Groww, Tickertape) for US stocks
+            if is_us_exchange(exchange) and provider.name in ("Groww", "Tickertape"):
+                continue
+
             if not provider.is_available():
                 logger.warning(f"Skipping {provider.name} (rate limited until {provider.rate_limit_until})")
                 continue

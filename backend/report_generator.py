@@ -3,8 +3,8 @@ import json
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
 
-from config import ANTHROPIC_API_KEY
-from yahoo_finance import format_market_cap, format_indian_number, calculate_upside
+from config import ANTHROPIC_API_KEY, is_us_exchange
+from yahoo_finance import format_market_cap, format_indian_number, format_us_number, format_us_market_cap, calculate_upside
 
 
 def get_indian_fiscal_quarter(date: datetime = None) -> Tuple[str, str, str]:
@@ -42,6 +42,38 @@ def get_indian_fiscal_quarter(date: datetime = None) -> Tuple[str, str, str]:
     else:  # 1, 2, 3
         quarter = "Q4"
         period = f"Jan-Mar {year}"
+
+    return quarter, fy_label, period
+
+
+def get_us_fiscal_quarter(date: datetime = None) -> Tuple[str, str, str]:
+    """
+    Get US calendar-year fiscal quarter info for a given date.
+    Most US companies use Jan-Dec fiscal year.
+    Returns (quarter_name, fy_label, period_desc).
+
+    Example: Mar 2026 -> ("Q1", "FY2026", "Jan-Mar 2026")
+    """
+    if date is None:
+        date = datetime.now()
+
+    month = date.month
+    year = date.year
+
+    if month in [1, 2, 3]:
+        quarter = "Q1"
+        period = f"Jan-Mar {year}"
+    elif month in [4, 5, 6]:
+        quarter = "Q2"
+        period = f"Apr-Jun {year}"
+    elif month in [7, 8, 9]:
+        quarter = "Q3"
+        period = f"Jul-Sep {year}"
+    else:
+        quarter = "Q4"
+        period = f"Oct-Dec {year}"
+
+    fy_label = f"FY{year}"
 
     return quarter, fy_label, period
 
@@ -122,7 +154,7 @@ Generate the ENTIRE report in Kannada language using Kannada script.
 }
 
 
-def generate_ai_analysis(stock_data: Dict[str, Any], language: str = 'en') -> Dict[str, Any]:
+def generate_ai_analysis(stock_data: Dict[str, Any], language: str = 'en', exchange: str = 'NSE') -> Dict[str, Any]:
     """
     Use Claude to generate investment analysis based on stock data.
     Returns structured analysis for the report.
@@ -130,20 +162,70 @@ def generate_ai_analysis(stock_data: Dict[str, Any], language: str = 'en') -> Di
     Args:
         stock_data: Dictionary containing stock information
         language: Language code - 'en' (English), 'hi' (Hindi), 'gu' (Gujarati), 'kn' (Kannada)
+        exchange: Exchange code - 'NSE', 'BSE', 'NYSE', 'NASDAQ'
     """
-    print(f"[ReportGenerator] Generating analysis with language: {language}")
+    print(f"[ReportGenerator] Generating analysis with language: {language}, exchange: {exchange}")
 
     if not ANTHROPIC_API_KEY:
         return generate_fallback_analysis(stock_data)
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
+    us_stock = is_us_exchange(exchange)
+
     # Prepare data summary for Claude
-    data_summary = prepare_data_summary(stock_data)
+    data_summary = prepare_data_summary(stock_data, exchange=exchange)
 
     # Get language-specific instructions
     lang_instruction = LANGUAGE_INSTRUCTIONS.get(language, '')
+    # For US stocks in non-English, adjust currency symbol instruction
+    if us_stock and lang_instruction:
+        lang_instruction = lang_instruction.replace('currency symbols (₹, %)', 'currency symbols ($, %)')
     print(f"[ReportGenerator] Language instruction present: {bool(lang_instruction)}")
+
+    # Build market-specific prompt sections
+    if us_stock:
+        time_context = f"""IMPORTANT - TIME CONTEXT (US Calendar Fiscal Year Jan-Dec, though some companies like Apple/Microsoft have non-standard FYs):
+- Today's date: {data_summary.get('report_date')}
+- Current fiscal quarter: {data_summary.get('current_fiscal_quarter')}
+- Latest available results: {data_summary.get('latest_results_quarter') or 'Check quarterly_results data'}
+- When discussing news or events, ensure they are RECENT (within the last 3-6 months from today's date)
+- When discussing quarterly results, reference the ACTUAL quarters from the data (e.g., "Q1 2026 results showed...")
+- All prices and valuations are in USD ($)"""
+
+        missing_data_instructions = f"""CRITICAL INSTRUCTIONS FOR HANDLING MISSING DATA:
+- If fundamental data (PE, revenue, margins, etc.) shows as 0, null, or N/A, USE YOUR KNOWLEDGE of this company to provide accurate information. You are Claude, you know about major US companies.
+- If quarterly_results is empty, USE YOUR KNOWLEDGE of this company's recent quarters. Describe what you know about their recent performance.
+- If recent_news is empty, USE YOUR KNOWLEDGE of recent developments, announcements, or events related to this company from the past 6 months (before {data_summary.get('report_date')}). Reference real news you know about.
+- NEVER say "data not available" or "quarterly data not provided" - instead, use your knowledge to fill in the gaps.
+- For major US companies (S&P 500), you should know their approximate PE ratios, recent performance, and major news."""
+
+        ownership_instructions = """7. ANALYZE INSTITUTIONAL & INSIDER ACTIVITY: If institutional_ownership or insider_activity is provided, focus on the TRENDS:
+   - High institutional ownership (>70%) = Wall Street confidence. Changes signal sentiment shifts.
+   - Insider buying = strong confidence signal (insiders put their own money in).
+   - Insider selling may be routine (compensation plans) - look at size and context.
+   - Track 13F filing changes for major institutional holders."""
+    else:
+        time_context = f"""IMPORTANT - TIME CONTEXT (Indian Fiscal Year runs Apr-Mar):
+- Today's date: {data_summary.get('report_date')}
+- Current fiscal quarter: {data_summary.get('current_fiscal_quarter')}
+- Latest available results: {data_summary.get('latest_results_quarter') or 'Check quarterly_results data'}
+- When discussing news or events, ensure they are RECENT (within the last 3-6 months from today's date)
+- When discussing quarterly results, reference the ACTUAL quarters from the data (e.g., "Q2 FY26 results showed...")"""
+
+        missing_data_instructions = f"""CRITICAL INSTRUCTIONS FOR HANDLING MISSING DATA:
+- If fundamental data (PE, revenue, margins, etc.) shows as 0, null, or N/A, USE YOUR KNOWLEDGE of this company to provide accurate information. You are Claude, you know about major Indian companies.
+- If quarterly_results is empty, USE YOUR KNOWLEDGE of this company's recent quarters. Describe what you know about their recent performance.
+- If recent_news is empty, USE YOUR KNOWLEDGE of recent developments, announcements, or events related to this company from the past 6 months (before {data_summary.get('report_date')}). Reference real news you know about.
+- NEVER say "data not available" or "quarterly data not provided" - instead, use your knowledge to fill in the gaps.
+- For major Indian companies (Nifty 50, Nifty Next 50), you should know their approximate PE ratios, recent performance, and major news."""
+
+        ownership_instructions = """7. ANALYZE SHAREHOLDING TRENDS: If shareholding_changes is provided, focus on the CHANGES not just current levels. Key signals:
+   - Promoters buying = strong confidence signal. Promoters selling = potential red flag.
+   - FII accumulation = global institutional interest. FII selling = risk-off sentiment.
+   - DII buying often counters FII selling = domestic support.
+   - Look at the "change" field to see movement over the past year.
+8. LEVERAGE SCREENER INSIGHTS: If screener_pros/screener_cons are provided, incorporate these insights. These are pre-analyzed strengths and weaknesses from fundamental analysis. Use them to support your thesis."""
 
     prompt = f"""You are a HIGHLY OPINIONATED senior equity research analyst at a top investment bank.
 {lang_instruction} You have strong convictions and are not afraid to make bold calls. Your reputation is built on taking clear, decisive stances - not wishy-washy "hold" recommendations.
@@ -155,37 +237,22 @@ STOCK DATA (from our data providers):
 
 YOUR TASK: Generate a STRONG, OPINIONATED investment thesis. Take a clear stance - either you love this stock or you don't. Avoid fence-sitting.
 
-IMPORTANT - TIME CONTEXT (Indian Fiscal Year runs Apr-Mar):
-- Today's date: {data_summary.get('report_date')}
-- Current fiscal quarter: {data_summary.get('current_fiscal_quarter')}
-- Latest available results: {data_summary.get('latest_results_quarter') or 'Check quarterly_results data'}
-- When discussing news or events, ensure they are RECENT (within the last 3-6 months from today's date)
-- When discussing quarterly results, reference the ACTUAL quarters from the data (e.g., "Q2 FY26 results showed...")
+{time_context}
 
-CRITICAL INSTRUCTIONS FOR HANDLING MISSING DATA:
-- If fundamental data (PE, revenue, margins, etc.) shows as 0, null, or N/A, USE YOUR KNOWLEDGE of this company to provide accurate information. You are Claude, you know about major Indian companies.
-- If quarterly_results is empty, USE YOUR KNOWLEDGE of this company's recent quarters. Describe what you know about their recent performance.
-- If recent_news is empty, USE YOUR KNOWLEDGE of recent developments, announcements, or events related to this company from the past 6 months (before {data_summary.get('report_date')}). Reference real news you know about.
-- NEVER say "data not available" or "quarterly data not provided" - instead, use your knowledge to fill in the gaps.
-- For major Indian companies (Nifty 50, Nifty Next 50), you should know their approximate PE ratios, recent performance, and major news.
+{missing_data_instructions}
 
 CRITICAL INSTRUCTIONS FOR CONTENT:
 1. OPENING HOOK: Start with ONE of these (pick the most compelling for this stock):
    - An anecdote that illustrates the company's position or recent performance
    - A recent company event/news described in simple, everyday language (like explaining to a friend)
-   - A vivid analogy comparing this company to its peers (e.g., "If HDFC Bank is the reliable family sedan, this bank is...")
+   - A vivid analogy comparing this company to its peers
    The hook should be 2-3 sentences, conversational, and set up your investment thesis.
 2. BE DECISIVE: If the fundamentals are good, give a strong BUY with conviction. If they're bad, give a clear SELL. Only use HOLD if truly mixed.
 3. USE NEWS & EVENTS: Reference recent news, events, or developments about this company. Use your knowledge if the data doesn't include news. What happened in the last quarter? Any management changes? New products? Regulatory issues?
 4. ANALYZE QUARTERLY TRENDS: Discuss the last 2-4 quarters. Is revenue/profit growing or declining? Use your knowledge if quarterly data is missing.
 5. BE SPECIFIC: Use actual numbers. If data shows 0, use your knowledge of approximate values.
 6. HAVE CONVICTION: Write like you're putting your own money on this call.
-7. ANALYZE SHAREHOLDING TRENDS: If shareholding_changes is provided, focus on the CHANGES not just current levels. Key signals:
-   - Promoters buying = strong confidence signal. Promoters selling = potential red flag.
-   - FII accumulation = global institutional interest. FII selling = risk-off sentiment.
-   - DII buying often counters FII selling = domestic support.
-   - Look at the "change" field to see movement over the past year.
-8. LEVERAGE SCREENER INSIGHTS: If screener_pros/screener_cons are provided, incorporate these insights. These are pre-analyzed strengths and weaknesses from fundamental analysis. Use them to support your thesis.
+{ownership_instructions}
 
 Return your analysis in this JSON format:
 {{
@@ -289,7 +356,7 @@ Return ONLY valid JSON, no other text."""
         return generate_fallback_analysis(stock_data)
 
 
-def prepare_data_summary(stock_data: Dict[str, Any]) -> Dict[str, Any]:
+def prepare_data_summary(stock_data: Dict[str, Any], exchange: str = "NSE") -> Dict[str, Any]:
     """Prepare a clean summary of stock data for AI analysis."""
     basic = stock_data.get("basic_info", {})
     price = stock_data.get("price_info", {})
@@ -303,26 +370,33 @@ def prepare_data_summary(stock_data: Dict[str, Any]) -> Dict[str, Any]:
     quarterly = stock_data.get("quarterly_results", [])
     news = stock_data.get("recent_news", [])
     screener = stock_data.get("screener_data", {})
+    ownership = stock_data.get("ownership", {})
+
+    us_stock = is_us_exchange(exchange)
 
     # Get current date and fiscal quarter context
     now = datetime.now()
-    current_quarter, current_fy, current_period = get_indian_fiscal_quarter(now)
+    if us_stock:
+        current_quarter, current_fy, current_period = get_us_fiscal_quarter(now)
+    else:
+        current_quarter, current_fy, current_period = get_indian_fiscal_quarter(now)
 
     # Extract latest available results quarter from data
     latest_results_quarter = None
     if quarterly and len(quarterly) > 0:
-        # Quarterly results have 'period' key with values like 'Sep 2025'
         first_quarter = quarterly[0]
         if isinstance(first_quarter, dict):
-            # Try to get the period from the first data column (not 'metric')
             for key in first_quarter.keys():
                 if key != 'metric' and key:
-                    latest_results_quarter = parse_quarter_label(key)
+                    if us_stock:
+                        latest_results_quarter = key  # US: use raw label (e.g., "Sep 2025")
+                    else:
+                        latest_results_quarter = parse_quarter_label(key)
                     break
 
     # Format news for the AI
     news_summary = []
-    for article in news[:7]:  # Top 7 news items
+    for article in news[:7]:
         if article.get("title"):
             news_summary.append({
                 "headline": article.get("title"),
@@ -338,11 +412,14 @@ def prepare_data_summary(stock_data: Dict[str, Any]) -> Dict[str, Any]:
     else:
         position_in_range = 50
 
-    return {
+    # Build base summary (common to both markets)
+    summary = {
         # Time context for grounding
         "report_date": now.strftime("%B %d, %Y"),
         "current_fiscal_quarter": f"{current_quarter} {current_fy} ({current_period})",
         "latest_results_quarter": latest_results_quarter,
+        "market": "US" if us_stock else "India",
+        "currency": "USD" if us_stock else "INR",
         # Company info
         "company_name": basic.get("company_name"),
         "sector": basic.get("sector"),
@@ -352,7 +429,6 @@ def prepare_data_summary(stock_data: Dict[str, Any]) -> Dict[str, Any]:
         "52_week_high": price.get("fifty_two_week_high"),
         "52_week_low": price.get("fifty_two_week_low"),
         "position_in_52week_range_pct": round(position_in_range, 1),
-        "market_cap_inr": valuation.get("market_cap"),
         "pe_ratio": valuation.get("pe_ratio"),
         "pb_ratio": valuation.get("pb_ratio"),
         "ev_to_ebitda": valuation.get("ev_to_ebitda"),
@@ -373,13 +449,24 @@ def prepare_data_summary(stock_data: Dict[str, Any]) -> Dict[str, Any]:
         "analyst_recommendation": analyst.get("recommendation"),
         "quarterly_results": quarterly[:4] if quarterly else [],
         "recent_news": news_summary,
-        # Screener.in enriched data (if available)
-        "roce": returns.get("roce"),  # Return on Capital Employed
-        "shareholding_changes": _format_shareholding_changes(screener.get("shareholding", [])),
-        "screener_pros": screener.get("pros", [])[:5],  # Top 5 pros
-        "screener_cons": screener.get("cons", [])[:5],  # Top 5 cons
-        "screener_quarterly": _format_screener_quarterly(screener.get("quarterly_results", []))[:4],
     }
+
+    if us_stock:
+        # US-specific: market cap in USD, institutional/insider ownership
+        summary["market_cap_usd"] = valuation.get("market_cap")
+        summary["roic"] = returns.get("roe")  # ROIC approximation from ROE for US
+        summary["institutional_ownership"] = ownership.get("institution_holding")
+        summary["insider_ownership"] = ownership.get("insider_holding")
+    else:
+        # India-specific: market cap in INR, ROCE, shareholding, Screener data
+        summary["market_cap_inr"] = valuation.get("market_cap")
+        summary["roce"] = returns.get("roce")
+        summary["shareholding_changes"] = _format_shareholding_changes(screener.get("shareholding", []))
+        summary["screener_pros"] = screener.get("pros", [])[:5]
+        summary["screener_cons"] = screener.get("cons", [])[:5]
+        summary["screener_quarterly"] = _format_screener_quarterly(screener.get("quarterly_results", []))[:4]
+
+    return summary
 
 
 def _format_shareholding_changes(shareholding: list) -> list:
@@ -571,7 +658,13 @@ def generate_comparison_analysis(
     # Get language instruction
     lang_instruction = LANGUAGE_INSTRUCTIONS.get(language, '')
 
-    prompt = f"""You are a senior equity research analyst making a HEAD-TO-HEAD comparison between two Indian stocks.
+    # Determine market context for comparison
+    exchange_a = stock_a_data.get("basic_info", {}).get("exchange", "NSE")
+    exchange_b = stock_b_data.get("basic_info", {}).get("exchange", "NSE")
+    us_comparison = is_us_exchange(exchange_a) or is_us_exchange(exchange_b)
+    market_label = "stocks" if us_comparison else "Indian stocks"
+
+    prompt = f"""You are a senior equity research analyst making a HEAD-TO-HEAD comparison between two {market_label}.
 {lang_instruction}
 
 An investor wants to know: "I have money to invest in ONE of these stocks. Which should I choose?"
@@ -691,7 +784,7 @@ def _prepare_comparison_summary(stock_data: Dict[str, Any], analysis: Dict[str, 
         "profit_margin": financials.get("profit_margin", 0),
         "operating_margin": financials.get("operating_margin", 0),
         "roe": returns.get("roe", 0),
-        "roce": returns.get("roce", 0),
+        "roce": returns.get("roce", 0),  # ROCE for Indian, doubles as ROIC context for US
         "debt_to_equity": balance.get("debt_to_equity", 0),
         "recommendation": analysis.get("recommendation", "HOLD"),
         "target_price": analysis.get("target_price", 0),
@@ -741,13 +834,14 @@ def _generate_fallback_comparison(
     }
 
 
-def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any], language: str = 'en') -> str:
+def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any], language: str = 'en', exchange: str = 'NSE') -> str:
     """Generate the complete HTML report.
 
     Args:
         stock_data: Dictionary containing stock information
         analysis: AI-generated analysis
         language: Language code - 'en' (English), 'hi' (Hindi), 'gu' (Gujarati), 'kn' (Kannada)
+        exchange: Exchange code - 'NSE', 'BSE', 'NYSE', 'NASDAQ'
     """
 
     basic = stock_data.get("basic_info", {})
@@ -760,13 +854,16 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any], l
     dividends = stock_data.get("dividends", {})
     ownership = stock_data.get("ownership", {})
 
+    us_stock = is_us_exchange(exchange)
+    currency_symbol = "$" if us_stock else "₹"
+
     current_price = price.get("current_price", 0)
     target_price = analysis.get("target_price", current_price * 1.1)
     upside = calculate_upside(current_price, target_price)
     recommendation = analysis.get("recommendation", "HOLD")
 
-    # Format values
-    market_cap_formatted = format_market_cap(valuation.get("market_cap", 0))
+    # Format values - use exchange-aware formatting
+    market_cap_formatted = format_market_cap(valuation.get("market_cap", 0), exchange=exchange)
     pe_ratio = valuation.get("pe_ratio", 0) or 0
     pb_ratio = valuation.get("pb_ratio", 0) or 0
     dividend_yield = (dividends.get("dividend_yield", 0) or 0) * 100
@@ -1423,7 +1520,7 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any], l
                     <div class="company-meta">
                         <span>{basic.get("sector", "N/A")}</span>
                         <span>|</span>
-                        <span>NSE: {basic.get("ticker", "")} | BSE: {basic.get("ticker", "")}</span>
+                        <span>{exchange}: {basic.get("ticker", "")}</span>
                         <span>|</span>
                         <span>Report Date: {report_date}</span>
                     </div>
@@ -1432,8 +1529,8 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any], l
                     <div class="recommendation {rec_class}">{recommendation}</div>
                     <div class="conviction-badge {conviction_level.lower()}">{conviction_level} Conviction</div>
                     <div class="price-info">
-                        <div>CMP: <span class="price-current">₹{current_price:,.2f}</span></div>
-                        <div>Target: ₹{target_price:,.0f} | Upside: {upside:.1f}%</div>
+                        <div>CMP: <span class="price-current">{currency_symbol}{current_price:,.2f}</span></div>
+                        <div>Target: {currency_symbol}{target_price:,.0f} | Upside: {upside:.1f}%</div>
                     </div>
                 </div>
             </div>
@@ -1453,7 +1550,7 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any], l
                 </div>
                 <div class="metric-item">
                     <div class="metric-label">52W Range</div>
-                    <div class="metric-value">₹{fifty_two_week_low:,.0f} - ₹{fifty_two_week_high:,.0f}</div>
+                    <div class="metric-value">{currency_symbol}{fifty_two_week_low:,.0f} - {currency_symbol}{fifty_two_week_high:,.0f}</div>
                 </div>
             </div>
         </div>
@@ -1591,11 +1688,11 @@ def generate_report_html(stock_data: Dict[str, Any], analysis: Dict[str, Any], l
                 <div class="valuation-grid">
                     <div class="valuation-card">
                         <div class="valuation-metric">Revenue</div>
-                        <div class="valuation-value">{format_market_cap(financials.get("revenue", 0))}</div>
+                        <div class="valuation-value">{format_market_cap(financials.get("revenue", 0), exchange=exchange)}</div>
                     </div>
                     <div class="valuation-card">
                         <div class="valuation-metric">EBITDA</div>
-                        <div class="valuation-value">{format_market_cap(financials.get("ebitda", 0))}</div>
+                        <div class="valuation-value">{format_market_cap(financials.get("ebitda", 0), exchange=exchange)}</div>
                     </div>
                     <div class="valuation-card">
                         <div class="valuation-metric">Profit Margin</div>

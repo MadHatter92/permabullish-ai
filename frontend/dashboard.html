@@ -633,13 +633,13 @@
                             <div class="flex items-center justify-between pl-11 sm:pl-0">
                                 <div class="flex items-center gap-3 sm:gap-4">
                                     <div class="sm:hidden text-xs text-gray-500">
-                                        AI: <span class="font-medium text-gray-900">₹${report.ai_target_price?.toFixed(0) || '-'}</span>
+                                        AI: <span class="font-medium text-gray-900">${getCurrencySymbol(report.exchange)}${report.ai_target_price?.toFixed(0) || '-'}</span>
                                     </div>
                                     <div class="text-right hidden sm:block">
-                                        <p class="font-medium text-gray-900">₹${report.ai_target_price?.toFixed(0) || '-'}</p>
+                                        <p class="font-medium text-gray-900">${getCurrencySymbol(report.exchange)}${report.ai_target_price?.toFixed(0) || '-'}</p>
                                         <p class="text-sm text-gray-500">AI Target</p>
                                     </div>
-                                    ${report.user_target_price ? '<div class="text-right hidden sm:block"><p class="font-medium text-[#e8913a]">₹' + report.user_target_price?.toFixed(0) + '</p><p class="text-sm text-gray-500">Your Target</p></div>' : ''}
+                                    ${report.user_target_price ? '<div class="text-right hidden sm:block"><p class="font-medium text-[#e8913a]">' + getCurrencySymbol(report.exchange) + report.user_target_price?.toFixed(0) + '</p><p class="text-sm text-gray-500">Your Target</p></div>' : ''}
                                 </div>
                                 <div class="flex space-x-1 flex-shrink-0">
                                     <button onclick="toggleReportWatchlist('${report.ticker}', '${report.exchange || 'NSE'}', '${report.company_name?.replace(/'/g, "\\'")}', this)"
@@ -776,7 +776,7 @@
                             </div>
                             <!-- Right: Price + Actions -->
                             <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                                ${item.has_report ? '<span class="text-xs sm:text-sm font-medium text-gray-900">₹' + (item.ai_target_price?.toFixed(0) || '-') + '</span>' : ''}
+                                ${item.has_report ? '<span class="text-xs sm:text-sm font-medium text-gray-900">' + getCurrencySymbol(item.exchange) + (item.ai_target_price?.toFixed(0) || '-') + '</span>' : ''}
                                 <div class="flex items-center">
                                     ${item.has_report ? '<a href="report.html?id=' + item.report_cache_id + '" class="p-1.5 sm:p-2 text-[#e8913a] hover:bg-[#fdecd4] rounded-lg transition-all" title="View"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></a>' : '<a href="generate.html?ticker=' + item.ticker + '&exchange=' + item.exchange + '" class="px-2 py-1 text-xs bg-[#e8913a] text-white rounded hover:bg-[#d97316] transition-all">New</a>'}
                                     <button onclick="removeFromWatchlist('${item.ticker}', '${item.exchange}')" class="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Remove">
@@ -825,6 +825,10 @@
                 case 'HOLD':
                 default: return 'bg-yellow-500';
             }
+        }
+
+        function getCurrencySymbol(exchange) {
+            return ['NYSE', 'NASDAQ'].includes(exchange) ? '$' : '₹';
         }
 
         function formatDate(dateStr) {

@@ -732,11 +732,11 @@ async def get_usage_stats(current_user: dict = Depends(auth.get_current_user)):
 
 # Stock Search Routes
 @app.get("/api/stocks/search")
-async def search_indian_stocks(
+async def search_all_stocks(
     q: str,
     limit: int = 10
 ):
-    """Search for Indian stocks by name or symbol."""
+    """Search for stocks by name or symbol across Indian and US markets."""
     if len(q) < 1:
         return []
 
@@ -868,11 +868,11 @@ async def generate_report(
                 detail=f"Stock {ticker} not found on {exchange}"
             )
 
-        # Generate AI analysis (in selected language)
-        analysis = generate_ai_analysis(stock_data, language)
+        # Generate AI analysis (in selected language, with market context)
+        analysis = generate_ai_analysis(stock_data, language, exchange=exchange)
 
-        # Generate HTML report (with language-specific fonts)
-        report_html = generate_report_html(stock_data, analysis, language)
+        # Generate HTML report (with language-specific fonts and currency)
+        report_html = generate_report_html(stock_data, analysis, language, exchange=exchange)
 
         # Extract key info for storage
         basic = stock_data.get("basic_info", {})

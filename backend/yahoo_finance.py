@@ -6,7 +6,7 @@ import json
 import logging
 import time
 
-from config import NSE_SUFFIX, BSE_SUFFIX, ALPHA_VANTAGE_API_KEY
+from config import NSE_SUFFIX, BSE_SUFFIX, ALPHA_VANTAGE_API_KEY, is_us_exchange, is_indian_exchange
 from stock_providers import get_stock_manager, StockDataManager
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ CHART_CACHE_TTL = 300  # 5 minutes
 
 
 def _load_stock_list() -> List[Dict]:
-    """Load stock list from JSON files, merging NSE list with Nifty 500 names."""
+    """Load stock list from JSON files, merging NSE list with Nifty 500 names and US stocks."""
     global _stock_list_cache
     if _stock_list_cache is not None:
         return _stock_list_cache
@@ -60,17 +60,35 @@ def _load_stock_list() -> List[Dict]:
                 _stock_list_cache.append({
                     "symbol": symbol,
                     "name": nifty_names[symbol]["name"],
-                    "sector": nifty_names[symbol]["sector"] or s.get("industry", "")
+                    "sector": nifty_names[symbol]["sector"] or s.get("industry", ""),
+                    "exchange": "NSE"
                 })
             else:
                 # Use NSE data (name might just be symbol)
                 _stock_list_cache.append({
                     "symbol": symbol,
                     "name": s.get("company_name", symbol),
-                    "sector": s.get("industry", "")
+                    "sector": s.get("industry", ""),
+                    "exchange": "NSE"
                 })
 
-        logger.info(f"Loaded {len(_stock_list_cache)} stocks for search ({len(nifty_names)} with full names)")
+        indian_count = len(_stock_list_cache)
+
+        # Load US stocks (S&P 500)
+        us_file = data_dir / "sp500_stocks.json"
+        if us_file.exists():
+            with open(us_file, 'r') as f:
+                us_stocks = json.load(f)
+                for s in us_stocks:
+                    _stock_list_cache.append({
+                        "symbol": s["symbol"],
+                        "name": s.get("company_name", s["symbol"]),
+                        "sector": s.get("industry", ""),
+                        "exchange": s.get("exchange", "NYSE")
+                    })
+            logger.info(f"Loaded {len(us_stocks)} US stocks from S&P 500")
+
+        logger.info(f"Loaded {len(_stock_list_cache)} total stocks for search ({indian_count} Indian, {len(_stock_list_cache) - indian_count} US)")
         return _stock_list_cache
     except Exception as e:
         logger.error(f"Failed to load stock list: {e}")
@@ -89,11 +107,13 @@ def get_manager() -> StockDataManager:
 
 
 def get_ticker_symbol(symbol: str, exchange: str = "NSE") -> str:
-    """Convert symbol to Yahoo Finance format for Indian stocks."""
+    """Convert symbol to Yahoo Finance format for Indian or US stocks."""
     symbol = symbol.upper().strip()
     # Remove any existing suffix
     symbol = symbol.replace(".NS", "").replace(".BO", "")
 
+    if is_us_exchange(exchange):
+        return symbol  # US tickers need no suffix for Yahoo Finance
     if exchange.upper() == "NSE":
         return f"{symbol}{NSE_SUFFIX}"
     elif exchange.upper() == "BSE":
@@ -130,14 +150,15 @@ def fetch_stock_data(symbol: str, exchange: str = "NSE") -> Optional[Dict[str, A
         except Exception as e:
             logger.warning(f"Yahoo enrichment failed for {symbol}: {e}")
 
-    # Enrich with cached fundamentals from Screener (if available)
-    try:
-        screener_data = _get_screener_fundamentals(symbol)
-        if screener_data:
-            basic_data = _merge_screener_data(basic_data, screener_data)
-            logger.info(f"Enriched {symbol} with cached Screener data")
-    except Exception as e:
-        logger.warning(f"Screener enrichment failed for {symbol}: {e}")
+    # Enrich with cached fundamentals from Screener (Indian stocks only)
+    if not is_us_exchange(exchange):
+        try:
+            screener_data = _get_screener_fundamentals(symbol)
+            if screener_data:
+                basic_data = _merge_screener_data(basic_data, screener_data)
+                logger.info(f"Enriched {symbol} with cached Screener data")
+        except Exception as e:
+            logger.warning(f"Screener enrichment failed for {symbol}: {e}")
 
     return basic_data
 
@@ -512,33 +533,37 @@ def process_quarterly_financials(df) -> list:
 
 def search_stocks(query: str, limit: int = 10) -> list:
     """
-    Search for Indian stocks matching the query.
-    Returns list of matching tickers from Nifty 500.
+    Search for stocks matching the query across Indian and US markets.
+    Returns list of matching tickers with exchange information.
     """
-    indian_stocks = _load_stock_list()
+    all_stocks = _load_stock_list()
 
     # Fallback to minimal list if JSON loading fails
-    if not indian_stocks:
-        indian_stocks = [
-            {"symbol": "RELIANCE", "name": "Reliance Industries", "sector": "Oil & Gas"},
-            {"symbol": "TCS", "name": "Tata Consultancy Services", "sector": "IT"},
-            {"symbol": "HDFCBANK", "name": "HDFC Bank", "sector": "Banking"},
-            {"symbol": "INFY", "name": "Infosys", "sector": "IT"},
-            {"symbol": "ICICIBANK", "name": "ICICI Bank", "sector": "Banking"},
+    if not all_stocks:
+        all_stocks = [
+            {"symbol": "RELIANCE", "name": "Reliance Industries", "sector": "Oil & Gas", "exchange": "NSE"},
+            {"symbol": "TCS", "name": "Tata Consultancy Services", "sector": "IT", "exchange": "NSE"},
+            {"symbol": "HDFCBANK", "name": "HDFC Bank", "sector": "Banking", "exchange": "NSE"},
+            {"symbol": "AAPL", "name": "Apple Inc.", "sector": "Technology", "exchange": "NASDAQ"},
+            {"symbol": "MSFT", "name": "Microsoft Corporation", "sector": "Technology", "exchange": "NASDAQ"},
         ]
 
-    query = query.upper()
+    query_upper = query.upper()
+    query_lower = query.lower()
     results = []
 
-    for stock in indian_stocks:
-        symbol_match = query in stock["symbol"].upper()
-        name_match = query.lower() in stock["name"].lower()
-        if symbol_match or name_match:
-            results.append(stock)
-            if len(results) >= limit:
-                break
+    # Exact symbol matches first, then partial matches
+    exact_matches = []
+    partial_matches = []
 
-    return results
+    for stock in all_stocks:
+        if stock["symbol"].upper() == query_upper:
+            exact_matches.append(stock)
+        elif query_upper in stock["symbol"].upper() or query_lower in stock["name"].lower():
+            partial_matches.append(stock)
+
+    results = exact_matches + partial_matches
+    return results[:limit]
 
 
 def format_indian_number(num: float) -> str:
@@ -559,10 +584,13 @@ def format_indian_number(num: float) -> str:
         return f"{sign}{abs_num:.2f}"
 
 
-def format_market_cap(market_cap: float) -> str:
-    """Format market cap in Indian style."""
+def format_market_cap(market_cap: float, exchange: str = "NSE") -> str:
+    """Format market cap based on exchange (Indian or US style)."""
     if market_cap is None or market_cap == 0:
         return "N/A"
+
+    if is_us_exchange(exchange):
+        return format_us_market_cap(market_cap)
 
     if market_cap >= 1e12:  # Lakh Crores
         return f"₹{market_cap/1e12:.2f}L Cr"
@@ -572,6 +600,42 @@ def format_market_cap(market_cap: float) -> str:
         return f"₹{market_cap/1e7:.2f} Cr"
     else:
         return f"₹{market_cap/1e5:.2f} L"
+
+
+def format_us_market_cap(market_cap: float) -> str:
+    """Format market cap in US style (T/B/M)."""
+    if market_cap is None or market_cap == 0:
+        return "N/A"
+
+    abs_cap = abs(market_cap)
+    if abs_cap >= 1e12:
+        return f"${abs_cap/1e12:.2f}T"
+    elif abs_cap >= 1e9:
+        return f"${abs_cap/1e9:.2f}B"
+    elif abs_cap >= 1e6:
+        return f"${abs_cap/1e6:.1f}M"
+    else:
+        return f"${abs_cap:,.0f}"
+
+
+def format_us_number(num: float) -> str:
+    """Format number in US style (T/B/M/K)."""
+    if num is None or num == 0:
+        return "0"
+
+    abs_num = abs(num)
+    sign = "-" if num < 0 else ""
+
+    if abs_num >= 1e12:
+        return f"{sign}${abs_num/1e12:.2f}T"
+    elif abs_num >= 1e9:
+        return f"{sign}${abs_num/1e9:.2f}B"
+    elif abs_num >= 1e6:
+        return f"{sign}${abs_num/1e6:.1f}M"
+    elif abs_num >= 1e3:
+        return f"{sign}${abs_num/1e3:.1f}K"
+    else:
+        return f"{sign}${abs_num:.2f}"
 
 
 def calculate_upside(current_price: float, target_price: float) -> float:
