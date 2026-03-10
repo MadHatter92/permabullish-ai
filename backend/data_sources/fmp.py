@@ -13,7 +13,7 @@ from config import FMP_API_KEY
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://financialmodelingprep.com/api/v3"
+BASE_URL = "https://financialmodelingprep.com/stable"
 
 # Track daily API calls
 _calls_today = 0
@@ -74,17 +74,24 @@ def _make_request(endpoint: str, params: Optional[Dict] = None) -> Optional[Any]
         return None
 
 
+def _unwrap(data: Any) -> Any:
+    """Unwrap response - stable API may return list or dict."""
+    return data
+
+
 def get_company_profile(symbol: str) -> Optional[Dict[str, Any]]:
     """Get company profile including sector, industry, description."""
-    data = _make_request(f"profile/{symbol}")
+    data = _make_request("profile", {"symbol": symbol})
     if data and isinstance(data, list) and len(data) > 0:
         return data[0]
+    if data and isinstance(data, dict) and data.get("symbol"):
+        return data
     return None
 
 
 def get_income_statement(symbol: str, period: str = "quarter", limit: int = 4) -> Optional[List[Dict]]:
     """Get income statement (quarterly or annual)."""
-    data = _make_request(f"income-statement/{symbol}", {"period": period, "limit": limit})
+    data = _make_request("income-statement", {"symbol": symbol, "period": period, "limit": limit})
     if data and isinstance(data, list):
         return data
     return None
@@ -92,7 +99,7 @@ def get_income_statement(symbol: str, period: str = "quarter", limit: int = 4) -
 
 def get_balance_sheet(symbol: str, period: str = "quarter", limit: int = 4) -> Optional[List[Dict]]:
     """Get balance sheet (quarterly or annual)."""
-    data = _make_request(f"balance-sheet-statement/{symbol}", {"period": period, "limit": limit})
+    data = _make_request("balance-sheet-statement", {"symbol": symbol, "period": period, "limit": limit})
     if data and isinstance(data, list):
         return data
     return None
@@ -100,7 +107,7 @@ def get_balance_sheet(symbol: str, period: str = "quarter", limit: int = 4) -> O
 
 def get_cash_flow(symbol: str, period: str = "quarter", limit: int = 4) -> Optional[List[Dict]]:
     """Get cash flow statement (quarterly or annual)."""
-    data = _make_request(f"cash-flow-statement/{symbol}", {"period": period, "limit": limit})
+    data = _make_request("cash-flow-statement", {"symbol": symbol, "period": period, "limit": limit})
     if data and isinstance(data, list):
         return data
     return None
@@ -108,7 +115,7 @@ def get_cash_flow(symbol: str, period: str = "quarter", limit: int = 4) -> Optio
 
 def get_ratios(symbol: str, period: str = "quarter", limit: int = 4) -> Optional[List[Dict]]:
     """Get financial ratios (PE, PB, ROE, margins, etc.)."""
-    data = _make_request(f"ratios/{symbol}", {"period": period, "limit": limit})
+    data = _make_request("ratios", {"symbol": symbol, "period": period, "limit": limit})
     if data and isinstance(data, list):
         return data
     return None
@@ -116,7 +123,7 @@ def get_ratios(symbol: str, period: str = "quarter", limit: int = 4) -> Optional
 
 def get_key_metrics(symbol: str, period: str = "quarter", limit: int = 4) -> Optional[List[Dict]]:
     """Get key metrics (EV/EBITDA, market cap, etc.)."""
-    data = _make_request(f"key-metrics/{symbol}", {"period": period, "limit": limit})
+    data = _make_request("key-metrics", {"symbol": symbol, "period": period, "limit": limit})
     if data and isinstance(data, list):
         return data
     return None
@@ -124,7 +131,7 @@ def get_key_metrics(symbol: str, period: str = "quarter", limit: int = 4) -> Opt
 
 def get_institutional_holders(symbol: str) -> Optional[List[Dict]]:
     """Get institutional holders (from 13F filings)."""
-    data = _make_request(f"institutional-holder/{symbol}")
+    data = _make_request("institutional-holder", {"symbol": symbol})
     if data and isinstance(data, list):
         return data[:20]  # Top 20 holders
     return None
@@ -140,9 +147,11 @@ def get_stock_news(symbol: str, limit: int = 10) -> Optional[List[Dict]]:
 
 def get_quote(symbol: str) -> Optional[Dict[str, Any]]:
     """Get real-time stock quote."""
-    data = _make_request(f"quote/{symbol}")
+    data = _make_request("quote", {"symbol": symbol})
     if data and isinstance(data, list) and len(data) > 0:
         return data[0]
+    if data and isinstance(data, dict) and data.get("price"):
+        return data
     return None
 
 
