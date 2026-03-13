@@ -162,7 +162,7 @@
                     <div class="text-center" id="userTargetContainer">
                         <div class="text-xs text-gray-500 uppercase tracking-wide">Your Target</div>
                         <div class="flex items-center space-x-1">
-                            <span class="text-gray-400">₹</span>
+                            <span id="userTargetCurrency" class="text-gray-400">₹</span>
                             <input type="number" id="userTargetInput" placeholder="--"
                                 class="w-20 text-lg font-semibold text-[#102a43] border-b border-gray-300 focus:border-[#e8913a] focus:outline-none text-center bg-transparent"
                                 onchange="saveUserTargetPrice()">
@@ -286,6 +286,17 @@
         let currentReport = null;
         let userTargetPrice = null;
         const FRESHNESS_DAYS = 15;
+
+        function getCurrencySymbol() {
+            const exchange = currentReport ? (currentReport.exchange || 'NSE') : 'NSE';
+            return ['NYSE', 'NASDAQ'].includes(exchange.toUpperCase()) ? '$' : '₹';
+        }
+
+        function formatLocalePrice(value) {
+            const exchange = currentReport ? (currentReport.exchange || 'NSE') : 'NSE';
+            const isUS = ['NYSE', 'NASDAQ'].includes(exchange.toUpperCase());
+            return isUS ? parseFloat(value).toLocaleString('en-US') : parseFloat(value).toLocaleString('en-IN');
+        }
 
         // Handle token from OAuth callback (report.html?id=X&token=Y)
         (function handleOAuthReturn() {
@@ -674,24 +685,27 @@
                 returnEl.style.color = returnVal >= 0 ? '#68d391' : '#fc8181';
             }
 
+            const curr = getCurrencySymbol();
+            const fmt = (v) => formatLocalePrice(v);
+
             const lowEl = iframeDoc.getElementById('chart52Low');
             if (lowEl && stats.week52_low) {
-                lowEl.textContent = `L ₹${stats.week52_low.toLocaleString('en-IN')}`;
+                lowEl.textContent = `L ${curr}${fmt(stats.week52_low)}`;
             }
 
             const highEl = iframeDoc.getElementById('chart52High');
             if (highEl && stats.week52_high) {
-                highEl.textContent = `H ₹${stats.week52_high.toLocaleString('en-IN')}`;
+                highEl.textContent = `H ${curr}${fmt(stats.week52_high)}`;
             }
 
             const ma50El = iframeDoc.getElementById('chartMA50');
             if (ma50El) {
-                ma50El.textContent = stats.ma50 ? `50D ₹${stats.ma50.toLocaleString('en-IN')}` : '50D --';
+                ma50El.textContent = stats.ma50 ? `50D ${curr}${fmt(stats.ma50)}` : '50D --';
             }
 
             const ma200El = iframeDoc.getElementById('chartMA200');
             if (ma200El) {
-                ma200El.textContent = stats.ma200 ? `200D ₹${stats.ma200.toLocaleString('en-IN')}` : '200D --';
+                ma200El.textContent = stats.ma200 ? `200D ${curr}${fmt(stats.ma200)}` : '200D --';
             }
         }
 
@@ -856,6 +870,10 @@
         function updateInfoBar() {
             if (!currentReport) return;
 
+            // Update currency symbol for user target input
+            const currEl = document.getElementById('userTargetCurrency');
+            if (currEl) currEl.textContent = getCurrencySymbol();
+
             // Set report date
             const generatedDate = currentReport.generated_at || currentReport.created_at;
             const daysOld = calculateDaysOld(generatedDate);
@@ -867,7 +885,7 @@
             // Set current price (CMP)
             const currentPriceVal = currentReport.current_price || currentReport.stock_price;
             if (currentPriceVal) {
-                const cmpText = `₹${parseFloat(currentPriceVal).toLocaleString('en-IN')}`;
+                const cmpText = `${getCurrencySymbol()}${formatLocalePrice(currentPriceVal)}`;
                 document.getElementById('currentPrice').textContent = cmpText;
                 document.getElementById('currentPriceMobile').textContent = cmpText;
             }
@@ -875,7 +893,7 @@
             // Set AI target price
             const targetPrice = currentReport.ai_target_price;
             if (targetPrice) {
-                const targetText = `₹${parseFloat(targetPrice).toLocaleString('en-IN')}`;
+                const targetText = `${getCurrencySymbol()}${formatLocalePrice(targetPrice)}`;
                 document.getElementById('aiTargetPrice').textContent = targetText;
                 document.getElementById('aiTargetPriceMobile').textContent = targetText;
 
