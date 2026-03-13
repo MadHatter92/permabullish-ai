@@ -6,6 +6,7 @@ Generates social media preview images for stock reports
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import os
+from config import is_us_exchange
 
 
 # Color palette matching the app
@@ -40,16 +41,26 @@ def get_recommendation_color(recommendation: str) -> str:
     return COLORS['gray']
 
 
-def format_price(price: float) -> str:
-    """Format price with Indian number system."""
+def format_price(price: float, exchange: str = "NSE") -> str:
+    """Format price with appropriate currency and number system."""
     if price is None:
         return '-'
-    if price >= 10000000:  # 1 crore+
-        return f"Rs {price/10000000:.1f}Cr"
-    elif price >= 100000:  # 1 lakh+
-        return f"Rs {price/100000:.1f}L"
+    if is_us_exchange(exchange):
+        if price >= 1_000_000_000_000:
+            return f"${price/1_000_000_000_000:.1f}T"
+        elif price >= 1_000_000_000:
+            return f"${price/1_000_000_000:.1f}B"
+        elif price >= 1_000_000:
+            return f"${price/1_000_000:.1f}M"
+        else:
+            return f"${price:,.0f}"
     else:
-        return f"Rs {price:,.0f}"
+        if price >= 10000000:  # 1 crore+
+            return f"Rs {price/10000000:.1f}Cr"
+        elif price >= 100000:  # 1 lakh+
+            return f"Rs {price/100000:.1f}L"
+        else:
+            return f"Rs {price:,.0f}"
 
 
 def calculate_upside(current: float, target: float) -> tuple:
@@ -143,7 +154,7 @@ def generate_share_card(
 
     # AI Target Price
     draw.text((60, y_label), 'AI Target Price', fill=COLORS['gray'], font=font_small)
-    draw.text((60, y_value), format_price(target_price), fill=COLORS['white'], font=font_large)
+    draw.text((60, y_value), format_price(target_price, exchange), fill=COLORS['white'], font=font_large)
 
     # Potential Upside
     upside_text, upside_color = calculate_upside(current_price, target_price)
@@ -152,7 +163,7 @@ def generate_share_card(
 
     # Current Price
     draw.text((720, y_label), 'Current Price', fill=COLORS['gray'], font=font_small)
-    draw.text((720, y_value), format_price(current_price), fill=COLORS['white'], font=font_large)
+    draw.text((720, y_value), format_price(current_price, exchange), fill=COLORS['white'], font=font_large)
 
     # Divider line
     draw.line([(60, 490), (1140, 490)], fill=COLORS['divider'], width=2)
@@ -185,6 +196,7 @@ def generate_share_html(
     target_price: float,
     api_base: str,
     frontend_url: str,
+    exchange: str = "NSE",
 ) -> str:
     """
     Generate HTML page with OG meta tags for social sharing.
@@ -193,7 +205,7 @@ def generate_share_html(
     upside_text, _ = calculate_upside(current_price, target_price)
 
     title = f"{ticker}: {recommendation.replace('_', ' ').title()} - {upside_text} Upside"
-    description = f"AI Target: {format_price(target_price)} | Current: {format_price(current_price)} | {company_name}"
+    description = f"AI Target: {format_price(target_price, exchange)} | Current: {format_price(current_price, exchange)} | {company_name}"
     image_url = f"{api_base}/reports/{report_id}/og-image"
     report_url = f"{frontend_url}/report.html?id={report_id}"
 

@@ -38,7 +38,7 @@ from config import (
     SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
     GOOGLE_REDIRECT_URI, FRONTEND_URL, CORS_ORIGINS, ENVIRONMENT,
     SUBSCRIPTION_TIERS, CASHFREE_APP_ID, CASHFREE_SECRET_KEY,
-    FEATURED_REPORT_IDS
+    FEATURED_REPORT_IDS, is_us_exchange
 )
 import cashfree
 import share_card
@@ -1298,7 +1298,9 @@ async def get_report_direct_view(report_cache_id: int):
         upside_text = f"+{upside:.0f}%" if upside >= 0 else f"{upside:.0f}%"
 
     og_title = f"{ticker}: {recommendation} - {upside_text} Upside" if upside_text else f"{ticker}: {recommendation}"
-    og_description = f"AI-powered research report for {company_name}. Target: ₹{target_price:,.0f} | Current: ₹{current_price:,.0f}"
+    exchange = report.get("exchange", "NSE")
+    currency = "$" if is_us_exchange(exchange) else "₹"
+    og_description = f"AI-powered research report for {company_name}. Target: {currency}{target_price:,.0f} | Current: {currency}{current_price:,.0f}"
     og_image = f"https://api.permabullish.com/api/reports/{report_cache_id}/og-image"
 
     # Content gate: truncate report at thesis-grid (Bull/Bear case)
@@ -1552,6 +1554,7 @@ async def get_report_share_page(report_cache_id: int):
         target_price=report.get("ai_target_price"),
         api_base=api_base,
         frontend_url=FRONTEND_URL,
+        exchange=report.get("exchange", "NSE"),
     )
 
     return HTMLResponse(content=html)
