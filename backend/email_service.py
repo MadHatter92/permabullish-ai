@@ -199,12 +199,12 @@ def send_welcome_email(user_email: str, first_name: str, sample_reports: List[Di
             <p>Welcome to Permabullish.</p>
 
             <p>You've just taken a step toward becoming a more informed investor. Our AI-powered research
-            reports give you institutional-quality analysis on 3,000+ Indian stocks — the kind of insights
+            reports give you institutional-quality analysis on 3,000+ Indian stocks and 500+ US stocks (S&P 500) — the kind of insights
             that were once available only to professional fund managers.</p>
 
             <p><strong>What you can do now:</strong></p>
             <ul>
-                <li>Generate AI research reports on any NSE-listed stock</li>
+                <li>Generate AI research reports on any Indian or US stock</li>
                 <li>Get AI-recommended target prices backed by fundamental analysis</li>
                 <li>Build a watchlist to track stocks you're interested in</li>
             </ul>
@@ -227,7 +227,7 @@ def send_welcome_email(user_email: str, first_name: str, sample_reports: List[Di
             <p><strong>Why Permabullish?</strong></p>
             <p>Making investment decisions without proper research is like driving blindfolded.
             Permabullish helps you see clearly — analyzing financials, quarterly trends, news impact,
-            and valuations so you can make decisions with confidence.</p>
+            and valuations across Indian and US markets so you can make decisions with confidence.</p>
 
             <p>Happy researching,<br><strong>The Permabullish Team</strong></p>
         </div>
@@ -392,8 +392,8 @@ def send_purchase_email(
 
             <p><strong>Make the most of your subscription:</strong></p>
             <ol>
-                <li><strong>Deep-dive into your holdings</strong> — Generate reports on stocks you already own to validate your thesis</li>
-                <li><strong>Discover new opportunities</strong> — Research stocks you've been curious about</li>
+                <li><strong>Deep-dive into your holdings</strong> — Generate reports on Indian or US stocks you already own to validate your thesis</li>
+                <li><strong>Discover new opportunities</strong> — Research stocks across both markets</li>
                 <li><strong>Track with watchlists</strong> — Save interesting stocks for later analysis</li>
             </ol>
 
@@ -462,8 +462,8 @@ def send_subscription_expiry_email(
             <p>When you're ready to dive back into AI-powered stock research, we'll be here.</p>
             <p><strong>As a returning member, you'll get:</strong></p>
             <ul>
-                <li>Fresh AI analysis on any stock</li>
-                <li>Updated market insights</li>
+                <li>Fresh AI analysis on any Indian or US stock</li>
+                <li>Updated market insights across both markets</li>
                 <li>Your watchlist, right where you left it</li>
             </ul>
         """
@@ -494,7 +494,7 @@ def send_subscription_expiry_email(
                 <h4 style="margin: 0 0 10px 0; color: #1e3a5f;">Why renew?</h4>
                 <ul style="margin: 0; padding-left: 20px; color: #666;">
                     <li>AI-generated equity research in seconds</li>
-                    <li>Coverage of 3000+ Indian stocks</li>
+                    <li>Coverage of 3,000+ Indian and 500+ US stocks</li>
                     <li>Target prices, risk analysis, and more</li>
                     <li>Plans starting at just ₹417/month</li>
                 </ul>
@@ -546,7 +546,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>Your Permabullish account is ready and waiting.</p>
 
             <p>While you've been away, markets have moved and new opportunities have emerged.
-            Our AI has been analyzing thousands of stocks — and your personalized insights are
+            Our AI has been analyzing thousands of Indian and US stocks — and your personalized insights are
             just a click away.</p>
 
             <p><strong>You still have reports available.</strong> Why not use one to research
@@ -577,7 +577,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
                 <li>Target prices backed by fundamental analysis</li>
                 <li>Bull and bear cases for any stock</li>
                 <li>Risk factors and catalysts to watch</li>
-                <li>Coverage of 3,000+ NSE-listed stocks</li>
+                <li>Coverage of 3,000+ Indian and 500+ US stocks</li>
             </ul>
 
             <p>Generate a report before your next client call. Walk in with conviction.</p>
@@ -608,7 +608,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
                 <li>Competitive positioning and moats</li>
             </ul>
 
-            <p><strong>Permabullish does all of this in seconds.</strong></p>
+            <p><strong>Permabullish does all of this in seconds — for Indian and US stocks.</strong></p>
 
             <p>Our AI analyzes fundamentals, news, and market data to give you the same insights
             that institutional investors rely on.</p>
@@ -635,7 +635,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
 
             <p><strong>Permabullish does the heavy lifting:</strong></p>
 
-            <p>Enter any stock → Get a comprehensive AI research report → Share insights with confidence</p>
+            <p>Enter any Indian or US stock → Get a comprehensive AI research report → Share insights with confidence</p>
 
             <p>No more scrambling before client meetings. No more <em>"let me get back to you on that."</em></p>
 
@@ -682,7 +682,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
 
             <p><strong>Now you can offer the same.</strong></p>
 
-            <p>Permabullish uses AI to generate equity research that rivals institutional reports:</p>
+            <p>Permabullish uses AI to generate equity research that rivals institutional reports — covering Indian and US markets:</p>
             <ul>
                 <li>Quarterly earnings analysis</li>
                 <li>Valuation comparisons</li>
@@ -710,7 +710,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
 
             <p><strong>अब AI स्टॉक रिसर्च हिंदी में उपलब्ध है।</strong></p>
 
-            <p>Permabullish अब हिंदी में comprehensive stock reports generate करता है।</p>
+            <p>Permabullish अब हिंदी में comprehensive stock reports generate करता है — Indian और US दोनों markets के लिए।</p>
 
             <p>हमारी AI रिपोर्ट्स में शामिल है:</p>
             <ul>
@@ -718,6 +718,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
                 <li><strong>वैल्यूएशन मेट्रिक्स</strong> — P/E, P/B और industry comparison</li>
                 <li><strong>AI Target Price</strong> — 12 महीने का लक्ष्य मूल्य</li>
                 <li><strong>रिस्क असेसमेंट</strong> — निवेश के जोखिम</li>
+                <li><strong>US Stocks</strong> — Apple, Tesla, Microsoft जैसे 500+ S&P 500 stocks</li>
             </ul>
 
             <p>चाहे आप खुद के लिए रिसर्च कर रहे हों या clients के लिए — <strong>हिंदी में समझना आसान है।</strong></p>
@@ -743,7 +744,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
 
             <p><strong>હવે AI સ્ટોક રિસર્ચ ગુજરાતીમાં ઉપલબ્ધ છે.</strong></p>
 
-            <p>Permabullish હવે ગુજરાતીમાં comprehensive stock reports generate કરે છે.</p>
+            <p>Permabullish હવે ગુજરાતીમાં comprehensive stock reports generate કરે છે — Indian અને US બંને markets માટે.</p>
 
             <p>અમારી AI રિપોર્ટ્સમાં શામેલ છે:</p>
             <ul>
@@ -751,6 +752,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
                 <li><strong>વેલ્યુએશન મેટ્રિક્સ</strong> — P/E, P/B અને industry comparison</li>
                 <li><strong>AI Target Price</strong> — 12 મહિનાનો લક્ષ્ય ભાવ</li>
                 <li><strong>રિસ્ક એસેસમેન્ટ</strong> — રોકાણના જોખમો</li>
+                <li><strong>US Stocks</strong> — Apple, Tesla, Microsoft જેવા 500+ S&P 500 stocks</li>
             </ul>
 
             <p>ગુજરાતના રોકાણકારો માટે — અમદાવાદ, સુરત, રાજકોટ, વડોદરા — <strong>તમારી ભાષામાં રિસર્ચ.</strong></p>
@@ -780,7 +782,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             new opportunities have emerged. Are you keeping up?</p>
 
             <p><strong>Staying informed doesn't have to be hard.</strong> Generate an AI report
-            on any stock and get:</p>
+            on any Indian or US stock and get:</p>
             <ul>
                 <li>Current valuation analysis</li>
                 <li>Recent quarterly performance</li>
@@ -810,7 +812,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
 
             <p><strong>Permabullish gives you that edge:</strong></p>
             <ul>
-                <li>AI research on any stock in seconds</li>
+                <li>AI research on any Indian or US stock in seconds</li>
                 <li>Professional reports you can share with clients</li>
                 <li>Analysis that builds trust and closes deals</li>
             </ul>
@@ -842,6 +844,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
                 <li>हिंदी में AI research reports</li>
                 <li>Institutional-quality analysis</li>
                 <li>Target prices और risk assessment जो वो समझ सकें</li>
+                <li>Indian और US दोनों stocks पर reports</li>
             </ul>
 
             <p>जब clients research को सच में समझते हैं, तो वे faster decisions लेते हैं।</p>
@@ -875,6 +878,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
                 <li>AI-calculated target prices</li>
                 <li>Risk factors અને catalysts</li>
                 <li>Bull vs bear cases</li>
+                <li>Indian અને US બંને stocks પર reports</li>
             </ul>
 
             <p>જ્યારે તમારા clients ગુજરાતીમાં research વાંચે છે, ત્યારે તેઓ વધુ deeply engage થાય છે અને faster decide કરે છે.</p>
@@ -907,6 +911,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
             <p>🎯 <strong>Target Prices</strong> — Get AI-calculated 12-month price targets</p>
             <p>⚖️ <strong>Bull vs Bear</strong> — See both sides of the investment case</p>
             <p>⚠️ <strong>Risk Assessment</strong> — Know what could go wrong</p>
+            <p>🇺🇸 <strong>US Stocks</strong> — Now covering 500+ S&P 500 stocks alongside Indian markets</p>
 
             <p>All of this in a comprehensive report that takes seconds to generate.</p>
 
@@ -936,6 +941,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
                 <li>Generate AI research reports before client meetings</li>
                 <li>Answer "why this stock?" with data, not opinion</li>
                 <li>Share professional reports that build credibility</li>
+                <li>Cover Indian and US stocks from one platform</li>
             </ul>
 
             <p>Better conversations. More trades. Happier clients.</p>
@@ -957,7 +963,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
 
             <p>Here's your weekly roundup from Permabullish.</p>
 
-            <p>Markets have been active, and our AI has been busy analyzing stocks.
+            <p>Indian and US markets have been active, and our AI has been busy analyzing stocks.
             Here are some reports worth checking out:</p>
 
             {report_cards}
@@ -979,7 +985,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
 
             <p><strong>ಈಗ AI ಸ್ಟಾಕ್ ರಿಸರ್ಚ್ ಕನ್ನಡದಲ್ಲಿ ಲಭ್ಯವಿದೆ.</strong></p>
 
-            <p>Permabullish ಈಗ ಕನ್ನಡದಲ್ಲಿ comprehensive stock reports generate ಮಾಡುತ್ತದೆ.</p>
+            <p>Permabullish ಈಗ ಕನ್ನಡದಲ್ಲಿ comprehensive stock reports generate ಮಾಡುತ್ತದೆ — Indian ಮತ್ತು US ಎರಡೂ markets ಗಾಗಿ.</p>
 
             <p>ನಮ್ಮ AI ರಿಪೋರ್ಟ್‌ಗಳಲ್ಲಿ ಇವೆ:</p>
             <ul>
@@ -987,6 +993,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
                 <li><strong>ಮೌಲ್ಯಮಾಪನ ಮೆಟ್ರಿಕ್ಸ್</strong> — P/E, P/B ಮತ್ತು industry comparison</li>
                 <li><strong>AI Target Price</strong> — 12 ತಿಂಗಳ ಗುರಿ ಬೆಲೆ</li>
                 <li><strong>ರಿಸ್ಕ್ ಅಸೆಸ್‌ಮೆಂಟ್</strong> — ಹೂಡಿಕೆಯ ಅಪಾಯಗಳು</li>
+                <li><strong>US Stocks</strong> — Apple, Tesla, Microsoft ನಂತಹ 500+ S&P 500 stocks</li>
             </ul>
 
             <p>ನೀವು ನಿಮಗಾಗಿ ರಿಸರ್ಚ್ ಮಾಡುತ್ತಿರಲಿ ಅಥವಾ clients ಗಾಗಿ — <strong>ಕನ್ನಡದಲ್ಲಿ ಅರ್ಥಮಾಡಿಕೊಳ್ಳುವುದು ಸುಲಭ.</strong></p>
@@ -1020,6 +1027,7 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
                 <li>ಕನ್ನಡದಲ್ಲಿ AI research reports</li>
                 <li>Institutional-quality analysis</li>
                 <li>Target prices ಮತ್ತು risk assessment ಅವರಿಗೆ ಅರ್ಥವಾಗುವಂತೆ</li>
+                <li>Indian ಮತ್ತು US ಎರಡೂ stocks ಮೇಲೆ reports</li>
             </ul>
 
             <p>Clients research ಅನ್ನು ನಿಜವಾಗಿ ಅರ್ಥಮಾಡಿಕೊಂಡಾಗ, ಅವರು faster decisions ತೆಗೆದುಕೊಳ್ಳುತ್ತಾರೆ.</p>
