@@ -75,6 +75,12 @@ services:
         source: /brokers/
         destination: /brokers/index.html
       - type: rewrite
+        source: /privacy
+        destination: /privacy.html
+      - type: rewrite
+        source: /terms
+        destination: /terms.html
+      - type: rewrite
         source: /*
         destination: /index.html
 
