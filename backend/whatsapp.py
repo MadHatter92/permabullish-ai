@@ -268,7 +268,7 @@ async def _send_report(phone: str, ticker: str, exchange: str):
     await _send_image(phone, card_url, f"*{ticker}* — {rec}")
     await asyncio.sleep(0.8)
 
-    await _send_text(phone, _format_report_text(cached, ticker, exchange))
+    await _send_text(phone, _format_report_text(cached, ticker, exchange, cached.get("id")))
 
     # One-time account linking prompt for new phone numbers
     phone_hash = _hash_phone(phone)
@@ -316,7 +316,7 @@ def _generate_report(ticker: str, exchange: str) -> Optional[dict]:
     return db.get_cached_report_by_id(report_cache_id)
 
 
-def _format_report_text(cached: dict, ticker: str, exchange: str) -> str:
+def _format_report_text(cached: dict, ticker: str, exchange: str, report_id: int = None) -> str:
     """Format a compact WhatsApp text report from cached data."""
     company_name    = cached.get("company_name", ticker)
     recommendation  = cached.get("recommendation", "HOLD").replace("_", " ").upper()
@@ -394,14 +394,21 @@ def _format_report_text(cached: dict, ticker: str, exchange: str) -> str:
     if thesis:
         parts += ["*Analysis*", thesis, ""]
 
-    report_url = (
-        f"{FRONTEND_URL}/generate.html"
-        f"?symbol={ticker}&exchange={exchange}"
-        f"&utm_source=whatsapp&utm_medium=bot"
-    )
+    if report_id:
+        report_url = (
+            f"{FRONTEND_URL}/report.html"
+            f"?id={report_id}"
+            f"&utm_source=whatsapp&utm_medium=bot"
+        )
+    else:
+        report_url = (
+            f"{FRONTEND_URL}/generate.html"
+            f"?symbol={ticker}&exchange={exchange}"
+            f"&utm_source=whatsapp&utm_medium=bot"
+        )
     parts += [
         "⚠️ _Not financial advice. DYOR._",
-        f"🔗 Full report: {report_url}",
+        f"🔗 Login to read the full report: {report_url}",
     ]
 
     return "\n".join(parts)
