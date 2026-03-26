@@ -1197,6 +1197,77 @@ Extend the WhatsApp bot with voice input/output using Sarvam AI, enabling fully 
 
 ---
 
+## Phase 10.2: WhatsApp Proactive Nudges
+**Status:** 📋 Planned
+**Priority:** Medium
+
+### Objective
+Re-engage users who have previously messaged the bot but gone inactive, using Meta-approved template messages.
+
+### Key Constraint
+Outside the 24-hour session window, WhatsApp requires **pre-approved message templates** (HSM). Free-form text cannot be sent to re-initiate a conversation. Templates are submitted via Meta Business Manager and reviewed in 24–72h.
+
+| Template Category | Cost (India) | Approval rate |
+|-------------------|-------------|---------------|
+| Utility | ~₹0.80/msg | High |
+| Marketing | ~₹1.20/msg | Medium |
+
+### Proposed Templates
+
+**Template 1 — Monthly limit reset (Utility)**
+Sent on the 1st to users who hit their free limit the previous month. Highest relevance — these are the most engaged users.
+```
+✅ Your 3 free Permabullish reports have reset for {{1}}.
+Reply with any stock ticker to use them.
+Reply STOP to unsubscribe.
+```
+
+**Template 2 — Report refresh available (Utility)**
+Triggered when a report cache refreshes for a ticker the user previously searched (>15 days).
+```
+📈 Fresh report available for *{{1}}* on Permabullish.
+Reply {{1}} to get the latest AI analysis.
+Reply STOP to unsubscribe.
+```
+
+**Template 3 — Weekly re-engagement (Marketing)**
+Weekly digest for users inactive 7–30 days. Lower priority — add after Utility templates are approved.
+```
+📊 Weekly Pick from Permabullish
+
+This week we're looking at {{1}} ({{2}}).
+Reply with any stock ticker for an instant AI research report.
+Reply STOP to unsubscribe.
+```
+
+### Implementation Plan
+
+- [ ] **Submit templates to Meta** (manual step — Meta Business Manager)
+- [ ] **`whatsapp_nudge_log` table** — tracks what was sent to whom and when
+  ```sql
+  CREATE TABLE whatsapp_nudge_log (
+      id SERIAL PRIMARY KEY,
+      phone_hash VARCHAR(64) NOT NULL,
+      template_name VARCHAR(100) NOT NULL,
+      sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  ```
+- [ ] **STOP handling** — detect "STOP"/"unsubscribe" in webhook, add `opted_out` flag to `whatsapp_accounts`
+- [ ] **Template sender** — `_send_template()` in `whatsapp.py` (different payload from session messages)
+- [ ] **Cron script** `scripts/send_whatsapp_nudges.py`
+  - Runs daily, queries phones active in last 30 days but not last 7 days
+  - Not nudged in last 7 days (frequency cap)
+  - Not opted out
+  - Sends appropriate template based on trigger condition
+- [ ] **Frequency guardrail** — max 2 nudges/week per phone hash regardless of triggers
+
+### Dependencies
+- Production number migrated to Cloud API (required for template messages)
+- Meta Business Manager verified (required for template submission)
+- At least one template approved by Meta before any sends
+
+---
+
 ## Phase 10.5: Broker & Sub-Broker Outreach System
 **Status:** 🔄 IN PROGRESS
 **Priority:** High
