@@ -242,7 +242,7 @@ async def _handle_selection(phone: str, selection_id: str):
 
 
 async def _handle_action(phone: str, action_id: str):
-    """Handle an action button: ACT_C/R/N_TICKER_EXCHANGE."""
+    """Handle an action button: ACT_B/R/N_TICKER_EXCHANGE."""
     parts = action_id.split("_", 3)
     if len(parts) != 4:
         await _send_text(phone, "Invalid action. Please try again.")
@@ -266,8 +266,8 @@ async def _handle_action(phone: str, action_id: str):
     _log_event(phone, f"action_{action_code.lower()}", ticker=ticker,
                metadata={"exchange": exchange})
 
-    if action_code == "C":
-        await _send_chart_action(phone, ticker, exchange)
+    if action_code == "B":
+        await _send_bull_bear_action(phone, ticker, exchange)
     elif action_code == "R":
         await _send_results_action(phone, ticker, exchange)
     elif action_code == "N":
@@ -525,23 +525,44 @@ def _format_report_text(cached: dict, ticker: str, exchange: str, report_id: int
 
 # ─── Action Handlers ──────────────────────────────────────────────────────────
 
-async def _send_chart_action(phone: str, ticker: str, exchange: str):
-    """Send a 6-month price chart image."""
-    await _send_text(phone, f"Fetching 6-month chart for *{ticker}*... ⏳")
-    try:
-        loop = asyncio.get_event_loop()
-        img_bytes = await loop.run_in_executor(
-            _executor, _generate_price_chart, ticker.upper(), exchange.upper()
-        )
-        api_base  = "https://api.permabullish.com"
-        chart_url = f"{api_base}/whatsapp/chart/{ticker}.png?exchange={exchange}"
-        await _send_image(phone, chart_url, f"*{ticker}* — 6 Month Price Chart")
-    except Exception as e:
-        logger.warning(f"Chart action failed for {ticker}: {e}")
-        await _send_text(
-            phone,
-            f"Couldn't generate the chart for *{ticker}* right now. Please try again later."
-        )
+async def _send_bull_bear_action(phone: str, ticker: str, exchange: str):
+    """Send bull and bear case from cached report data — no API call needed."""
+    cached = db.get_cached_report(ticker, exchange, language="en")
+    if not cached:
+        await _send_text(phone, f"No cached report found for *{ticker}*. Send the ticker first to generate one.")
+        return
+
+    report_data = cached.get("report_data") or {}
+    if isinstance(report_data, str):
+        try:
+            report_data = json.loads(report_data)
+        except Exception:
+            report_data = {}
+
+    analysis  = report_data.get("analysis", {}) or {}
+    bull_case = analysis.get("bull_case", [])
+    bear_case = analysis.get("bear_case", [])
+
+    if not bull_case and not bear_case:
+        await _send_text(phone, f"Bull/Bear case not available for *{ticker}*.")
+        return
+
+    lines = [f"🐂🐻 *{ticker} — Bull & Bear Case*\n"]
+
+    if bull_case:
+        lines.append("*🐂 Bull Case*")
+        for point in bull_case[:3]:
+            lines.append(f"• {str(point).strip()}")
+        lines.append("")
+
+    if bear_case:
+        lines.append("*🐻 Bear Case*")
+        for point in bear_case[:3]:
+            lines.append(f"• {str(point).strip()}")
+        lines.append("")
+
+    lines.append("⚠️ _Not financial advice. DYOR._")
+    await _send_text(phone, "\n".join(lines).strip())
 
 
 async def _send_results_action(phone: str, ticker: str, exchange: str):
@@ -820,8 +841,8 @@ async def _send_action_buttons(phone: str, ticker: str, exchange: str):
         {
             "type": "reply",
             "reply": {
-                "id":    f"ACT_C_{t}_{e}"[:256],
-                "title": "📈 Price Chart",
+                "id":    f"ACT_B_{t}_{e}"[:256],
+                "title": "🐂 Bull & Bear",
             },
         },
         {
