@@ -615,6 +615,24 @@ async def _send_results_action(phone: str, ticker: str, exchange: str):
         )
 
 
+def _parse_news_item(item: dict) -> tuple:
+    """Extract (title, link, publisher) from old or new yfinance news format."""
+    # New format (yfinance >= 0.2.60): fields nested under 'content'
+    content = item.get("content") or {}
+    if content:
+        title     = content.get("title", "")
+        canonical = content.get("canonicalUrl") or {}
+        link      = canonical.get("url", "") or content.get("url", "")
+        provider  = content.get("provider") or {}
+        publisher = provider.get("displayName", "") or content.get("source", "")
+    else:
+        # Old format: fields at top level
+        title     = item.get("title", "")
+        link      = item.get("link", "")
+        publisher = item.get("publisher", "")
+    return title, link, publisher
+
+
 async def _send_news_action(phone: str, ticker: str, exchange: str):
     """Send latest 4 news headlines."""
     import yfinance as yf
@@ -630,9 +648,7 @@ async def _send_news_action(phone: str, ticker: str, exchange: str):
 
         lines = [f"📰 *{ticker} — Latest News*\n"]
         for item in news[:4]:
-            title     = item.get("title", "")
-            link      = item.get("link", "")
-            publisher = item.get("publisher", "")
+            title, link, publisher = _parse_news_item(item)
             if title:
                 line = f"• {title}"
                 if publisher:
@@ -918,8 +934,15 @@ def _generate_price_chart(ticker: str, exchange: str) -> bytes:
     fig.patch.set_facecolor("#102a43")
     ax.set_facecolor("#1e3a5f")
 
+    price_min = hist["Close"].min()
+    price_max = hist["Close"].max()
+    padding   = (price_max - price_min) * 0.08
+    y_bottom  = price_min - padding
+    y_top     = price_max + padding
+    ax.set_ylim(y_bottom, y_top)
+
     ax.plot(hist.index, hist["Close"], color="#e8913a", linewidth=2)
-    ax.fill_between(hist.index, hist["Close"], alpha=0.15, color="#e8913a")
+    ax.fill_between(hist.index, hist["Close"], y_bottom, alpha=0.15, color="#e8913a")
 
     ax.set_title(f"{ticker} — 6 Month", color="#ffffff", fontsize=13, pad=10)
     ax.tick_params(colors="#9fb3c8", labelsize=8)
