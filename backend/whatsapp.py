@@ -106,6 +106,7 @@ async def handle_webhook(request: Request):
             query = message["text"]["body"].strip()
             asyncio.create_task(_handle_text(phone, query))
 
+
         elif msg_type == "interactive":
             interactive = message["interactive"]
             itype = interactive.get("type")
@@ -133,8 +134,26 @@ async def handle_webhook(request: Request):
 
 # ─── Message Handlers ─────────────────────────────────────────────────────────
 
+GREETINGS = {"hi", "hello", "hey", "hii", "helo", "namaste", "namaskar",
+             "start", "help", "?", "sup", "yo", "good morning", "good evening",
+             "good afternoon", "good night"}
+
+WELCOME_MESSAGE = (
+    "👋 Welcome to *Permabullish* — AI-powered stock research!\n\n"
+    "Send me any stock name or ticker and I'll instantly send you:\n"
+    "📊 Recommendation with target price\n"
+    "📝 AI analysis summary\n\n"
+    "Try it — send *RELIANCE*, *TCS*, *INFY*, or any NSE/BSE stock.\n\n"
+    "🔗 Full reports at permabullish.com"
+)
+
+
 async def _handle_text(phone: str, text: str):
-    """Route incoming text: email linking or stock search."""
+    """Route incoming text: greeting, email linking, or stock search."""
+    if text.lower().strip() in GREETINGS:
+        await _send_text(phone, WELCOME_MESSAGE)
+        return
+
     if _looks_like_email(text):
         await _handle_account_link(phone, text.strip().lower())
         return
@@ -241,16 +260,12 @@ async def _send_report(phone: str, ticker: str, exchange: str):
 
     _log_event(phone, "report_sent", ticker=ticker)
 
-    api_base  = "https://api.permabullish.com"
-    card_url  = f"{api_base}/whatsapp/card/{ticker}.png?exchange={exchange}"
-    chart_url = f"{api_base}/whatsapp/chart/{ticker}.png?exchange={exchange}"
+    api_base = "https://api.permabullish.com"
+    card_url = f"{api_base}/whatsapp/card/{ticker}.png?exchange={exchange}"
 
-    # 3-message sequence
+    # 2-message sequence: card image + text report
     rec = cached.get("recommendation", "HOLD").replace("_", " ").title()
     await _send_image(phone, card_url, f"*{ticker}* — {rec}")
-    await asyncio.sleep(0.8)
-
-    await _send_image(phone, chart_url)
     await asyncio.sleep(0.8)
 
     await _send_text(phone, _format_report_text(cached, ticker, exchange))
