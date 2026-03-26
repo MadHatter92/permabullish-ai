@@ -1,9 +1,9 @@
 # Permabullish - AI Stock Researcher
 ## Product Requirements Document (PRD)
 
-**Version:** 2.7
-**Date:** February 16, 2026
-**Status:** Phase 1-4 Complete, Phase 7 Complete, Phase 5 Partially Complete, Email/Password Auth Complete, Content Gate Complete
+**Version:** 2.8
+**Date:** March 25, 2026
+**Status:** Phase 1-4 Complete, Phase 7 Complete, Phase 5 Partially Complete, Email/Password Auth Complete, Content Gate Complete, WhatsApp Bot Planned
 
 ---
 
@@ -76,12 +76,6 @@ The product operates on a subscription model with tiered access, allowing users 
 - ✅ Enhanced cron reports with cost data
 - ⏳ Final pricing tiers (pending business decision)
 
-### Shared Report Content Gate ✅ (Completed Feb 16, 2026)
-- ✅ Blur + CTA overlay on shared reports for unauthenticated users
-- ✅ Return-to-report flow for Google OAuth and email auth
-- ✅ GA4 tracking events (content_gate_shown, content_gate_cta_clicked)
-- ✅ Open redirect prevention on return_to param
-
 ### Phase 6: Analytics & User Tracking (Pending)
 - Guest-to-signup attribution (link anonymous usage to new accounts)
 - Session duration tracking (login/activity timestamps)
@@ -89,6 +83,24 @@ The product operates on a subscription model with tiered access, allowing users 
 - Cohort analysis support (acquisition source, first actions)
 - Conversion funnel metrics (guest → free → paid)
 - Churn and retention tracking
+
+### Phase 7: Shared Report Content Gate ✅ (Completed Feb 16, 2026)
+- ✅ Blur + CTA overlay on shared reports for unauthenticated users
+- ✅ Return-to-report flow for Google OAuth and email auth
+- ✅ GA4 tracking events (content_gate_shown, content_gate_cta_clicked)
+- ✅ Open redirect prevention on return_to param
+
+### Phase 8: WhatsApp Bot ⏳ (Planned)
+- ⏳ Meta Cloud API setup (migrate existing WhatsApp Business App number)
+- ⏳ FastAPI webhook handler (`/whatsapp/webhook`)
+- ⏳ Ticker/name resolution with interactive disambiguation list
+- ⏳ Recommendation card image generation (Pillow)
+- ⏳ Price chart image generation (mplfinance/matplotlib)
+- ⏳ WhatsApp-formatted text report
+- ⏳ Phone ↔ email account mapping
+- ⏳ WhatsApp event tracking (DB + GA4 server-side)
+- ⏳ Admin metrics view (daily users, top tickers, error rate, web conversion)
+- ⏳ Fallback handler (unknown queries flagged in backend, user redirected to email)
 
 ---
 
@@ -122,7 +134,7 @@ The product operates on a subscription model with tiered access, allowing users 
 
 ---
 
-## 4.2 Market Positioning & Competitive Landscape
+### 4.2 Market Positioning & Competitive Landscape
 
 ### Category: Vertical AI Content Enablement
 
@@ -196,6 +208,32 @@ Most sales enablement tools are **horizontal** (work across industries) and auto
 **Languages:**
 - English, Hindi, Gujarati, Kannada (toggle selection on generate page)
 
+### 5.2 User Dashboard
+
+**Key Elements:**
+| Element | Description |
+|---------|-------------|
+| Current Price | Real-time stock price from Yahoo Finance |
+| AI Recommended Price | Target price from AI analysis |
+| User's Target Price | User-editable field for personal target |
+| Report | Link to view/regenerate full report |
+| Watchlist | Stocks being tracked |
+| Report History | Previously generated/viewed reports |
+
+### 5.3 Watchlist
+
+- Users can save stocks to track
+- Visual indicator for stocks without reports
+- One-click report generation from watchlist
+- Sorted by date added (newest first)
+
+### 5.4 Report History
+
+- List of all reports generated/viewed by user
+- Shows: Stock name, ticker, generation date, recommendation
+- Visual badge for outdated reports (>15 days)
+- Quick actions: View, Regenerate, Delete
+
 ### 5.5 Stock Comparison Tool
 
 **Purpose:** Compare two stocks side-by-side with AI-powered verdict on which to invest in.
@@ -243,31 +281,247 @@ Most sales enablement tools are **horizontal** (work across industries) and auto
 - `content_gate_shown` — GA4 event when gate is displayed (ticker, report_id)
 - `content_gate_cta_clicked` — GA4 event on CTA interaction (cta_type: google/email)
 
-### 5.2 User Dashboard
+### 5.7 WhatsApp Bot
 
-**Key Elements:**
-| Element | Description |
-|---------|-------------|
-| Current Price | Real-time stock price from Yahoo Finance |
-| AI Recommended Price | Target price from AI analysis |
-| User's Target Price | User-editable field for personal target |
-| Report | Link to view/regenerate full report |
-| Watchlist | Stocks being tracked |
-| Report History | Previously generated/viewed reports |
+**Purpose:** Allow users to get instant stock research reports directly on WhatsApp — no app, no login, no friction. Primary channel for sub-brokers and retail investors in India.
 
-### 5.3 Watchlist
+#### 5.7.1 Setup & Infrastructure
 
-- Users can save stocks to track
-- Visual indicator for stocks without reports
-- One-click report generation from watchlist
-- Sorted by date added (newest first)
+| Item | Decision |
+|------|----------|
+| **API** | Meta WhatsApp Cloud API (direct, no BSP) |
+| **Number** | Existing Permabullish WhatsApp Business App number, migrated to Cloud API |
+| **Monthly API cost** | ₹0 (all user-initiated conversations free since Nov 2024) |
+| **Manual inbox** | None — fully automated, no human intervention |
+| **Fallback** | Bot redirects unhandled queries to mail@mayaskara.com; events flagged in backend |
 
-### 5.4 Report History
+#### 5.7.2 User Flow
 
-- List of all reports generated/viewed by user
-- Shows: Stock name, ticker, generation date, recommendation
-- Visual badge for outdated reports (>15 days)
-- Quick actions: View, Regenerate, Delete
+**Happy path (exact/clear match):**
+```
+User → "TCS"
+Bot  → [Recommendation card image]
+Bot  → [6-month price chart image]
+Bot  → [WhatsApp-formatted text report]
+```
+
+**Disambiguation (multiple matches):**
+```
+User → "reliance"
+Bot  → Interactive list:
+        • Reliance Industries (RELIANCE · NSE)
+        • Reliance Power (RPOWER · NSE)
+        • Reliance Infrastructure (RELINFRA · NSE)
+        • Reliance Capital (RELCAPITAL · NSE)
+User → [taps "Reliance Industries"]
+Bot  → [card] → [chart] → [text report]
+```
+
+**Fuzzy match (typo or partial name):**
+```
+User → "infosy"
+Bot  → Reply buttons:
+        › Infosys (INFY)   › Info Edge (NAUKRI)   › Something else?
+```
+
+**No match:**
+```
+User → "xyzabc123"
+Bot  → "Couldn't find that stock. Try the NSE/BSE ticker
+        (e.g., RELIANCE, TCS, INFY) or the full company name."
+        [event flagged in backend: unmatched_query]
+```
+
+**Unhandled message types (voice note, image, etc.):**
+```
+Bot  → "I can only look up stocks by name or ticker.
+        For other queries, email us at mail@mayaskara.com."
+        [event flagged in backend: unhandled_message_type]
+```
+
+#### 5.7.3 Report Format
+
+Three sequential messages sent per report request:
+
+**Message 1 — Recommendation Card (image)**
+- Permabullish logo + brand colours (navy/saffron)
+- Company name + ticker + exchange
+- Recommendation badge (STRONG BUY / BUY / HOLD / SELL / STRONG SELL)
+- AI target price + upside/downside %
+- Conviction stars (e.g., ★★★★☆)
+- Minimal design — similar to existing OG share card
+- Generated via Pillow, served as PNG from FastAPI
+
+**Message 2 — Price Chart (image)**
+- 6-month daily OHLC price chart
+- Clean, minimal style — dark background, saffron line/candles
+- Generated via mplfinance/matplotlib
+- Served as PNG from FastAPI
+
+**Message 3 — Text Report**
+- WhatsApp formatted (bold via `*`, no HTML)
+- Max ~1,500 characters (fits comfortably in chat)
+- Structure:
+  ```
+  📊 *TICKER — Company Name*
+
+  💡 *Recommendation:* BUY
+  🎯 *Target Price:* ₹X,XXX (+X%)
+  ⚡ *Conviction:* High
+
+  *Fundamentals*
+  P/E: Xx | ROE: X% | D/E: X.X
+  Revenue Growth: X% YoY
+
+  *Summary*
+  2–3 sentence investment thesis.
+
+  ⚠️ Not financial advice. DYOR.
+  🔗 Full report: permabullish.com/r/TICKER?utm_source=whatsapp&utm_medium=bot
+  ```
+
+#### 5.7.4 Report Sourcing & Quota
+
+- WhatsApp reports are **free** — do not consume the user's web quota
+- Bot reuses existing `report_cache` — if a fresh report (<15 days) exists, it's used directly (no Claude API call)
+- If cache is stale or missing, a new report is generated (does consume Claude API tokens, same as web)
+- The "Full report" link in message 3 points to the web report page, which hits the **normal content gate / paywall** for unauthenticated users
+
+#### 5.7.5 Ticker Resolution
+
+- Reuses existing `GET /api/stocks/search?q=` endpoint
+- Exact ticker match → skip disambiguation, go direct to report
+- Multiple results (2–4) → WhatsApp interactive list (up to 10 items)
+- Single fuzzy match → 2–3 reply buttons for confirmation
+- Zero results → error message + `unmatched_query` event logged
+
+Session state (for disambiguation) stored in `whatsapp_sessions` table:
+- `(phone, state, payload, expires_at)` — expires after 5 minutes
+- States: `awaiting_selection`
+- If user sends a new query while in `awaiting_selection`, old state is discarded and new query is processed fresh
+
+#### 5.7.6 Account Mapping
+
+- Users can optionally link their WhatsApp number to a Permabullish account
+- Linkage is voluntary — WhatsApp reports remain free regardless
+- Trigger: after a report is sent, bot appends a one-time prompt:
+  ```
+  💼 Have a Permabullish account? Reply with your email
+  to link it and access your full report history.
+  ```
+  (shown only once per phone number, never repeated)
+- If user replies with an email that matches an existing account, a `whatsapp_accounts` record is created
+- Linked users' WhatsApp activity appears in their web profile (reports viewed via WhatsApp shown in history)
+
+#### 5.7.7 Tracking & Analytics
+
+**Database table: `whatsapp_events`**
+```sql
+CREATE TABLE whatsapp_events (
+    id SERIAL PRIMARY KEY,
+    phone_hash VARCHAR(64) NOT NULL,  -- SHA-256 of phone number (privacy)
+    whatsapp_account_id INTEGER REFERENCES whatsapp_accounts(id),
+    event_type VARCHAR(50) NOT NULL,  -- see below
+    ticker VARCHAR(20),
+    query_text TEXT,
+    metadata JSONB,
+    flagged BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Event types:**
+| Event | Description |
+|-------|-------------|
+| `message_received` | Any inbound message |
+| `stock_resolved_exact` | Direct ticker match, no disambiguation |
+| `disambiguation_shown` | List/buttons shown to user |
+| `disambiguation_selected` | User picked from list |
+| `report_sent` | Full 3-message report delivered |
+| `cache_hit` | Report served from cache |
+| `cache_miss` | Fresh report generated |
+| `unmatched_query` | Stock not found — flagged |
+| `unhandled_message_type` | Voice/image/etc. — flagged |
+| `account_linked` | Phone ↔ email mapping created |
+| `api_error` | WhatsApp API call failed — flagged |
+
+**GA4 server-side events** (Measurement Protocol):
+- `whatsapp_report_sent` (ticker, cache_hit: bool)
+- `whatsapp_web_link_clicked` (tracked via UTM on full report URL)
+
+**Admin metrics (to be surfaced in admin dashboard):**
+- Daily / weekly unique WhatsApp users (by phone hash)
+- Top 10 most requested tickers
+- Cache hit rate on WhatsApp requests
+- Disambiguation rate (% of queries needing clarification)
+- Error/flag rate (unmatched + unhandled)
+- Account linkage rate (% of WhatsApp users who linked an account)
+- Web conversion rate (% who clicked through to full report)
+
+**Database table: `whatsapp_sessions`**
+```sql
+CREATE TABLE whatsapp_sessions (
+    id SERIAL PRIMARY KEY,
+    phone_hash VARCHAR(64) NOT NULL UNIQUE,
+    state VARCHAR(50) NOT NULL,  -- 'awaiting_selection'
+    payload JSONB,               -- search results to pick from
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Database table: `whatsapp_accounts`**
+```sql
+CREATE TABLE whatsapp_accounts (
+    id SERIAL PRIMARY KEY,
+    phone_hash VARCHAR(64) NOT NULL UNIQUE,
+    user_id INTEGER REFERENCES users(id),
+    linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+*Note: Raw phone numbers are never stored — only SHA-256 hashes. The actual phone number is used transiently in memory for API calls only.*
+
+#### 5.7.8 Phase 2 — Proactive Alerts (Not in Scope Now)
+
+Deferred until WhatsApp adoption is validated. Planned features:
+- Daily/weekly digest of watchlist stocks
+- Price target crossed alert
+- New report available notification
+- Requires pre-approved Meta message templates (UTILITY category, 24–72h approval)
+- Requires explicit user opt-in stored against `whatsapp_accounts`
+
+#### 5.7.9 Technical Integration
+
+**New module:** `backend/whatsapp.py`
+- FastAPI router mounted at `/whatsapp`
+- `GET /whatsapp/webhook` — Meta verification handshake
+- `POST /whatsapp/webhook` — incoming message handler (HMAC signature validated)
+- `POST /whatsapp/send` — internal sender (called by report pipeline)
+
+**New image endpoints:**
+- `GET /whatsapp/card/{ticker}.png` — generates + serves recommendation card
+- `GET /whatsapp/chart/{ticker}.png` — generates + serves price chart
+
+**Environment variables needed:**
+```
+WHATSAPP_ACCESS_TOKEN        # System user token from Meta (non-expiring)
+WHATSAPP_PHONE_NUMBER_ID     # From Meta for Developers dashboard
+WHATSAPP_WABA_ID             # WhatsApp Business Account ID
+WHATSAPP_VERIFY_TOKEN        # Custom string for webhook verification
+WHATSAPP_APP_SECRET          # For HMAC signature validation
+```
+
+**Meta setup steps:**
+1. Create Meta Business Manager account (business.facebook.com)
+2. Create new App (type: Business) in developers.facebook.com
+3. Add WhatsApp product to the app
+4. Migrate existing number: WhatsApp → Business Settings → Phone Numbers → Migrate
+5. Receive OTP on number → verify
+6. Submit Display Name for approval (24–72h) — e.g., "Permabullish"
+7. Create System User → generate permanent access token
+8. Register webhook: `https://api.permabullish.com/whatsapp/webhook`
+9. Subscribe to `messages` webhook field
 
 ---
 
@@ -309,7 +563,7 @@ Most sales enablement tools are **horizontal** (work across industries) and auto
 - Accepts UPI, credit/debit cards, net banking
 - Upfront payments (no recurring subscriptions yet)
 
-### 6.3 Quota Management
+### 6.4 Quota Management
 
 - Usage resets on the 1st of each month (for paid tiers)
 - Guest tier: Lifetime limit of 1 report
@@ -551,6 +805,12 @@ This ensures:
 - `POST /api/subscription/webhook` - Cashfree payment webhook
 - `GET /api/subscription/status` - Get subscription status
 
+**WhatsApp:**
+- `GET /whatsapp/webhook` - Meta webhook verification
+- `POST /whatsapp/webhook` - Incoming message handler
+- `GET /whatsapp/card/{ticker}.png` - Generated recommendation card image
+- `GET /whatsapp/chart/{ticker}.png` - Generated price chart image
+
 **Health:**
 - `GET /api/health` - Service health check
 
@@ -668,6 +928,37 @@ CREATE TABLE user_comparisons (
     first_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- WhatsApp Account Mapping (phone ↔ Permabullish user)
+CREATE TABLE whatsapp_accounts (
+    id SERIAL PRIMARY KEY,
+    phone_hash VARCHAR(64) NOT NULL UNIQUE,  -- SHA-256 of phone number
+    user_id INTEGER REFERENCES users(id),
+    linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- WhatsApp Conversation Sessions (disambiguation state)
+CREATE TABLE whatsapp_sessions (
+    id SERIAL PRIMARY KEY,
+    phone_hash VARCHAR(64) NOT NULL UNIQUE,
+    state VARCHAR(50) NOT NULL,  -- e.g. 'awaiting_selection'
+    payload JSONB,               -- search results pending selection
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- WhatsApp Event Log (usage tracking + flagged errors)
+CREATE TABLE whatsapp_events (
+    id SERIAL PRIMARY KEY,
+    phone_hash VARCHAR(64) NOT NULL,
+    whatsapp_account_id INTEGER REFERENCES whatsapp_accounts(id),
+    event_type VARCHAR(50) NOT NULL,
+    ticker VARCHAR(20),
+    query_text TEXT,
+    metadata JSONB,
+    flagged BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
 ---
@@ -696,7 +987,7 @@ CREATE TABLE user_comparisons (
 | Report Generation | 10/hour | Protect Claude API costs |
 | Comparison | 10/hour | Protect Claude API costs |
 
-### 10.3 Capacity Estimates
+### 11.3 Capacity Estimates
 
 | Metric | Current Capacity |
 |--------|------------------|
@@ -706,7 +997,7 @@ CREATE TABLE user_comparisons (
 | Daily active users (comfortable) | 100-200 |
 | Reports per day (sustainable) | ~500 |
 
-### 10.4 Bottlenecks (Priority Order)
+### 11.4 Bottlenecks (Priority Order)
 
 1. **Claude API (Primary Bottleneck)**
    - Each report takes 15-45 seconds to generate
@@ -723,7 +1014,7 @@ CREATE TABLE user_comparisons (
    - Sufficient for current scale
    - May need pooling at higher load
 
-### 10.5 Scaling Path
+### 11.5 Scaling Path
 
 | Trigger | Upgrade | Cost | Benefit |
 |---------|---------|------|---------|
@@ -733,7 +1024,7 @@ CREATE TABLE user_comparisons (
 | High Claude API costs | Batch processing | - | Queue reports, process off-peak |
 | Global users | Multi-region | Variable | Add Singapore/EU regions |
 
-### 10.6 Cost Projections
+### 11.6 Cost Projections
 
 | Users/Month | Reports/Month | Claude API Cost | Infra Cost | Total |
 |-------------|---------------|-----------------|------------|-------|
@@ -745,9 +1036,9 @@ CREATE TABLE user_comparisons (
 
 ---
 
-## 11. Design System
+## 12. Design System
 
-### 11.1 Brand Colors
+### 12.1 Brand Colors
 
 **Primary Palette:**
 | Name | Hex | Usage |
@@ -765,7 +1056,7 @@ CREATE TABLE user_comparisons (
 | Navy 300 | `#9fb3c8` | Secondary text |
 | Navy 400 | `#829ab1` | Muted text |
 
-### 11.2 Typography
+### 12.2 Typography
 
 | Style | Font | Weight | Size |
 |-------|------|--------|------|
@@ -774,7 +1065,7 @@ CREATE TABLE user_comparisons (
 | Body | DM Sans / Inter | Regular | 14-16px |
 | Caption | Inter | Regular | 12px |
 
-### 11.3 Component Patterns
+### 12.3 Component Patterns
 
 **Cards:**
 ```css
@@ -802,18 +1093,19 @@ hover: background #334e68;
 
 ---
 
-## 12. Future Considerations (Not in Initial Scope)
+## 13. Future Considerations (Not in Initial Scope)
 
 - **Chat with AI:** Ask follow-up questions about a stock
 - **Portfolio tracking:** Track holdings and performance
-- **Alerts:** Price alerts, report refresh notifications
+- **WhatsApp Alerts (Phase 2):** Price target crossed, weekly digest, watchlist updates via pre-approved Meta templates
+- **WhatsApp multilingual:** Hindi/Gujarati/Kannada reports on WhatsApp (after English adoption validated)
 - **API access:** Enterprise tier programmatic access
 - **Mobile app:** Native iOS/Android apps
 - **International stocks:** US, UK, other markets
 
 ---
 
-## 13. Success Metrics
+## 14. Success Metrics
 
 | Metric | Target |
 |--------|--------|
@@ -825,7 +1117,7 @@ hover: background #334e68;
 
 ---
 
-## 14. Contact
+## 15. Contact
 
 **Product:** Permabullish
 **Enterprise inquiries:** mail@mayaskara.com

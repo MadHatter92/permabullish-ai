@@ -64,6 +64,12 @@ def is_indian_exchange(exchange: str) -> bool:
 # Financial Modeling Prep API (US stock fundamentals)
 FMP_API_KEY = os.getenv("FMP_API_KEY", "")
 
+# Finnhub API (US stock fallback - 60 calls/min, no daily cap)
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
+
+# Twelve Data API (US stock fallback - 8 calls/min, 800/day)
+TWELVE_DATA_API_KEY = os.getenv("TWELVE_DATA_API_KEY", "")
+
 # Alpha Vantage API (backup stock data provider)
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "")
 
@@ -98,6 +104,13 @@ CASHFREE_ENV = os.getenv("CASHFREE_ENV", "sandbox")  # sandbox or production
 
 # Resend Email Service
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+
+# WhatsApp Cloud API
+WHATSAPP_ACCESS_TOKEN    = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+WHATSAPP_WABA_ID         = os.getenv("WHATSAPP_WABA_ID", "")
+WHATSAPP_APP_SECRET      = os.getenv("WHATSAPP_APP_SECRET", "")
+WHATSAPP_VERIFY_TOKEN    = os.getenv("WHATSAPP_VERIFY_TOKEN", "pb_whatsapp_2026")
 
 # Featured report IDs for emails - rotated daily for variety
 FEATURED_REPORT_IDS = [71, 92, 89, 90, 91, 38, 35, 88]

@@ -42,6 +42,7 @@ from config import (
 )
 import cashfree
 import share_card
+import whatsapp as whatsapp_module
 
 # Error tracking (Sentry)
 import sentry_sdk
@@ -108,6 +109,9 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
+
+# Mount WhatsApp router
+app.include_router(whatsapp_module.router)
 
 # Initialize database on startup
 @app.on_event("startup")

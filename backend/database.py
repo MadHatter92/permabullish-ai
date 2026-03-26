@@ -417,6 +417,39 @@ def init_database():
                 )
             """)
 
+            # WhatsApp tables (PostgreSQL)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS whatsapp_accounts (
+                    id SERIAL PRIMARY KEY,
+                    phone_hash VARCHAR(64) NOT NULL UNIQUE,
+                    user_id INTEGER REFERENCES users(id),
+                    linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS whatsapp_sessions (
+                    id SERIAL PRIMARY KEY,
+                    phone_hash VARCHAR(64) NOT NULL UNIQUE,
+                    state VARCHAR(50) NOT NULL,
+                    payload TEXT,
+                    expires_at TIMESTAMP NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS whatsapp_events (
+                    id SERIAL PRIMARY KEY,
+                    phone_hash VARCHAR(64) NOT NULL,
+                    whatsapp_account_id INTEGER REFERENCES whatsapp_accounts(id),
+                    event_type VARCHAR(50) NOT NULL,
+                    ticker VARCHAR(20),
+                    query_text TEXT,
+                    metadata TEXT,
+                    flagged BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
         else:
             # SQLite schema (for local development)
             cursor.execute("""
@@ -656,6 +689,40 @@ def init_database():
                     cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}")
                 except:
                     pass  # Column already exists
+
+            # WhatsApp tables (SQLite)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS whatsapp_accounts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    phone_hash TEXT NOT NULL UNIQUE,
+                    user_id INTEGER,
+                    linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS whatsapp_sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    phone_hash TEXT NOT NULL UNIQUE,
+                    state TEXT NOT NULL,
+                    payload TEXT,
+                    expires_at TIMESTAMP NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS whatsapp_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    phone_hash TEXT NOT NULL,
+                    whatsapp_account_id INTEGER,
+                    event_type TEXT NOT NULL,
+                    ticker TEXT,
+                    query_text TEXT,
+                    metadata TEXT,
+                    flagged INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
 
             # External contacts table (SQLite)
             cursor.execute("""
@@ -2468,6 +2535,138 @@ def unsubscribe_user(email: str) -> Optional[dict]:
             'success': True,
             'already_unsubscribed': False
         }
+
+
+# ============================================
+# WhatsApp Operations
+# ============================================
+
+def get_whatsapp_account(phone_hash: str) -> Optional[dict]:
+    """Get WhatsApp account record by phone hash."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(
+            f"SELECT * FROM whatsapp_accounts WHERE phone_hash = {p}",
+            (phone_hash,)
+        )
+        row = cursor.fetchone()
+        return _dict_from_row(row) if row else None
+
+
+def create_whatsapp_account(phone_hash: str, user_id: int = None) -> int:
+    """Create a WhatsApp account record (with optional user link). Returns id."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        if USE_POSTGRES:
+            cursor.execute(
+                f"INSERT INTO whatsapp_accounts (phone_hash, user_id) VALUES ({p}, {p}) "
+                "ON CONFLICT (phone_hash) DO NOTHING RETURNING id",
+                (phone_hash, user_id)
+            )
+            row = cursor.fetchone()
+            conn.commit()
+            return row['id'] if row else None
+        else:
+            cursor.execute(
+                f"INSERT OR IGNORE INTO whatsapp_accounts (phone_hash, user_id) VALUES ({p}, {p})",
+                (phone_hash, user_id)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+
+def link_whatsapp_account(phone_hash: str, user_id: int):
+    """Link a WhatsApp phone hash to a user account."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        if USE_POSTGRES:
+            cursor.execute(
+                f"INSERT INTO whatsapp_accounts (phone_hash, user_id) VALUES ({p}, {p}) "
+                f"ON CONFLICT (phone_hash) DO UPDATE SET user_id = {p}, linked_at = CURRENT_TIMESTAMP",
+                (phone_hash, user_id, user_id)
+            )
+        else:
+            cursor.execute(
+                f"INSERT OR REPLACE INTO whatsapp_accounts (phone_hash, user_id) VALUES ({p}, {p})",
+                (phone_hash, user_id)
+            )
+        conn.commit()
+
+
+def save_whatsapp_session(phone_hash: str, state: str, payload: list):
+    """Save or replace a disambiguation session."""
+    import json as _json
+    from datetime import datetime, timedelta
+    expires_at = datetime.now() + timedelta(minutes=5)
+    payload_str = _json.dumps(payload)
+
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        if USE_POSTGRES:
+            cursor.execute(
+                f"INSERT INTO whatsapp_sessions (phone_hash, state, payload, expires_at) "
+                f"VALUES ({p}, {p}, {p}, {p}) "
+                f"ON CONFLICT (phone_hash) DO UPDATE SET state={p}, payload={p}, expires_at={p}",
+                (phone_hash, state, payload_str, expires_at, state, payload_str, expires_at)
+            )
+        else:
+            cursor.execute(
+                f"INSERT OR REPLACE INTO whatsapp_sessions (phone_hash, state, payload, expires_at) "
+                f"VALUES ({p}, {p}, {p}, {p})",
+                (phone_hash, state, payload_str, expires_at)
+            )
+        conn.commit()
+
+
+def get_whatsapp_session(phone_hash: str) -> Optional[dict]:
+    """Get a non-expired session for a phone hash."""
+    from datetime import datetime
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(
+            f"SELECT * FROM whatsapp_sessions WHERE phone_hash = {p} AND expires_at > {p}",
+            (phone_hash, datetime.now())
+        )
+        row = cursor.fetchone()
+        return _dict_from_row(row) if row else None
+
+
+def clear_whatsapp_session(phone_hash: str):
+    """Delete a session for a phone hash."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(
+            f"DELETE FROM whatsapp_sessions WHERE phone_hash = {p}",
+            (phone_hash,)
+        )
+        conn.commit()
+
+
+def log_whatsapp_event(
+    phone_hash: str,
+    event_type: str,
+    ticker: str = None,
+    query_text: str = None,
+    metadata: str = None,
+    flagged: bool = False,
+):
+    """Insert a WhatsApp event into the log."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(
+            f"INSERT INTO whatsapp_events "
+            f"(phone_hash, event_type, ticker, query_text, metadata, flagged) "
+            f"VALUES ({p}, {p}, {p}, {p}, {p}, {p})",
+            (phone_hash, event_type, ticker, query_text, metadata, flagged)
+        )
+        conn.commit()
 
 
 # Initialize database on module import
