@@ -509,22 +509,38 @@ async def _mark_read(message_id: str):
 
 @router.get("/card/{ticker}.png")
 async def serve_card(ticker: str, exchange: str = "NSE"):
-    """Generate and serve a recommendation card PNG."""
-    cached = db.get_cached_report(ticker.upper(), exchange.upper(), language="en")
+    """Generate and serve a recommendation card PNG with live price."""
+    ticker   = ticker.upper()
+    exchange = exchange.upper()
+
+    cached = db.get_cached_report(ticker, exchange, language="en")
     if not cached:
         raise HTTPException(status_code=404, detail="No cached report found")
 
+    # Fetch live price — fall back to cached if it fails
+    current_price = cached.get("current_price") or 0
+    try:
+        import yfinance as yf
+        from yahoo_finance import get_ticker_symbol
+        yf_symbol = get_ticker_symbol(ticker, exchange)
+        info = yf.Ticker(yf_symbol).fast_info
+        live_price = getattr(info, "last_price", None) or getattr(info, "regular_market_price", None)
+        if live_price and live_price > 0:
+            current_price = float(live_price)
+    except Exception:
+        pass  # Use cached price as fallback
+
     img_bytes = generate_share_card(
         company_name=cached.get("company_name", ticker),
-        ticker=ticker.upper(),
-        exchange=exchange.upper(),
+        ticker=ticker,
+        exchange=exchange,
         sector=cached.get("sector", ""),
         recommendation=cached.get("recommendation", "HOLD"),
-        current_price=cached.get("current_price", 0),
+        current_price=current_price,
         target_price=cached.get("ai_target_price", 0),
     )
     return Response(content=img_bytes, media_type="image/png",
-                    headers={"Cache-Control": "public, max-age=3600"})
+                    headers={"Cache-Control": "public, max-age=300"})
 
 
 @router.get("/chart/{ticker}.png")
