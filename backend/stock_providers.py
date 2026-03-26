@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import logging
 
-from config import NSE_SUFFIX, BSE_SUFFIX, FMP_API_KEY, is_us_exchange
+from config import NSE_SUFFIX, BSE_SUFFIX, FMP_API_KEY, FINNHUB_API_KEY, TWELVE_DATA_API_KEY, is_us_exchange
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -845,6 +845,217 @@ class FMPProvider(StockDataProvider):
         return []
 
 
+class FinnhubProvider(StockDataProvider):
+    """Fetches US stock data from Finnhub API (60 calls/min, no daily cap)."""
+
+    name = "Finnhub"
+
+    def __init__(self, api_key: str = ""):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        if not self.api_key:
+            return False
+        return super().is_available()
+
+    def fetch_stock_data(self, symbol: str, exchange: str = "NSE") -> Optional[Dict[str, Any]]:
+        """Fetch stock data from Finnhub (US stocks only)."""
+        if not is_us_exchange(exchange):
+            return None
+
+        try:
+            from data_sources.finnhub import get_quote, get_company_profile, get_basic_financials
+
+            quote = get_quote(symbol)
+            if not quote or quote.get("c") is None or quote.get("c") == 0:
+                return None
+
+            profile = get_company_profile(symbol)
+            metrics_data = get_basic_financials(symbol)
+            metrics = metrics_data.get("metric", {}) if metrics_data else {}
+
+            stock_data = {
+                "basic_info": {
+                    "company_name": profile.get("name", symbol) if profile else symbol,
+                    "ticker": symbol.upper(),
+                    "exchange": exchange,
+                    "sector": profile.get("finnhubIndustry", "N/A") if profile else "N/A",
+                    "industry": profile.get("finnhubIndustry", "N/A") if profile else "N/A",
+                    "website": profile.get("weburl", "") if profile else "",
+                    "description": "",
+                    "employees": 0,
+                    "country": profile.get("country", "US") if profile else "US",
+                },
+                "price_info": {
+                    "current_price": quote.get("c", 0),
+                    "previous_close": quote.get("pc", 0),
+                    "open": quote.get("o", 0),
+                    "day_high": quote.get("h", 0),
+                    "day_low": quote.get("l", 0),
+                    "fifty_two_week_high": metrics.get("52WeekHigh", 0),
+                    "fifty_two_week_low": metrics.get("52WeekLow", 0),
+                    "volume": 0,  # Not in Finnhub quote endpoint
+                },
+                "valuation": {
+                    "market_cap": (profile.get("marketCapitalization", 0) or 0) * 1_000_000 if profile else 0,  # Finnhub returns in millions
+                    "pe_ratio": metrics.get("peBasicExclExtraTTM", metrics.get("peTTM", 0)),
+                    "pb_ratio": metrics.get("pbQuarterly", metrics.get("pbAnnual", 0)),
+                    "dividend_yield": metrics.get("dividendYieldIndicatedAnnual", 0),
+                    "eps": metrics.get("epsBasicExclExtraItemsTTM", 0),
+                    "book_value": metrics.get("bookValuePerShareQuarterly", 0),
+                },
+                "financials": {
+                    "revenue": metrics.get("revenuePerShareTTM", 0),
+                    "profit_margin": metrics.get("netProfitMarginTTM", 0),
+                    "operating_margin": metrics.get("operatingMarginTTM", 0),
+                    "roe": metrics.get("roeTTM", 0),
+                    "roa": metrics.get("roaTTM", 0),
+                    "debt_to_equity": metrics.get("totalDebt/totalEquityQuarterly", 0),
+                    "current_ratio": metrics.get("currentRatioQuarterly", 0),
+                },
+                "returns": {
+                    "roe": metrics.get("roeTTM", 0),
+                    "roa": metrics.get("roaTTM", 0),
+                },
+                "per_share": {
+                    "eps": metrics.get("epsBasicExclExtraItemsTTM", 0),
+                    "book_value": metrics.get("bookValuePerShareQuarterly", 0),
+                },
+                "dividends": {
+                    "dividend_yield": metrics.get("dividendYieldIndicatedAnnual", 0),
+                    "dividend_rate": metrics.get("dividendPerShareAnnual", 0),
+                },
+                "balance_sheet": {
+                    "debt_to_equity": metrics.get("totalDebt/totalEquityQuarterly", 0),
+                    "current_ratio": metrics.get("currentRatioQuarterly", 0),
+                },
+                "ownership": {
+                    "institution_holding": 0,
+                    "insider_holding": 0,
+                },
+                "analyst_data": {
+                    "target_mean_price": metrics.get("targetMeanPrice", 0),
+                    "recommendation": "",
+                    "num_analysts": 0,
+                },
+                "analyst": {
+                    "target_price": metrics.get("targetMeanPrice", 0),
+                    "target_high": metrics.get("targetHighPrice", 0),
+                    "target_low": metrics.get("targetLowPrice", 0),
+                    "recommendation": "",
+                    "num_analysts": 0,
+                },
+                "provider": self.name,
+            }
+
+            return stock_data
+
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "rate" in error_msg or "429" in error_msg:
+                self.mark_rate_limited(2)  # Only 2 min since Finnhub resets per-minute
+            logger.error(f"Finnhub error for {symbol}: {e}")
+            return None
+
+    def search_stocks(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        return []
+
+
+class TwelveDataProvider(StockDataProvider):
+    """Fetches US stock data from Twelve Data API (800 calls/day)."""
+
+    name = "Twelve Data"
+
+    def __init__(self, api_key: str = ""):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        if not self.api_key:
+            return False
+        return super().is_available()
+
+    def fetch_stock_data(self, symbol: str, exchange: str = "NSE") -> Optional[Dict[str, Any]]:
+        """Fetch stock data from Twelve Data (US stocks only)."""
+        if not is_us_exchange(exchange):
+            return None
+
+        try:
+            from data_sources.twelve_data import get_quote
+
+            quote = get_quote(symbol)
+            if not quote or not quote.get("close"):
+                return None
+
+            def safe_float(val, default=0):
+                try:
+                    return float(val) if val else default
+                except (ValueError, TypeError):
+                    return default
+
+            fifty_two = quote.get("fifty_two_week", {})
+
+            stock_data = {
+                "basic_info": {
+                    "company_name": quote.get("name", symbol),
+                    "ticker": symbol.upper(),
+                    "exchange": exchange,
+                    "sector": "N/A",
+                    "industry": "N/A",
+                    "website": "",
+                    "description": "",
+                    "employees": 0,
+                    "country": "US",
+                },
+                "price_info": {
+                    "current_price": safe_float(quote.get("close")),
+                    "previous_close": safe_float(quote.get("previous_close")),
+                    "open": safe_float(quote.get("open")),
+                    "day_high": safe_float(quote.get("high")),
+                    "day_low": safe_float(quote.get("low")),
+                    "fifty_two_week_high": safe_float(fifty_two.get("high")),
+                    "fifty_two_week_low": safe_float(fifty_two.get("low")),
+                    "volume": safe_float(quote.get("volume")),
+                },
+                "valuation": {
+                    "market_cap": 0,
+                    "pe_ratio": 0,
+                    "pb_ratio": 0,
+                    "dividend_yield": 0,
+                    "eps": 0,
+                    "book_value": 0,
+                },
+                "financials": {
+                    "revenue": 0,
+                    "profit_margin": 0,
+                    "operating_margin": 0,
+                    "roe": 0,
+                    "roa": 0,
+                    "debt_to_equity": 0,
+                    "current_ratio": 0,
+                },
+                "returns": {"roe": 0, "roa": 0},
+                "per_share": {"eps": 0, "book_value": 0},
+                "dividends": {"dividend_yield": 0, "dividend_rate": 0},
+                "balance_sheet": {"debt_to_equity": 0, "current_ratio": 0},
+                "ownership": {"institution_holding": 0, "insider_holding": 0},
+                "analyst_data": {"target_mean_price": 0, "recommendation": "", "num_analysts": 0},
+                "analyst": {"target_price": 0, "recommendation": "", "num_analysts": 0},
+                "provider": self.name,
+            }
+
+            return stock_data
+
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "rate" in error_msg or "429" in error_msg:
+                self.mark_rate_limited(2)
+            logger.error(f"Twelve Data error for {symbol}: {e}")
+            return None
+
+    def search_stocks(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        return []
+
+
 class AlphaVantageProvider(StockDataProvider):
     """Fetches data from Alpha Vantage API (fallback)."""
 
@@ -988,10 +1199,18 @@ class StockDataManager:
             TickertapeProvider(),
         ]
 
-        # FMP as US stock fallback (before Alpha Vantage)
+        # US stock fallbacks (in priority order)
         if FMP_API_KEY:
             self.providers.append(FMPProvider(FMP_API_KEY))
             logger.info("FMP provider initialized with API key")
+
+        if FINNHUB_API_KEY:
+            self.providers.append(FinnhubProvider(FINNHUB_API_KEY))
+            logger.info("Finnhub provider initialized with API key")
+
+        if TWELVE_DATA_API_KEY:
+            self.providers.append(TwelveDataProvider(TWELVE_DATA_API_KEY))
+            logger.info("Twelve Data provider initialized with API key")
 
         if alpha_vantage_key:
             self.providers.append(AlphaVantageProvider(alpha_vantage_key))
@@ -1021,8 +1240,8 @@ class StockDataManager:
             # Skip India-only providers (Groww, Tickertape) for US stocks
             if is_us_exchange(exchange) and provider.name in ("Groww", "Tickertape"):
                 continue
-            # Skip US-only provider (FMP) for Indian stocks
-            if not is_us_exchange(exchange) and provider.name == "FMP":
+            # Skip US-only providers for Indian stocks
+            if not is_us_exchange(exchange) and provider.name in ("FMP", "Finnhub", "Twelve Data"):
                 continue
 
             if not provider.is_available():

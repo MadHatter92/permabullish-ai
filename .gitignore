@@ -2,6 +2,11 @@
 .env
 .env.local
 .env.*.local
+secrets.env.txt
+trading-agent/kite_token.json
+
+# Claude Code settings (may contain credentials)
+.claude/
 
 # Python
 __pycache__/
