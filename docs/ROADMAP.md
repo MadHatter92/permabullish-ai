@@ -1098,7 +1098,10 @@ Build a fully automated WhatsApp bot for instant stock research — no app, no l
 
 - [x] Meta WhatsApp Cloud API (direct — no BSP, ₹0/month for user-initiated conversations)
 - [x] Meta test number (`+1 555 139 4810`) used for development (5 recipient limit)
-- [x] Production number migration pending (existing Permabullish WhatsApp Business App number)
+- [x] Production number migrated ✅ (+91 72598 91109, Connected via Cloud API)
+  - Deleted WhatsApp Business App account → called `/register` API → subscribed WABA to app
+  - Permanent system user token in place (never expires)
+  - Privacy Policy (`/privacy`) and Terms of Service (`/terms`) pages added (required for Meta app Live mode)
 - [x] FastAPI router `backend/whatsapp.py` mounted at `/whatsapp`
 - [x] `GET /whatsapp/webhook` — Meta verification handshake
 - [x] `POST /whatsapp/webhook` — HMAC-SHA256 signature validation
@@ -1119,10 +1122,10 @@ Build a fully automated WhatsApp bot for instant stock research — no app, no l
   - Endpoint: `GET /whatsapp/card/{ticker}.png?exchange=`
 - [x] **Text report** — WhatsApp-formatted (bold `*`), thesis, metrics, recommendation, target price
   - Report link → `report.html?id=X` (content-gated for unauthenticated users)
-- [x] **Action buttons** after every report: 📈 Price Chart | 📋 Results | 📰 Latest News
-  - Chart: served from `GET /whatsapp/chart/{ticker}.png` (matplotlib, 6-month)
+- [x] **Action buttons** after every report: 🐂 Bull & Bear | 📋 Results | 📰 Latest News
+  - Bull & Bear: reads from cached `report_data["analysis"]` — zero extra API calls (replaced 📈 Price Chart which caused excessive yfinance calls)
   - Results: last 4 quarters revenue + net income via `yfinance quarterly_income_stmt`
-  - News: top 4 headlines via `yfinance.news`
+  - News: top 4 headlines via `yfinance.news` (with new nested content format support)
   - All 3 **gated behind linked account**
 
 ### 10.4 Gating & Monthly Limits ✅
@@ -1152,11 +1155,12 @@ Build a fully automated WhatsApp bot for instant stock research — no app, no l
   - Reports sent, new phones, active phones, accounts linked, blocked count, action taps, top stocks
 
 ### Deliverables
-- ✅ WhatsApp bot live (test number)
+- ✅ WhatsApp bot live on production number (+91 72598 91109)
 - ✅ Stock reports via WhatsApp (card + text + action buttons)
 - ✅ Monthly usage gating with upgrade nudges
 - ✅ Phone ↔ account linking
 - ✅ Full event tracking + daily/weekly metrics in email reports
+- ✅ Privacy Policy and Terms of Service pages (permabullish.com/privacy, /terms)
 
 ### New Files
 - `backend/whatsapp.py` — Full bot module (webhook, handlers, senders, image endpoints)
@@ -1170,13 +1174,12 @@ Build a fully automated WhatsApp bot for instant stock research — no app, no l
 - `.env.example` — WhatsApp vars documented
 
 ### Pending
-- [ ] Migrate production number (existing WhatsApp Business App) to Cloud API
 - [ ] Add WhatsApp CTA to permabullish.com homepage and brokers landing page
 
 ---
 
 ## Phase 10.1: WhatsApp Voice Interface (Sarvam AI)
-**Status:** 🔜 Planned (post-production-number migration)
+**Status:** 🔜 Planned
 **Priority:** Medium
 
 ### Objective

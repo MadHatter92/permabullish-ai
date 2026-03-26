@@ -91,7 +91,7 @@ The product operates on a subscription model with tiered access, allowing users 
 - ✅ Open redirect prevention on return_to param
 
 ### Phase 8: WhatsApp Bot ✅ (Completed March 26, 2026)
-- ✅ Meta Cloud API setup (Meta test number for dev; production number migration pending)
+- ✅ Meta Cloud API setup + production number migration complete (+91 72598 91109)
 - ✅ FastAPI webhook handler (`/whatsapp/webhook`) with HMAC signature validation
 - ✅ Greeting detection + welcome message
 - ✅ Ticker/name resolution with interactive disambiguation (reply buttons ≤3, list 4–8)
@@ -100,8 +100,9 @@ The product operates on a subscription model with tiered access, allowing users 
 - ✅ WhatsApp-formatted text report (2-message delivery: card + text)
 - ✅ Phone ↔ email account mapping (voluntary, one-time prompt)
 - ✅ Monthly usage gating with tiered limits (3 unlinked / 5 Free / 50 Basic / 100 Pro)
-- ✅ Action buttons after every report: 📈 Price Chart, 📋 Results, 📰 Latest News
-- ✅ Chart/Results/News gated behind linked account with nudge messages
+- ✅ Action buttons after every report: 🐂 Bull & Bear, 📋 Results, 📰 Latest News
+- ✅ Bull/Bear case reads from cached report_data — zero extra API calls
+- ✅ Results/News gated behind linked account with nudge messages
 - ✅ WhatsApp event tracking (`whatsapp_events` table, flagged events)
 - ✅ WhatsApp metrics added to daily/weekly cron email report
 - ✅ Fallback handler (unknown queries flagged in backend, user redirected to email)
@@ -306,7 +307,7 @@ Most sales enablement tools are **horizontal** (work across industries) and auto
 User → "TCS"
 Bot  → [Recommendation card image]
 Bot  → [WhatsApp-formatted text report]
-Bot  → [Action buttons: 📈 Price Chart | 📋 Results | 📰 Latest News]
+Bot  → [Action buttons: 🐂 Bull & Bear | 📋 Results | 📰 Latest News]
 ```
 
 **Disambiguation (multiple matches):**
@@ -329,8 +330,8 @@ Bot  → Reply buttons:
 
 **Action button — linked account:**
 ```
-User → [taps 📈 Price Chart]
-Bot  → [6-month chart image]
+User → [taps 🐂 Bull & Bear]
+Bot  → Bull case (3 points) + Bear case (3 points) from cached report
 
 User → [taps 📋 Results]
 Bot  → Last 4 quarters revenue + net income (text)
@@ -341,8 +342,8 @@ Bot  → Top 4 headlines with links (text)
 
 **Action button — unlinked account:**
 ```
-User → [taps 📈 Price Chart]
-Bot  → "Charts, Results and News require a linked account.
+User → [taps 🐂 Bull & Bear]
+Bot  → "Bull/Bear Case, Results and News require a linked account.
         Reply with your Permabullish email to link, or sign up at permabullish.com"
 ```
 
@@ -402,8 +403,8 @@ Two sequential messages sent per report request, followed by action buttons:
   ```
 
 **Message 3 — Action Buttons (interactive)**
-- 3 reply buttons: 📈 Price Chart | 📋 Results | 📰 Latest News
-- Button IDs: `ACT_C_{TICKER}_{EXCHANGE}`, `ACT_R_{...}`, `ACT_N_{...}`
+- 3 reply buttons: 🐂 Bull & Bear | 📋 Results | 📰 Latest News
+- Button IDs: `ACT_B_{TICKER}_{EXCHANGE}`, `ACT_R_{...}`, `ACT_N_{...}`
 - Gated behind linked account (see 5.7.10)
 
 #### 5.7.4 Report Sourcing & Quota
@@ -482,7 +483,7 @@ CREATE TABLE whatsapp_events (
 | `disambiguation_selected` | User picked from list |
 | `report_sent` | 2-message report delivered |
 | `report_blocked_limit` | User hit monthly limit — flagged |
-| `action_c` | 📈 Price Chart button tapped |
+| `action_b` | 🐂 Bull & Bear button tapped |
 | `action_r` | 📋 Results button tapped |
 | `action_n` | 📰 Latest News button tapped |
 | `unmatched_query` | Stock not found — flagged |
