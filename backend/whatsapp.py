@@ -7,10 +7,12 @@ import os
 import re
 import json
 import hmac
+import math
 import hashlib
 import asyncio
 import logging
 from io import BytesIO
+from datetime import datetime, timedelta
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 
@@ -27,10 +29,10 @@ logger = logging.getLogger(__name__)
 
 # ─── Config ──────────────────────────────────────────────────────────────────
 
-WHATSAPP_ACCESS_TOKEN   = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+WHATSAPP_ACCESS_TOKEN    = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
-WHATSAPP_APP_SECRET     = os.getenv("WHATSAPP_APP_SECRET", "")
-WHATSAPP_VERIFY_TOKEN   = os.getenv("WHATSAPP_VERIFY_TOKEN", "pb_whatsapp_2026")
+WHATSAPP_APP_SECRET      = os.getenv("WHATSAPP_APP_SECRET", "")
+WHATSAPP_VERIFY_TOKEN    = os.getenv("WHATSAPP_VERIFY_TOKEN", "pb_whatsapp_2026")
 
 GRAPH_API_URL = f"https://graph.facebook.com/v19.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
 SEND_HEADERS  = {
@@ -39,6 +41,15 @@ SEND_HEADERS  = {
 }
 
 SESSION_TTL_MINUTES = 5
+
+# Monthly report limits by subscription tier (None = unlinked phone)
+MONTHLY_LIMITS = {
+    None:         3,
+    "free":       5,
+    "basic":      50,
+    "pro":        100,
+    "enterprise": 10000,
+}
 
 router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
 
@@ -62,6 +73,24 @@ def _verify_signature(body: bytes, signature: str) -> bool:
 
 def _looks_like_email(text: str) -> bool:
     return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", text.strip()))
+
+
+def _next_month_reset() -> str:
+    """Return human-readable reset date (e.g. 'April 1')."""
+    now = datetime.now()
+    first_next = (now.replace(day=1) + timedelta(days=32)).replace(day=1)
+    return first_next.strftime("%B 1")
+
+
+def _get_phone_tier(phone_hash: str) -> Optional[str]:
+    """Return subscription tier for this phone, or None if unlinked."""
+    account = db.get_whatsapp_account(phone_hash)
+    if not account or not account.get("user_id"):
+        return None
+    user = db.get_user_by_id(account["user_id"])
+    if not user:
+        return None
+    return user.get("subscription_tier") or "free"
 
 
 # ─── Webhook Endpoints ────────────────────────────────────────────────────────
@@ -106,7 +135,6 @@ async def handle_webhook(request: Request):
             query = message["text"]["body"].strip()
             asyncio.create_task(_handle_text(phone, query))
 
-
         elif msg_type == "interactive":
             interactive = message["interactive"]
             itype = interactive.get("type")
@@ -143,8 +171,9 @@ WELCOME_MESSAGE = (
     "Send me any stock name or ticker and I'll instantly send you:\n"
     "📊 Recommendation with target price\n"
     "📝 AI analysis summary\n\n"
-    "Try it — send *RELIANCE*, *TCS*, *INFY*, or any NSE/BSE stock.\n\n"
-    "🔗 Full reports at permabullish.com"
+    "Try it — send *RELIANCE*, *TCS*, *INFY*, or any NSE/BSE/NYSE/NASDAQ stock.\n\n"
+    "🆓 *3 free reports/month* — no sign-up needed.\n"
+    "🔗 More at permabullish.com"
 )
 
 
@@ -193,7 +222,13 @@ async def _handle_text(phone: str, text: str):
 
 
 async def _handle_selection(phone: str, selection_id: str):
-    """Handle a disambiguation selection. selection_id format: TICKER_EXCHANGE"""
+    """Route interactive reply: action button or disambiguation selection."""
+    # Action buttons have the prefix ACT_
+    if selection_id.startswith("ACT_"):
+        await _handle_action(phone, selection_id)
+        return
+
+    # Disambiguation: format is TICKER_EXCHANGE
     parts = selection_id.split("_", 1)
     if len(parts) != 2:
         await _send_text(phone, "Sorry, I didn't understand that. Please send the stock name again.")
@@ -204,6 +239,41 @@ async def _handle_selection(phone: str, selection_id: str):
     _log_event(phone, "disambiguation_selected", ticker=ticker,
                metadata={"exchange": exchange})
     await _send_report(phone, ticker, exchange)
+
+
+async def _handle_action(phone: str, action_id: str):
+    """Handle an action button: ACT_C/R/N_TICKER_EXCHANGE."""
+    parts = action_id.split("_", 3)
+    if len(parts) != 4:
+        await _send_text(phone, "Invalid action. Please try again.")
+        return
+
+    _, action_code, ticker, exchange = parts
+
+    # Gate: require linked account
+    phone_hash = _hash_phone(phone)
+    account = db.get_whatsapp_account(phone_hash)
+    is_linked = account and account.get("user_id")
+
+    if not is_linked:
+        await _send_text(
+            phone,
+            "🔐 *Charts, Results and News* require a linked account.\n\n"
+            "Reply with your Permabullish email to link, or sign up free at permabullish.com"
+        )
+        return
+
+    _log_event(phone, f"action_{action_code.lower()}", ticker=ticker,
+               metadata={"exchange": exchange})
+
+    if action_code == "C":
+        await _send_chart_action(phone, ticker, exchange)
+    elif action_code == "R":
+        await _send_results_action(phone, ticker, exchange)
+    elif action_code == "N":
+        await _send_news_action(phone, ticker, exchange)
+    else:
+        await _send_text(phone, "Unknown action. Please try again.")
 
 
 async def _handle_account_link(phone: str, email: str):
@@ -220,18 +290,36 @@ async def _handle_account_link(phone: str, email: str):
 
     db.link_whatsapp_account(phone_hash, user["id"])
     _log_event(phone, "account_linked", metadata={"user_id": user["id"]})
+
+    tier  = user.get("subscription_tier", "free")
+    limit = MONTHLY_LIMITS.get(tier, 5)
     await _send_text(
         phone,
-        f"✅ Linked! Your WhatsApp is now connected to your Permabullish account ({email}).\n\n"
+        f"✅ *Linked!* Your WhatsApp is connected to your Permabullish account ({email}).\n\n"
+        f"You now have *{limit} reports/month* on your {tier.title()} plan.\n"
         "Send any stock name or ticker to get an analysis."
     )
 
 
 async def _send_report(phone: str, ticker: str, exchange: str):
-    """Fetch (or generate) report and send 3-message response."""
-    ticker   = ticker.upper()
-    exchange = exchange.upper()
+    """Check monthly limit, then fetch/generate and deliver a report."""
+    ticker    = ticker.upper()
+    exchange  = exchange.upper()
+    phone_hash = _hash_phone(phone)
+    month_year = datetime.now().strftime("%Y-%m")
 
+    # ── Usage gate ──────────────────────────────────────────────────────────
+    tier  = _get_phone_tier(phone_hash)
+    limit = MONTHLY_LIMITS.get(tier, 3)
+    count = db.get_whatsapp_monthly_count(phone_hash, month_year)
+
+    if count >= limit:
+        await _send_limit_blocked_nudge(phone, tier, limit)
+        _log_event(phone, "report_blocked_limit", ticker=ticker,
+                   metadata={"count": count, "limit": limit, "tier": tier})
+        return
+
+    # ── Fetch / generate report ──────────────────────────────────────────────
     cached = db.get_cached_report(ticker, exchange, language="en")
 
     if not cached:
@@ -258,28 +346,51 @@ async def _send_report(phone: str, ticker: str, exchange: str):
         _log_event(phone, "api_error", ticker=ticker, flagged=True)
         return
 
+    # ── Deliver report (card + text) ─────────────────────────────────────────
     _log_event(phone, "report_sent", ticker=ticker)
 
     api_base = "https://api.permabullish.com"
-    card_url = f"{api_base}/whatsapp/card/{ticker}.png?exchange={exchange}"
+    card_url  = f"{api_base}/whatsapp/card/{ticker}.png?exchange={exchange}"
 
-    # 2-message sequence: card image + text report
     rec = cached.get("recommendation", "HOLD").replace("_", " ").title()
     await _send_image(phone, card_url, f"*{ticker}* — {rec}")
     await asyncio.sleep(0.8)
-
     await _send_text(phone, _format_report_text(cached, ticker, exchange, cached.get("id")))
 
-    # One-time account linking prompt for new phone numbers
-    phone_hash = _hash_phone(phone)
-    if not db.get_whatsapp_account(phone_hash):
-        db.create_whatsapp_account(phone_hash)  # Mark prompt as sent (user_id=None)
-        await asyncio.sleep(1.5)
-        await _send_text(
-            phone,
-            "💼 Have a Permabullish account? Reply with your email to link it "
-            "and access your report history on the web."
-        )
+    # ── Increment usage ───────────────────────────────────────────────────────
+    new_count = db.increment_whatsapp_monthly_count(phone_hash, month_year)
+
+    # ── Action buttons ────────────────────────────────────────────────────────
+    await asyncio.sleep(0.5)
+    await _send_action_buttons(phone, ticker, exchange)
+
+    # ── Post-report nudges ────────────────────────────────────────────────────
+    account = db.get_whatsapp_account(phone_hash)
+    is_linked = account and account.get("user_id")
+
+    if not is_linked:
+        if not account:
+            # First ever report — create record and send linking prompt
+            db.create_whatsapp_account(phone_hash)
+            await asyncio.sleep(1.5)
+            if new_count >= limit:
+                # Also just hit the free cap
+                await _send_text(
+                    phone,
+                    f"📊 You've used all {limit} free reports this month. They reset on {_next_month_reset()}.\n\n"
+                    "💡 Link your account for 5 free reports/month — reply with your email, "
+                    "or upgrade at permabullish.com"
+                )
+            else:
+                await _send_text(
+                    phone,
+                    "💼 Have a Permabullish account? Reply with your email to link it "
+                    "and get *5 free reports/month* plus charts, results and news."
+                )
+        elif new_count >= limit:
+            # Hit the free cap on a known-but-unlinked number
+            await asyncio.sleep(1.5)
+            await _send_limit_exhausted_nudge(phone, tier, limit)
 
 
 def _generate_report(ticker: str, exchange: str) -> Optional[dict]:
@@ -376,9 +487,7 @@ def _format_report_text(cached: dict, ticker: str, exchange: str, report_id: int
         f"{rec_emoji} *Recommendation:* {recommendation}",
     ]
     if ai_target_price:
-        parts.append(
-            f"🎯 *Target Price:* {currency}{ai_target_price:,.0f}{upside}"
-        )
+        parts.append(f"🎯 *Target Price:* {currency}{ai_target_price:,.0f}{upside}")
     if conviction:
         parts.append(f"⚡ *Conviction:* {str(conviction).title()}")
     parts.append("")
@@ -412,6 +521,190 @@ def _format_report_text(cached: dict, ticker: str, exchange: str, report_id: int
     ]
 
     return "\n".join(parts)
+
+
+# ─── Action Handlers ──────────────────────────────────────────────────────────
+
+async def _send_chart_action(phone: str, ticker: str, exchange: str):
+    """Send a 6-month price chart image."""
+    await _send_text(phone, f"Fetching 6-month chart for *{ticker}*... ⏳")
+    try:
+        loop = asyncio.get_event_loop()
+        img_bytes = await loop.run_in_executor(
+            _executor, _generate_price_chart, ticker.upper(), exchange.upper()
+        )
+        api_base  = "https://api.permabullish.com"
+        chart_url = f"{api_base}/whatsapp/chart/{ticker}.png?exchange={exchange}"
+        await _send_image(phone, chart_url, f"*{ticker}* — 6 Month Price Chart")
+    except Exception as e:
+        logger.warning(f"Chart action failed for {ticker}: {e}")
+        await _send_text(
+            phone,
+            f"Couldn't generate the chart for *{ticker}* right now. Please try again later."
+        )
+
+
+async def _send_results_action(phone: str, ticker: str, exchange: str):
+    """Send last 4 quarters of revenue + net income."""
+    import yfinance as yf
+    from yahoo_finance import get_ticker_symbol
+
+    currency = "$" if is_us_exchange(exchange) else "₹"
+
+    def _fmt(v):
+        if v is None or (isinstance(v, float) and math.isnan(v)):
+            return "—"
+        if is_us_exchange(exchange):
+            if abs(v) >= 1e12:
+                return f"{currency}{v/1e12:.2f}T"
+            elif abs(v) >= 1e9:
+                return f"{currency}{v/1e9:.2f}B"
+            elif abs(v) >= 1e6:
+                return f"{currency}{v/1e6:.1f}M"
+        else:
+            if abs(v) >= 1e12:
+                return f"{currency}{v/1e12:.2f}L Cr"
+            elif abs(v) >= 1e9:
+                return f"{currency}{v/1e7:.0f} Cr"
+            elif abs(v) >= 1e7:
+                return f"{currency}{v/1e7:.0f} Cr"
+        return f"{currency}{v:,.0f}"
+
+    try:
+        yf_symbol = get_ticker_symbol(ticker, exchange)
+        yft = yf.Ticker(yf_symbol)
+
+        # Try quarterly_income_stmt first (newer yfinance), fall back to quarterly_financials
+        qf = getattr(yft, "quarterly_income_stmt", None)
+        if qf is None or (hasattr(qf, "empty") and qf.empty):
+            qf = yft.quarterly_financials
+
+        if qf is None or (hasattr(qf, "empty") and qf.empty):
+            await _send_text(phone, f"No quarterly results available for *{ticker}*.")
+            return
+
+        lines = [f"📋 *{ticker} — Quarterly Results*\n"]
+        cols  = list(qf.columns[:4])
+
+        rev_key = next((k for k in qf.index if "revenue" in str(k).lower()), None)
+        inc_key = next((k for k in qf.index if "net income" in str(k).lower()), None)
+
+        for col in cols:
+            dt  = str(col.date()) if hasattr(col, "date") else str(col)[:10]
+            rev = qf.loc[rev_key, col] if rev_key is not None else None
+            inc = qf.loc[inc_key, col] if inc_key is not None else None
+            lines.append(f"*{dt}*")
+            if rev is not None:
+                lines.append(f"  Revenue: {_fmt(rev)}")
+            if inc is not None:
+                lines.append(f"  Net Income: {_fmt(inc)}")
+            lines.append("")
+
+        if len(lines) <= 1:
+            await _send_text(phone, f"No quarterly results available for *{ticker}*.")
+            return
+
+        lines.append("⚠️ _Source: Yahoo Finance. DYOR._")
+        await _send_text(phone, "\n".join(lines).strip())
+
+    except Exception as e:
+        logger.warning(f"Results action failed for {ticker}: {e}")
+        await _send_text(
+            phone,
+            f"Couldn't fetch results for *{ticker}* right now. Please try again later."
+        )
+
+
+async def _send_news_action(phone: str, ticker: str, exchange: str):
+    """Send latest 4 news headlines."""
+    import yfinance as yf
+    from yahoo_finance import get_ticker_symbol
+
+    try:
+        yf_symbol = get_ticker_symbol(ticker, exchange)
+        news = yf.Ticker(yf_symbol).news or []
+
+        if not news:
+            await _send_text(phone, f"No recent news found for *{ticker}*.")
+            return
+
+        lines = [f"📰 *{ticker} — Latest News*\n"]
+        for item in news[:4]:
+            title     = item.get("title", "")
+            link      = item.get("link", "")
+            publisher = item.get("publisher", "")
+            if title:
+                line = f"• {title}"
+                if publisher:
+                    line += f" _{publisher}_"
+                if link:
+                    line += f"\n  {link}"
+                lines.append(line)
+                lines.append("")
+
+        if len(lines) <= 1:
+            await _send_text(phone, f"No recent news found for *{ticker}*.")
+            return
+
+        await _send_text(phone, "\n".join(lines).strip())
+
+    except Exception as e:
+        logger.warning(f"News action failed for {ticker}: {e}")
+        await _send_text(
+            phone,
+            f"Couldn't fetch news for *{ticker}* right now. Please try again later."
+        )
+
+
+# ─── Nudge Messages ───────────────────────────────────────────────────────────
+
+async def _send_limit_blocked_nudge(phone: str, tier: Optional[str], limit: int):
+    """Tell the user they've hit their monthly limit."""
+    reset = _next_month_reset()
+    if tier is None:
+        msg = (
+            f"📊 You've used all *{limit} free reports* this month. "
+            f"They reset on {reset}.\n\n"
+            "To get more reports:\n"
+            "• Reply with your Permabullish email to link your account *(5 free/month)*\n"
+            "• Or upgrade at permabullish.com for up to 100 reports/month"
+        )
+    elif tier == "free":
+        msg = (
+            f"📊 You've used all *{limit} reports* on your Free plan this month. "
+            f"They reset on {reset}.\n\n"
+            "Upgrade to Basic (₹999/month) for *50 reports/month* → permabullish.com"
+        )
+    elif tier == "basic":
+        msg = (
+            f"📊 You've used all *{limit} reports* on your Basic plan this month. "
+            f"They reset on {reset}.\n\n"
+            "Upgrade to Pro (₹1,499/month) for *100 reports/month* → permabullish.com"
+        )
+    else:
+        msg = (
+            f"📊 You've reached the *{limit} report* limit for this month. "
+            f"They reset on {reset}. Contact us at mail@mayaskara.com for enterprise options."
+        )
+    await _send_text(phone, msg)
+
+
+async def _send_limit_exhausted_nudge(phone: str, tier: Optional[str], limit: int):
+    """Nudge after the user just sent their last free report."""
+    reset = _next_month_reset()
+    if tier is None:
+        msg = (
+            f"📊 You've just used your last free report this month ({limit}/{limit}). "
+            f"They reset on {reset}.\n\n"
+            "💡 Link your account for *5 free reports/month* — reply with your email, "
+            "or upgrade at permabullish.com"
+        )
+    else:
+        msg = (
+            f"📊 You've just used your last report this month ({limit}/{limit}). "
+            f"They reset on {reset}. Upgrade at permabullish.com for more."
+        )
+    await _send_text(phone, msg)
 
 
 async def _send_unhandled_type(phone: str):
@@ -501,6 +794,48 @@ async def _send_interactive_list(phone: str, options: list, query: str):
                 },
             },
         })
+
+
+async def _send_action_buttons(phone: str, ticker: str, exchange: str):
+    """Send 3 action buttons after every report."""
+    t = ticker.upper()
+    e = exchange.upper()
+    buttons = [
+        {
+            "type": "reply",
+            "reply": {
+                "id":    f"ACT_C_{t}_{e}"[:256],
+                "title": "📈 Price Chart",
+            },
+        },
+        {
+            "type": "reply",
+            "reply": {
+                "id":    f"ACT_R_{t}_{e}"[:256],
+                "title": "📋 Results",
+            },
+        },
+        {
+            "type": "reply",
+            "reply": {
+                "id":    f"ACT_N_{t}_{e}"[:256],
+                "title": "📰 Latest News",
+            },
+        },
+    ]
+    async with httpx.AsyncClient(timeout=10) as client:
+        r = await client.post(GRAPH_API_URL, headers=SEND_HEADERS, json={
+            "messaging_product": "whatsapp",
+            "to": phone,
+            "type": "interactive",
+            "interactive": {
+                "type": "button",
+                "body": {"text": "Get more details:"},
+                "action": {"buttons": buttons},
+            },
+        })
+        if r.status_code >= 400:
+            logger.warning(f"WhatsApp send_action_buttons failed {r.status_code}: {r.text}")
 
 
 async def _mark_read(message_id: str):

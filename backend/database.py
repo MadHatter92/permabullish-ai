@@ -449,6 +449,15 @@ def init_database():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS whatsapp_usage (
+                    id SERIAL PRIMARY KEY,
+                    phone_hash VARCHAR(64) NOT NULL,
+                    month_year VARCHAR(7) NOT NULL,
+                    report_count INTEGER DEFAULT 0,
+                    UNIQUE(phone_hash, month_year)
+                )
+            """)
 
         else:
             # SQLite schema (for local development)
@@ -721,6 +730,15 @@ def init_database():
                     metadata TEXT,
                     flagged INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS whatsapp_usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    phone_hash TEXT NOT NULL,
+                    month_year TEXT NOT NULL,
+                    report_count INTEGER DEFAULT 0,
+                    UNIQUE(phone_hash, month_year)
                 )
             """)
 
@@ -2667,6 +2685,61 @@ def log_whatsapp_event(
             (phone_hash, event_type, ticker, query_text, metadata, flagged)
         )
         conn.commit()
+
+
+def get_whatsapp_monthly_count(phone_hash: str, month_year: str) -> int:
+    """Return the number of WhatsApp reports sent this month for this phone."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cursor.execute(
+            f"SELECT report_count FROM whatsapp_usage WHERE phone_hash = {p} AND month_year = {p}",
+            (phone_hash, month_year)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return 0
+        d = _dict_from_row(row)
+        return int(d.get("report_count", 0)) if d else 0
+
+
+def increment_whatsapp_monthly_count(phone_hash: str, month_year: str) -> int:
+    """Increment WhatsApp report count for this phone/month. Returns new count."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        if USE_POSTGRES:
+            cursor.execute(
+                f"INSERT INTO whatsapp_usage (phone_hash, month_year, report_count) "
+                f"VALUES ({p}, {p}, 1) "
+                f"ON CONFLICT (phone_hash, month_year) "
+                f"DO UPDATE SET report_count = whatsapp_usage.report_count + 1 "
+                f"RETURNING report_count",
+                (phone_hash, month_year)
+            )
+            row = cursor.fetchone()
+            conn.commit()
+            d = _dict_from_row(row)
+            return int(d.get("report_count", 1)) if d else 1
+        else:
+            cursor.execute(
+                f"INSERT OR IGNORE INTO whatsapp_usage (phone_hash, month_year, report_count) "
+                f"VALUES ({p}, {p}, 0)",
+                (phone_hash, month_year)
+            )
+            cursor.execute(
+                f"UPDATE whatsapp_usage SET report_count = report_count + 1 "
+                f"WHERE phone_hash = {p} AND month_year = {p}",
+                (phone_hash, month_year)
+            )
+            cursor.execute(
+                f"SELECT report_count FROM whatsapp_usage WHERE phone_hash = {p} AND month_year = {p}",
+                (phone_hash, month_year)
+            )
+            row = cursor.fetchone()
+            conn.commit()
+            d = _dict_from_row(row)
+            return int(d.get("report_count", 1)) if d else 1
 
 
 # Initialize database on module import
