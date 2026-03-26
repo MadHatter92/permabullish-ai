@@ -288,7 +288,7 @@ async def _handle_account_link(phone: str, email: str):
         )
         return
 
-    db.link_whatsapp_account(phone_hash, user["id"])
+    db.link_whatsapp_account(phone_hash, user["id"], phone_number=f"+{phone}")
     _log_event(phone, "account_linked", metadata={"user_id": user["id"]})
 
     tier  = user.get("subscription_tier", "free")
@@ -371,7 +371,7 @@ async def _send_report(phone: str, ticker: str, exchange: str):
     if not is_linked:
         if not account:
             # First ever report — create record and send linking prompt
-            db.create_whatsapp_account(phone_hash)
+            db.create_whatsapp_account(phone_hash, phone_number=f"+{phone}")
             await asyncio.sleep(1.5)
             if new_count >= limit:
                 # Also just hit the free cap

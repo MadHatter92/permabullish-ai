@@ -31,8 +31,15 @@ def get_users(google_only: bool = False, active_only: bool = True, channel: str 
         p = placeholder()
         results = []
 
+        month_expr = "TO_CHAR(NOW(), 'YYYY-MM')" if USE_POSTGRES else "strftime('%Y-%m', 'now')"
+        nulls_last = "NULLS LAST" if USE_POSTGRES else ""
+        active_cond = ("AND u.is_active = TRUE" if USE_POSTGRES else "AND u.is_active = 1") if active_only else ""
+        google_cond = "AND u.google_id IS NOT NULL" if google_only else ""
+
         # ── Email users (with optional WA enrichment) ─────────────────────────
         if channel in ("all", "email", "both"):
+            both_cond  = "AND wa.id IS NOT NULL" if channel == "both" else ""
+            email_cond = "AND wa.id IS NULL" if channel == "email" else ""
             email_query = f"""
                 SELECT
                     u.id,
@@ -41,6 +48,7 @@ def get_users(google_only: bool = False, active_only: bool = True, channel: str 
                     u.auth_provider,
                     u.created_at,
                     CASE WHEN wa.id IS NOT NULL THEN 'both' ELSE 'email' END AS channel,
+                    wa.phone_number,
                     wa.phone_hash,
                     wa.linked_at AS wa_linked_at,
                     COALESCE(wu.report_count, 0) AS wa_reports_this_month,
@@ -48,59 +56,23 @@ def get_users(google_only: bool = False, active_only: bool = True, channel: str 
                 FROM users u
                 LEFT JOIN whatsapp_accounts wa ON wa.user_id = u.id
                 LEFT JOIN whatsapp_usage wu ON wu.phone_hash = wa.phone_hash
-                    AND wu.month_year = TO_CHAR(NOW(), 'YYYY-MM')
+                    AND wu.month_year = {month_expr}
                 LEFT JOIN (
                     SELECT phone_hash, MAX(created_at) AS last_active
                     FROM whatsapp_events
                     GROUP BY phone_hash
                 ) last_evt ON last_evt.phone_hash = wa.phone_hash
                 WHERE 1=1
-                {("AND u.is_active = TRUE" if active_only and USE_POSTGRES else "AND u.is_active = 1" if active_only else "")}
-                {("AND u.google_id IS NOT NULL" if google_only else "")}
-                {("AND wa.id IS NOT NULL" if channel == "both" else "")}
-                {("AND wa.id IS NULL" if channel == "email" else "")}
+                {active_cond}
+                {google_cond}
+                {both_cond}
+                {email_cond}
                 ORDER BY u.created_at DESC
             """
-            if not USE_POSTGRES:
-                # SQLite version — no TO_CHAR
-                email_query = f"""
-                    SELECT
-                        u.id,
-                        u.email,
-                        u.full_name,
-                        u.auth_provider,
-                        u.created_at,
-                        CASE WHEN wa.id IS NOT NULL THEN 'both' ELSE 'email' END AS channel,
-                        wa.phone_hash,
-                        wa.linked_at AS wa_linked_at,
-                        COALESCE(wu.report_count, 0) AS wa_reports_this_month,
-                        last_evt.last_active AS wa_last_active
-                    FROM users u
-                    LEFT JOIN whatsapp_accounts wa ON wa.user_id = u.id
-                    LEFT JOIN whatsapp_usage wu ON wu.phone_hash = wa.phone_hash
-                        AND wu.month_year = strftime('%Y-%m', 'now')
-                    LEFT JOIN (
-                        SELECT phone_hash, MAX(created_at) AS last_active
-                        FROM whatsapp_events
-                        GROUP BY phone_hash
-                    ) last_evt ON last_evt.phone_hash = wa.phone_hash
-                    WHERE 1=1
-                    {("AND u.is_active = 1" if active_only else "")}
-                    {("AND u.google_id IS NOT NULL" if google_only else "")}
-                    {("AND wa.id IS NOT NULL" if channel == "both" else "")}
-                    {("AND wa.id IS NULL" if channel == "email" else "")}
-                    ORDER BY u.created_at DESC
-                """
             cursor.execute(email_query)
             rows = cursor.fetchall()
             for row in rows:
-                r = _dict_from_row(row)
-                # Truncate phone hash for display (privacy)
-                if r.get("phone_hash"):
-                    r["phone_display"] = f"[wa:{r['phone_hash'][:8]}…]"
-                else:
-                    r["phone_display"] = ""
-                results.append(r)
+                results.append(_dict_from_row(row))
 
         # ── WhatsApp-only users (no email account) ────────────────────────────
         if channel in ("all", "whatsapp"):
@@ -112,48 +84,27 @@ def get_users(google_only: bool = False, active_only: bool = True, channel: str 
                     'whatsapp' AS auth_provider,
                     MIN(we.created_at) AS created_at,
                     'whatsapp' AS channel,
+                    wa.phone_number,
                     wa.phone_hash,
-                    NULL AS wa_linked_at,
-                    COALESCE(wu.report_count, 0) AS wa_reports_this_month,
-                    MAX(we.created_at) AS wa_last_active
-                FROM whatsapp_accounts wa
-                LEFT JOIN whatsapp_usage wu ON wu.phone_hash = wa.phone_hash
-                    AND wu.month_year = {'TO_CHAR(NOW(), \'YYYY-MM\')' if USE_POSTGRES else 'strftime(\'%Y-%m\', \'now\')'}
-                LEFT JOIN whatsapp_events we ON we.phone_hash = wa.phone_hash
-                WHERE wa.user_id IS NULL
-                GROUP BY wa.phone_hash, wu.report_count
-                ORDER BY MAX(we.created_at) DESC NULLS LAST
-            """
-            # Also include phones that have usage but no whatsapp_accounts entry
-            wa_query2 = f"""
-                SELECT
-                    NULL AS id,
-                    NULL AS email,
-                    NULL AS full_name,
-                    'whatsapp' AS auth_provider,
-                    MIN(we.created_at) AS created_at,
-                    'whatsapp' AS channel,
-                    we.phone_hash,
                     NULL AS wa_linked_at,
                     COALESCE(wu.report_count, 0) AS wa_reports_this_month,
                     MAX(we.created_at) AS wa_last_active
                 FROM whatsapp_events we
                 LEFT JOIN whatsapp_accounts wa ON wa.phone_hash = we.phone_hash
                 LEFT JOIN whatsapp_usage wu ON wu.phone_hash = we.phone_hash
-                    AND wu.month_year = {'TO_CHAR(NOW(), \'YYYY-MM\')' if USE_POSTGRES else 'strftime(\'%Y-%m\', \'now\')'}
-                WHERE wa.user_id IS NULL OR wa.id IS NULL
-                GROUP BY we.phone_hash, wu.report_count
-                ORDER BY MAX(we.created_at) DESC {'NULLS LAST' if USE_POSTGRES else ''}
+                    AND wu.month_year = {month_expr}
+                WHERE (wa.user_id IS NULL OR wa.id IS NULL)
+                GROUP BY wa.phone_number, wa.phone_hash, wu.report_count
+                ORDER BY MAX(we.created_at) DESC {nulls_last}
             """
             try:
-                cursor.execute(wa_query2)
+                cursor.execute(wa_query)
                 rows = cursor.fetchall()
                 seen_hashes = {r.get("phone_hash") for r in results}
                 for row in rows:
                     r = _dict_from_row(row)
                     if r.get("phone_hash") in seen_hashes:
                         continue
-                    r["phone_display"] = f"[wa:{r['phone_hash'][:8]}…]" if r.get("phone_hash") else ""
                     results.append(r)
             except Exception:
                 pass  # whatsapp_events table may not exist in dev
@@ -166,27 +117,29 @@ def format_as_table(users: list[dict]) -> str:
         return "No users found"
 
     lines = []
-    lines.append(f"{'ID':<6} {'Email / WA ID':<38} {'Name':<22} {'Channel':<10} {'Provider':<10} {'Created':<12} {'WA Reports':<12} {'WA Last Active'}")
-    lines.append("-" * 130)
+    lines.append(f"{'ID':<6} {'Email':<36} {'Phone':<18} {'Name':<22} {'Channel':<10} {'Provider':<10} {'Created':<12} {'WA Rep':<8} {'WA Last Active'}")
+    lines.append("-" * 140)
 
     for user in users:
-        uid       = str(user.get("id") or "—")
-        email     = user.get("email") or user.get("phone_display") or "—"
-        name      = (user.get("full_name") or "—")[:20]
-        channel   = user.get("channel") or "email"
-        provider  = user.get("auth_provider") or "local"
-        created   = str(user.get("created_at") or "")[:10]
-        wa_rep    = str(user.get("wa_reports_this_month") or 0)
-        wa_last   = str(user.get("wa_last_active") or "—")[:10]
+        uid     = str(user.get("id") or "—")
+        email   = (user.get("email") or "—")[:34]
+        phone   = (user.get("phone_number") or "—")[:16]
+        name    = (user.get("full_name") or "—")[:20]
+        channel = user.get("channel") or "email"
+        provider= user.get("auth_provider") or "local"
+        created = str(user.get("created_at") or "")[:10]
+        wa_rep  = str(user.get("wa_reports_this_month") or 0)
+        wa_last = str(user.get("wa_last_active") or "—")[:10]
 
         lines.append(
             f"{uid:<6} "
-            f"{email[:36]:<38} "
+            f"{email:<36} "
+            f"{phone:<18} "
             f"{name:<22} "
             f"{channel:<10} "
             f"{provider:<10} "
             f"{created:<12} "
-            f"{wa_rep:<12} "
+            f"{wa_rep:<8} "
             f"{wa_last}"
         )
 
@@ -204,7 +157,7 @@ def format_as_csv(users: list[dict]) -> str:
     if not users:
         return "No users found"
 
-    fieldnames = ["id", "email", "phone_display", "full_name", "channel", "auth_provider",
+    fieldnames = ["id", "email", "phone_number", "full_name", "channel", "auth_provider",
                   "created_at", "wa_linked_at", "wa_reports_this_month", "wa_last_active"]
     lines = [",".join(fieldnames)]
     for user in users:

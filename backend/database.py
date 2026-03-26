@@ -422,9 +422,13 @@ def init_database():
                 CREATE TABLE IF NOT EXISTS whatsapp_accounts (
                     id SERIAL PRIMARY KEY,
                     phone_hash VARCHAR(64) NOT NULL UNIQUE,
+                    phone_number VARCHAR(20),
                     user_id INTEGER REFERENCES users(id),
                     linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
+            """)
+            cursor.execute("""
+                ALTER TABLE whatsapp_accounts ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20)
             """)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS whatsapp_sessions (
@@ -704,11 +708,16 @@ def init_database():
                 CREATE TABLE IF NOT EXISTS whatsapp_accounts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     phone_hash TEXT NOT NULL UNIQUE,
+                    phone_number TEXT,
                     user_id INTEGER,
                     linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             """)
+            try:
+                cursor.execute("ALTER TABLE whatsapp_accounts ADD COLUMN phone_number TEXT")
+            except:
+                pass  # Column already exists
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS whatsapp_sessions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2572,44 +2581,46 @@ def get_whatsapp_account(phone_hash: str) -> Optional[dict]:
         return _dict_from_row(row) if row else None
 
 
-def create_whatsapp_account(phone_hash: str, user_id: int = None) -> int:
+def create_whatsapp_account(phone_hash: str, user_id: int = None, phone_number: str = None) -> int:
     """Create a WhatsApp account record (with optional user link). Returns id."""
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
         p = placeholder()
         if USE_POSTGRES:
             cursor.execute(
-                f"INSERT INTO whatsapp_accounts (phone_hash, user_id) VALUES ({p}, {p}) "
-                "ON CONFLICT (phone_hash) DO NOTHING RETURNING id",
-                (phone_hash, user_id)
+                f"INSERT INTO whatsapp_accounts (phone_hash, phone_number, user_id) VALUES ({p}, {p}, {p}) "
+                f"ON CONFLICT (phone_hash) DO UPDATE SET phone_number = COALESCE({p}, whatsapp_accounts.phone_number) "
+                "RETURNING id",
+                (phone_hash, phone_number, user_id, phone_number)
             )
             row = cursor.fetchone()
             conn.commit()
             return row['id'] if row else None
         else:
             cursor.execute(
-                f"INSERT OR IGNORE INTO whatsapp_accounts (phone_hash, user_id) VALUES ({p}, {p})",
-                (phone_hash, user_id)
+                f"INSERT OR IGNORE INTO whatsapp_accounts (phone_hash, phone_number, user_id) VALUES ({p}, {p}, {p})",
+                (phone_hash, phone_number, user_id)
             )
             conn.commit()
             return cursor.lastrowid
 
 
-def link_whatsapp_account(phone_hash: str, user_id: int):
+def link_whatsapp_account(phone_hash: str, user_id: int, phone_number: str = None):
     """Link a WhatsApp phone hash to a user account."""
     with get_db_connection() as conn:
         cursor = get_cursor(conn)
         p = placeholder()
         if USE_POSTGRES:
             cursor.execute(
-                f"INSERT INTO whatsapp_accounts (phone_hash, user_id) VALUES ({p}, {p}) "
-                f"ON CONFLICT (phone_hash) DO UPDATE SET user_id = {p}, linked_at = CURRENT_TIMESTAMP",
-                (phone_hash, user_id, user_id)
+                f"INSERT INTO whatsapp_accounts (phone_hash, phone_number, user_id) VALUES ({p}, {p}, {p}) "
+                f"ON CONFLICT (phone_hash) DO UPDATE SET user_id = {p}, linked_at = CURRENT_TIMESTAMP, "
+                f"phone_number = COALESCE({p}, whatsapp_accounts.phone_number)",
+                (phone_hash, phone_number, user_id, user_id, phone_number)
             )
         else:
             cursor.execute(
-                f"INSERT OR REPLACE INTO whatsapp_accounts (phone_hash, user_id) VALUES ({p}, {p})",
-                (phone_hash, user_id)
+                f"INSERT OR REPLACE INTO whatsapp_accounts (phone_hash, phone_number, user_id) VALUES ({p}, {p}, {p})",
+                (phone_hash, phone_number, user_id)
             )
         conn.commit()
 
