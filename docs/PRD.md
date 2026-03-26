@@ -1,9 +1,9 @@
 # Permabullish - AI Stock Researcher
 ## Product Requirements Document (PRD)
 
-**Version:** 2.8
-**Date:** March 25, 2026
-**Status:** Phase 1-4 Complete, Phase 7 Complete, Phase 5 Partially Complete, Email/Password Auth Complete, Content Gate Complete, WhatsApp Bot Planned
+**Version:** 2.9
+**Date:** March 26, 2026
+**Status:** Phase 1-4 Complete, Phase 7 Complete, Phase 5 Partially Complete, Email/Password Auth Complete, Content Gate Complete, WhatsApp Bot Complete
 
 ---
 
@@ -90,17 +90,21 @@ The product operates on a subscription model with tiered access, allowing users 
 - ✅ GA4 tracking events (content_gate_shown, content_gate_cta_clicked)
 - ✅ Open redirect prevention on return_to param
 
-### Phase 8: WhatsApp Bot ⏳ (Planned)
-- ⏳ Meta Cloud API setup (migrate existing WhatsApp Business App number)
-- ⏳ FastAPI webhook handler (`/whatsapp/webhook`)
-- ⏳ Ticker/name resolution with interactive disambiguation list
-- ⏳ Recommendation card image generation (Pillow)
-- ⏳ Price chart image generation (mplfinance/matplotlib)
-- ⏳ WhatsApp-formatted text report
-- ⏳ Phone ↔ email account mapping
-- ⏳ WhatsApp event tracking (DB + GA4 server-side)
-- ⏳ Admin metrics view (daily users, top tickers, error rate, web conversion)
-- ⏳ Fallback handler (unknown queries flagged in backend, user redirected to email)
+### Phase 8: WhatsApp Bot ✅ (Completed March 26, 2026)
+- ✅ Meta Cloud API setup (Meta test number for dev; production number migration pending)
+- ✅ FastAPI webhook handler (`/whatsapp/webhook`) with HMAC signature validation
+- ✅ Greeting detection + welcome message
+- ✅ Ticker/name resolution with interactive disambiguation (reply buttons ≤3, list 4–8)
+- ✅ Session state management (5-min TTL in `whatsapp_sessions` table)
+- ✅ Recommendation card image generation (Pillow, live price via yfinance)
+- ✅ WhatsApp-formatted text report (2-message delivery: card + text)
+- ✅ Phone ↔ email account mapping (voluntary, one-time prompt)
+- ✅ Monthly usage gating with tiered limits (3 unlinked / 5 Free / 50 Basic / 100 Pro)
+- ✅ Action buttons after every report: 📈 Price Chart, 📋 Results, 📰 Latest News
+- ✅ Chart/Results/News gated behind linked account with nudge messages
+- ✅ WhatsApp event tracking (`whatsapp_events` table, flagged events)
+- ✅ WhatsApp metrics added to daily/weekly cron email report
+- ✅ Fallback handler (unknown queries flagged in backend, user redirected to email)
 
 ---
 
@@ -301,8 +305,8 @@ Most sales enablement tools are **horizontal** (work across industries) and auto
 ```
 User → "TCS"
 Bot  → [Recommendation card image]
-Bot  → [6-month price chart image]
 Bot  → [WhatsApp-formatted text report]
+Bot  → [Action buttons: 📈 Price Chart | 📋 Results | 📰 Latest News]
 ```
 
 **Disambiguation (multiple matches):**
@@ -312,9 +316,8 @@ Bot  → Interactive list:
         • Reliance Industries (RELIANCE · NSE)
         • Reliance Power (RPOWER · NSE)
         • Reliance Infrastructure (RELINFRA · NSE)
-        • Reliance Capital (RELCAPITAL · NSE)
 User → [taps "Reliance Industries"]
-Bot  → [card] → [chart] → [text report]
+Bot  → [card] → [text report] → [action buttons]
 ```
 
 **Fuzzy match (typo or partial name):**
@@ -322,6 +325,32 @@ Bot  → [card] → [chart] → [text report]
 User → "infosy"
 Bot  → Reply buttons:
         › Infosys (INFY)   › Info Edge (NAUKRI)   › Something else?
+```
+
+**Action button — linked account:**
+```
+User → [taps 📈 Price Chart]
+Bot  → [6-month chart image]
+
+User → [taps 📋 Results]
+Bot  → Last 4 quarters revenue + net income (text)
+
+User → [taps 📰 Latest News]
+Bot  → Top 4 headlines with links (text)
+```
+
+**Action button — unlinked account:**
+```
+User → [taps 📈 Price Chart]
+Bot  → "Charts, Results and News require a linked account.
+        Reply with your Permabullish email to link, or sign up at permabullish.com"
+```
+
+**Monthly limit hit (unlinked):**
+```
+User → "WIPRO"  (after 3 free reports used)
+Bot  → "You've used all 3 free reports this month. They reset on April 1.
+        Link your account for 5 free reports/month, or upgrade at permabullish.com"
 ```
 
 **No match:**
@@ -341,51 +370,48 @@ Bot  → "I can only look up stocks by name or ticker.
 
 #### 5.7.3 Report Format
 
-Three sequential messages sent per report request:
+Two sequential messages sent per report request, followed by action buttons:
 
 **Message 1 — Recommendation Card (image)**
 - Permabullish logo + brand colours (navy/saffron)
 - Company name + ticker + exchange
 - Recommendation badge (STRONG BUY / BUY / HOLD / SELL / STRONG SELL)
 - AI target price + upside/downside %
-- Conviction stars (e.g., ★★★★☆)
-- Minimal design — similar to existing OG share card
-- Generated via Pillow, served as PNG from FastAPI
+- Live price fetched via `yfinance fast_info` at time of request (5-min cache)
+- Generated via Pillow, served as PNG from `GET /whatsapp/card/{ticker}.png`
 
-**Message 2 — Price Chart (image)**
-- 6-month daily OHLC price chart
-- Clean, minimal style — dark background, saffron line/candles
-- Generated via mplfinance/matplotlib
-- Served as PNG from FastAPI
-
-**Message 3 — Text Report**
+**Message 2 — Text Report**
 - WhatsApp formatted (bold via `*`, no HTML)
-- Max ~1,500 characters (fits comfortably in chat)
+- Max ~1,500 characters
 - Structure:
   ```
   📊 *TICKER — Company Name*
 
-  💡 *Recommendation:* BUY
+  🟢 *Recommendation:* BUY
   🎯 *Target Price:* ₹X,XXX (+X%)
   ⚡ *Conviction:* High
 
-  *Fundamentals*
-  P/E: Xx | ROE: X% | D/E: X.X
-  Revenue Growth: X% YoY
+  *Key Metrics*
+  P/E: Xx | ROE: X%
 
-  *Summary*
+  *Analysis*
   2–3 sentence investment thesis.
 
   ⚠️ Not financial advice. DYOR.
-  🔗 Full report: permabullish.com/r/TICKER?utm_source=whatsapp&utm_medium=bot
+  🔗 Login to read the full report: permabullish.com/report.html?id=X&utm_source=whatsapp&utm_medium=bot
   ```
+
+**Message 3 — Action Buttons (interactive)**
+- 3 reply buttons: 📈 Price Chart | 📋 Results | 📰 Latest News
+- Button IDs: `ACT_C_{TICKER}_{EXCHANGE}`, `ACT_R_{...}`, `ACT_N_{...}`
+- Gated behind linked account (see 5.7.10)
 
 #### 5.7.4 Report Sourcing & Quota
 
-- WhatsApp reports are **free** — do not consume the user's web quota
+- WhatsApp reports use a **separate monthly quota** — do not consume the user's web quota
 - Bot reuses existing `report_cache` — if a fresh report (<15 days) exists, it's used directly (no Claude API call)
-- If cache is stale or missing, a new report is generated (does consume Claude API tokens, same as web)
-- The "Full report" link in message 3 points to the web report page, which hits the **normal content gate / paywall** for unauthenticated users
+- If cache is stale or missing, a new report is generated (consumes Claude API tokens, same as web)
+- The "Full report" link points to `report.html?id=X` which hits the **normal content gate** for unauthenticated users
 
 #### 5.7.5 Ticker Resolution
 
@@ -403,15 +429,32 @@ Session state (for disambiguation) stored in `whatsapp_sessions` table:
 #### 5.7.6 Account Mapping
 
 - Users can optionally link their WhatsApp number to a Permabullish account
-- Linkage is voluntary — WhatsApp reports remain free regardless
-- Trigger: after a report is sent, bot appends a one-time prompt:
+- Linkage is voluntary — WhatsApp reports remain available regardless
+- Trigger: after a user's first report, bot sends a one-time prompt:
   ```
-  💼 Have a Permabullish account? Reply with your email
-  to link it and access your full report history.
+  💼 Have a Permabullish account? Reply with your email to link it
+  and get 5 free reports/month plus charts, results and news.
   ```
   (shown only once per phone number, never repeated)
-- If user replies with an email that matches an existing account, a `whatsapp_accounts` record is created
-- Linked users' WhatsApp activity appears in their web profile (reports viewed via WhatsApp shown in history)
+- If user replies with an email that matches an existing account, the `whatsapp_accounts` record is updated with the `user_id`
+- Linking unlocks: higher monthly report limit + action button features (chart/results/news)
+
+#### 5.7.10 Gating & Monthly Limits
+
+| Account State | Reports/Month | Action Buttons |
+|---------------|---------------|----------------|
+| Unlinked phone | 3 (resets monthly) | Shown but gated |
+| Linked Free | 5 | Fully unlocked |
+| Linked Basic | 50 | Fully unlocked |
+| Linked Pro | 100 | Fully unlocked |
+| Linked Enterprise | 10,000 | Fully unlocked |
+
+**Usage tracking:** `whatsapp_usage(phone_hash, month_year, report_count)` — separate from web `usage` table
+
+**Nudge messages:**
+- After last free report of the month: "You've used your last free report. They reset on [date]. Link your account for more."
+- When blocked: "You've used all N reports this month. They reset on [date]. [Link / Upgrade CTA]"
+- When tapping gated action: "Charts, Results and News require a linked account. Reply with your email to link."
 
 #### 5.7.7 Tracking & Analytics
 
@@ -437,9 +480,11 @@ CREATE TABLE whatsapp_events (
 | `stock_resolved_exact` | Direct ticker match, no disambiguation |
 | `disambiguation_shown` | List/buttons shown to user |
 | `disambiguation_selected` | User picked from list |
-| `report_sent` | Full 3-message report delivered |
-| `cache_hit` | Report served from cache |
-| `cache_miss` | Fresh report generated |
+| `report_sent` | 2-message report delivered |
+| `report_blocked_limit` | User hit monthly limit — flagged |
+| `action_c` | 📈 Price Chart button tapped |
+| `action_r` | 📋 Results button tapped |
+| `action_n` | 📰 Latest News button tapped |
 | `unmatched_query` | Stock not found — flagged |
 | `unhandled_message_type` | Voice/image/etc. — flagged |
 | `account_linked` | Phone ↔ email mapping created |
@@ -477,6 +522,17 @@ CREATE TABLE whatsapp_accounts (
     phone_hash VARCHAR(64) NOT NULL UNIQUE,
     user_id INTEGER REFERENCES users(id),
     linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Database table: `whatsapp_usage`**
+```sql
+CREATE TABLE whatsapp_usage (
+    id SERIAL PRIMARY KEY,
+    phone_hash VARCHAR(64) NOT NULL,
+    month_year VARCHAR(7) NOT NULL,   -- e.g. "2026-03"
+    report_count INTEGER DEFAULT 0,
+    UNIQUE(phone_hash, month_year)
 );
 ```
 

@@ -1,8 +1,8 @@
 # Permabullish - Product Roadmap
 ## AI Stock Researcher
 
-**Version:** 3.6
-**Last Updated:** February 16, 2026
+**Version:** 3.7
+**Last Updated:** March 26, 2026
 
 ---
 
@@ -960,145 +960,48 @@ Gate shared report content for unauthenticated users to drive sign-ups. Show the
 
 ---
 
-## Phase 8: US Market Expansion (us.permabullish.com)
-**Status:** Planning
+## Phase 8: US Market Expansion
+**Status:** ✅ COMPLETE
+**Completed:** March 2026
 **Priority:** High
-**Target:** Q2 2026
 
 ### Objective
-Launch a US-focused version of Permabullish at us.permabullish.com, providing AI-powered equity research for US stocks (NYSE, NASDAQ).
+Expand Permabullish to cover US stocks (NYSE, NASDAQ) alongside Indian stocks. Delivered as a **unified codebase** — no subdomain, no separate deployment. One product, one search, both markets.
 
-### 8.1 Data Sources Research ✅
+### 8.1 Architecture Decision ✅
+- **Unified codebase** chosen over subdomain fork
+- Single search returns both Indian + US results
+- Exchange detection via `config.is_us_exchange()` / `config.is_indian_exchange()`
+- No additional Render service or DNS changes needed
 
-| Source | Data Type | Pricing | Decision |
-|--------|-----------|---------|----------|
-| **Yahoo Finance** | Prices, basic fundamentals | Free | ✅ Already using - works for US |
-| **Financial Modeling Prep** | Fundamentals, ratios, SEC filings | Free: 250/day, Paid: $19-99/mo | ✅ **Primary** - closest to Screener.in |
-| **Alpha Vantage** | Prices, fundamentals | Free: 25/day, $50/mo | ⏳ Backup option |
-| **Polygon.io** | Prices, news, fundamentals | $29-199/mo | ❌ Overkill for MVP |
-| **SEC EDGAR** | Official filings (10-K, 10-Q) | Free | ⏳ Phase 2 enhancement |
-| **IEX Cloud** | Everything | $9-500/mo | ❌ Pay-per-message expensive |
+### 8.2 Data Sources ✅
+- [x] **Yahoo Finance** — prices (works natively for US tickers, no suffix)
+- [x] **Financial Modeling Prep (FMP)** — fundamentals (free 250/day tier)
+  - `backend/data_sources/fmp.py` — FMP API client
+  - `FMP_API_KEY` environment variable
+- [x] **Finnhub** — additional US data fallback (`backend/data_sources/finnhub.py`)
+- [x] **Twelve Data** — additional US data fallback (`backend/data_sources/twelve_data.py`)
 
-**Recommended:** Financial Modeling Prep (FMP) for fundamentals + Yahoo Finance for prices
+### 8.3 Implementation ✅
 
-### 8.2 Architecture Decision
-
-**Option A: Unified Codebase (Recommended)**
-- Single codebase with market switching
-- Shared: Auth, payments, AI engine, caching logic
-- Market-specific: Data fetchers, stock lists, prompt context
-- Subdomain routing via Render or Cloudflare
-- Pros: DRY, easier maintenance, shared improvements
-- Cons: Slightly more complex config
-
-**Option B: Forked Codebase**
-- Separate repository for US version
-- Independent deployments
-- Pros: Full isolation, simpler per-project
-- Cons: Double maintenance, divergent features
-
-**Decision:** [ ] TBD
-
-### 8.3 Technical Implementation
-
-#### 8.3.1 Backend Changes
-
-- [ ] **Market Abstraction Layer**
-  - Create `markets/` module with `india.py`, `us.py`
-  - Abstract: `get_stock_data()`, `search_stocks()`, `get_fundamentals()`
-  - Market detected from subdomain or API parameter
-
-- [ ] **US Stock Data Fetcher**
-  - `backend/data_sources/fmp.py` - Financial Modeling Prep client
-  - `backend/data_sources/yahoo_us.py` - Yahoo Finance for US (already works)
-  - Stock list: S&P 500 initially, expand to Russell 3000
-
-- [ ] **AI Prompt Adjustments**
-  - US fiscal year (Jan-Dec vs Apr-Mar)
-  - SEC filing references (10-K, 10-Q vs annual reports)
-  - USD currency formatting
-  - US market terminology
-
-- [ ] **Database Schema**
-  - Add `market` column to: `report_cache`, `watchlist`, `comparison_cache`
-  - Or: Separate tables per market (simpler queries)
-
-#### 8.3.2 Frontend Changes
-
-- [ ] **Market-Aware Config**
-  - `config.js` detects subdomain → sets market context
-  - Currency symbol (₹ vs $)
-  - Stock search endpoint routing
-
-- [ ] **UI Adjustments**
-  - US branding variant (same design, different market context)
-  - Remove Hindi/Gujarati language options for US
-  - Update footer/legal disclaimers for US
-
-#### 8.3.3 Stock Data
-
-- [ ] **US Stock List**
-  - `data/us_stocks.json` - NYSE + NASDAQ
-  - Start with S&P 500 (~500 stocks)
-  - Expand to Russell 3000 (~3000 stocks)
-
-- [ ] **Fundamentals Sync Script**
-  - `scripts/us_fundamentals_sync.py`
-  - Fetch from Financial Modeling Prep API
-  - Similar structure to India sync
-
-### 8.4 Payment Integration
-
-- [ ] **Stripe Integration** (US users pay in USD)
-  - Stripe Checkout for subscriptions
-  - Webhook handling for payment events
-  - Keep Cashfree for India (geo-based routing)
-
-- [ ] **Pricing (USD)**
-  | Tier | Monthly | 6 Months | Yearly |
-  |------|---------|----------|--------|
-  | Free | $0 (5 reports) | - | - |
-  | Pro | $19.99 | $99.99 | $179.99 |
-
-### 8.5 Hosting & Infrastructure
-
-- [ ] **Subdomain Setup**
-  - `us.permabullish.com` → Same Render app with routing
-  - Or: Separate Render service (easier isolation)
-
-- [ ] **Environment Variables (US)**
-  - `FMP_API_KEY` - Financial Modeling Prep
-  - `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY`
-  - `STRIPE_WEBHOOK_SECRET`
-
-- [ ] **Database Strategy**
-  - Option A: Same PostgreSQL, market column filtering
-  - Option B: Separate database (cleaner, but more cost)
-
-### 8.6 Launch Checklist
-
-- [ ] FMP API account and key
-- [ ] Stripe account setup
-- [ ] US stock list populated
-- [ ] Initial fundamentals sync (S&P 500)
-- [ ] AI prompts tested for US context
-- [ ] Subdomain DNS configured
-- [ ] Legal disclaimer updated for US
-- [ ] Beta testing with US stocks
+- [x] **Stock List** — `backend/data/sp500_stocks.json` (503 stocks, NYSE + NASDAQ)
+- [x] **Ticker Resolution** — US tickers: no suffix; Indian: `.NS` / `.BO`
+- [x] **Provider Selection** — Groww/Tickertape/Screener skipped for US stocks
+- [x] **AI Prompt Branching** — US gets: calendar FY (Jan-Dec), institutional ownership instead of promoter/FII/DII, ROIC instead of ROCE, $ instead of ₹
+- [x] **Currency** — `currency_symbol` var in HTML; `format_us_market_cap()` for $T/$B/$M
+- [x] **All languages supported** for US stocks (Hindi/Gujarati/Kannada reports for US stocks)
+- [x] **Fundamentals Sync** — `scripts/us_fundamentals_sync.py`
+- [x] **FMP migration** — Upgraded from deprecated FMP v3 to stable endpoints (Mar 2026)
 
 ### Deliverables
-- [ ] us.permabullish.com live
-- [ ] S&P 500 coverage at launch
-- [ ] USD payments via Stripe
-- [ ] US-specific AI analysis context
+- ✅ 503 S&P 500 stocks searchable alongside 3,000+ Indian stocks
+- ✅ US stock reports with correct currency, FY context, ownership breakdown
+- ✅ Multi-language support for US stocks
+- ✅ No new infrastructure — same Render services
 
-### Estimated Costs (Monthly)
-| Item | Cost |
-|------|------|
-| FMP API (Starter) | $19/mo |
-| Stripe fees | 2.9% + 30¢ per transaction |
-| Additional Render service | $7-25/mo |
-| Claude API (incremental) | Variable |
+### Note on Subdomain & Payments
+- `us.permabullish.com` subdomain deferred — unified approach sufficient for now
+- Stripe (USD payments) deferred — US audience not targeted for paid tier yet
 
 ---
 
@@ -1183,143 +1086,114 @@ Improve application performance, reduce latency, and handle scale efficiently.
 
 ---
 
-## Phase 10: WhatsApp Bot + Voice Interface (Sarvam AI)
-**Status:** Planning
+## Phase 10: WhatsApp Bot (Text)
+**Status:** ✅ COMPLETE
+**Completed:** March 26, 2026
 **Priority:** High
-**Target:** Q2-Q3 2026
 
 ### Objective
-Build a WhatsApp-based interface for generating and receiving stock research reports via text and voice, powered by Sarvam AI for multi-language voice capabilities.
+Build a fully automated WhatsApp bot for instant stock research — no app, no login, no friction. Primary distribution channel for Indian retail investors and sub-brokers.
 
-### 10.1 WhatsApp Business API Integration
+### 10.1 Infrastructure ✅
 
-- [ ] **WhatsApp Business Account Setup**
-  - Register WhatsApp Business account
-  - Choose BSP (Business Solution Provider): Gupshup, Twilio, or Meta Cloud API
-  - Set up webhook endpoint for incoming messages
-  - Configure message templates for outbound reports
+- [x] Meta WhatsApp Cloud API (direct — no BSP, ₹0/month for user-initiated conversations)
+- [x] Meta test number (`+1 555 139 4810`) used for development (5 recipient limit)
+- [x] Production number migration pending (existing Permabullish WhatsApp Business App number)
+- [x] FastAPI router `backend/whatsapp.py` mounted at `/whatsapp`
+- [x] `GET /whatsapp/webhook` — Meta verification handshake
+- [x] `POST /whatsapp/webhook` — HMAC-SHA256 signature validation
+- [x] Environment variables: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_WABA_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`
 
-- [ ] **Bot Command Handler**
-  - `backend/whatsapp/` module
-  - Parse incoming messages: stock ticker, comparison requests, language preference
-  - Map to existing report/comparison generation APIs
-  - Handle conversation state (which stock? which language? compare with?)
-  - Rate limiting per phone number (tied to user account)
+### 10.2 Message Handling ✅
 
-- [ ] **Message Formatting**
-  - Convert HTML reports to WhatsApp-friendly format (markdown subset)
-  - Summary card: ticker, recommendation, target price, upside
-  - "Full report" link to web version
-  - Share card image attached as media message
+- [x] **Greeting detection** — "hi", "hello", "namaste" etc. → welcome message (English only)
+- [x] **Stock search** — full name or ticker, reuses existing `search_stocks()`
+- [x] **Disambiguation** — reply buttons (≤3 results) or interactive list (4–8 results)
+- [x] **Session state** — `whatsapp_sessions` table, 5-min TTL
+- [x] **Email linking** — auto-detected email text → links phone hash to user account
+- [x] **Unhandled types** — voice/image/sticker → redirect to email, event flagged
 
-- [ ] **User Account Linking**
-  - Link WhatsApp number to existing Permabullish account
-  - OTP verification flow
-  - Quota tracking (same limits as web — Free: 5, Pro: 100)
-  - Upgrade prompts when quota exhausted (link to pricing page)
+### 10.3 Report Delivery ✅
 
-### 10.2 Sarvam AI — Voice Report Delivery (TTS)
+- [x] **Report card image** — Pillow-generated PNG, live price via `yfinance fast_info`, 5-min cache
+  - Endpoint: `GET /whatsapp/card/{ticker}.png?exchange=`
+- [x] **Text report** — WhatsApp-formatted (bold `*`), thesis, metrics, recommendation, target price
+  - Report link → `report.html?id=X` (content-gated for unauthenticated users)
+- [x] **Action buttons** after every report: 📈 Price Chart | 📋 Results | 📰 Latest News
+  - Chart: served from `GET /whatsapp/chart/{ticker}.png` (matplotlib, 6-month)
+  - Results: last 4 quarters revenue + net income via `yfinance quarterly_income_stmt`
+  - News: top 4 headlines via `yfinance.news`
+  - All 3 **gated behind linked account**
 
-- [ ] **Sarvam TTS Integration**
-  - `backend/sarvam/` module with `text_to_speech()` function
-  - API: Sarvam Bulbul v2 (₹15/10K chars) or v3 (₹30/10K chars)
-  - Generate audio summary of report (2-3 min narration)
-  - Supported languages: English, Hindi, Gujarati (+ 8 more Indian languages)
-  - 25+ voice options across languages
+### 10.4 Gating & Monthly Limits ✅
 
-- [ ] **Audio Report Format**
-  - Condensed script: Company overview → Key metrics → Bull/Bear case → Verdict
-  - ~500-800 words per audio summary (~2-3 minutes)
-  - Separate prompt to generate "spoken" version of report (conversational tone)
-  - Cache audio files (S3 or Render disk) to avoid regeneration
+| Account State | Reports/Month | Action Buttons |
+|---------------|---------------|----------------|
+| Unlinked phone | 3 | Shown but gated |
+| Linked Free | 5 | Fully unlocked |
+| Linked Basic | 50 | Fully unlocked |
+| Linked Pro | 100 | Fully unlocked |
 
-- [ ] **WhatsApp Voice Delivery**
-  - Send audio report as WhatsApp voice note
-  - User types ticker → gets text summary + audio as follow-up
-  - Option: "Send me the audio" command after receiving text report
+- [x] `whatsapp_usage(phone_hash, month_year, report_count)` table tracks usage
+- [x] Nudge messages at limit exhaustion + when blocked
+- [x] Linking prompt sent once after first report
 
-### 10.3 Sarvam AI — Voice Input (STT)
+### 10.5 Account Mapping ✅
 
-- [ ] **Voice Query Processing**
-  - Accept WhatsApp voice notes as stock queries
-  - Sarvam STT API (₹30/hr) to transcribe voice → text
-  - Language detection (Sarvam Language ID API)
-  - Extract stock name/ticker from transcription
-  - Handle code-mixed queries ("Reliance ka report bhejo" → RELIANCE, Hindi)
+- [x] Phone numbers stored only as SHA-256 hashes (privacy)
+- [x] Voluntary email-based linking (no OTP required — user replies with email)
+- [x] `whatsapp_accounts(phone_hash, user_id, linked_at)` table
+- [x] Linking unlocks higher limits + action buttons
 
-- [ ] **Voice-to-Voice Flow**
-  - User sends voice note: "Tell me about TCS"
-  - STT → extract ticker → generate report → TTS → send audio response
-  - Full voice-in, voice-out research experience
-  - Response language matches input language (auto-detect)
+### 10.6 Tracking & Analytics ✅
 
-### 10.4 Sarvam AI — Translation Enhancement
-
-- [ ] **Real-time Translation**
-  - Sarvam Translate API (₹20/10K chars) for on-the-fly report translation
-  - Alternative to generating reports in-language via Claude (cheaper for short texts)
-  - Use for WhatsApp summary translations (keep Claude for full reports)
-
-- [ ] **Transliteration**
-  - Sarvam Transliterate API for romanized Hindi/Gujarati input
-  - "Reliance ka report bhejo" (romanized Hindi) → understood correctly
-  - Useful for WhatsApp users who type in English script
-
-### 10.5 Conversational Interface
-
-- [ ] **Multi-turn Conversations**
-  - Session management per WhatsApp number
-  - Follow-up questions: "What about the risks?" → risk section from last report
-  - "Compare it with INFY" → uses last queried stock as Stock A
-  - "Ab Hindi mein bhejo" → resend last report in Hindi
-
-- [ ] **Quick Actions**
-  - `/report TCS` — Generate report
-  - `/compare TCS INFY` — Compare stocks
-  - `/audio TCS` — Audio report
-  - `/lang hindi` — Set preferred language
-  - `/help` — List commands
-  - `/watchlist` — View watchlist
-
-### 10.6 Cost Estimates
-
-| Service | Pricing | Est. Monthly Cost |
-|---------|---------|-------------------|
-| WhatsApp BSP (Gupshup) | ₹0.50-1.50/conversation | ₹500-2,000 (1K conversations) |
-| Sarvam TTS (Bulbul v2) | ₹15/10K chars | ₹750 (500 audio reports × 1K chars) |
-| Sarvam STT | ₹30/hr | ₹150 (300 voice queries × ~3 sec each) |
-| Sarvam Translate | ₹20/10K chars | ₹200 (100 translations) |
-| Audio storage (S3) | ~$1/GB | Negligible |
-| **Total estimated** | | **₹1,600-3,100/mo** |
-
-### 10.7 Implementation Phases
-
-1. **MVP (2 weeks):** Text-only WhatsApp bot — send ticker, receive summary + web link
-2. **Voice Out (1 week):** Add Sarvam TTS — audio report delivery in 3 languages
-3. **Voice In (1 week):** Add Sarvam STT — accept voice queries
-4. **Conversational (2 weeks):** Multi-turn, follow-ups, quick actions
-5. **Polish (1 week):** Error handling, rate limiting, analytics
+- [x] `whatsapp_events` table — all events logged with phone_hash, ticker, metadata, flagged flag
+- [x] WhatsApp section added to daily/weekly cron email report (`scripts/send_user_report.py`)
+  - Reports sent, new phones, active phones, accounts linked, blocked count, action taps, top stocks
 
 ### Deliverables
-- [ ] WhatsApp bot live and linked to user accounts
-- [ ] Text report summaries via WhatsApp
-- [ ] Audio reports in English, Hindi, Gujarati (Sarvam TTS)
-- [ ] Voice queries via WhatsApp voice notes (Sarvam STT)
-- [ ] Multi-turn conversational interface
-- [ ] Quota enforcement tied to user subscription
-
-### New Environment Variables
-- `WHATSAPP_BSP_API_KEY` — WhatsApp Business API credentials
-- `SARVAM_API_KEY` — Sarvam AI API key
-- `SARVAM_TTS_MODEL` — Bulbul v2 or v3
-- `S3_BUCKET_AUDIO` — Audio file storage (optional)
+- ✅ WhatsApp bot live (test number)
+- ✅ Stock reports via WhatsApp (card + text + action buttons)
+- ✅ Monthly usage gating with upgrade nudges
+- ✅ Phone ↔ account linking
+- ✅ Full event tracking + daily/weekly metrics in email reports
 
 ### New Files
-- `backend/whatsapp/handler.py` — Webhook handler and message router
-- `backend/whatsapp/formatter.py` — Report → WhatsApp message formatting
-- `backend/sarvam/tts.py` — Text-to-speech integration
-- `backend/sarvam/stt.py` — Speech-to-text integration
-- `backend/sarvam/translate.py` — Translation and transliteration
+- `backend/whatsapp.py` — Full bot module (webhook, handlers, senders, image endpoints)
+
+### Modified Files
+- `backend/database.py` — 4 new tables + 8 new CRUD functions
+- `backend/main.py` — Router registration
+- `backend/config.py` — WhatsApp env vars
+- `backend/requirements.txt` — matplotlib added
+- `backend/scripts/send_user_report.py` — WhatsApp stats section
+- `.env.example` — WhatsApp vars documented
+
+### Pending
+- [ ] Migrate production number (existing WhatsApp Business App) to Cloud API
+- [ ] Add WhatsApp CTA to permabullish.com homepage and brokers landing page
+
+---
+
+## Phase 10.1: WhatsApp Voice Interface (Sarvam AI)
+**Status:** 🔜 Planned (post-production-number migration)
+**Priority:** Medium
+
+### Objective
+Extend the WhatsApp bot with voice input/output using Sarvam AI, enabling fully voice-driven stock research for users who prefer speaking over typing.
+
+### Features Planned
+- [ ] **Voice Out (TTS)** — Send audio summary as WhatsApp voice note (Sarvam Bulbul v2)
+- [ ] **Voice In (STT)** — Accept voice notes as stock queries (Sarvam STT API)
+- [ ] **Code-mixed queries** — "Reliance ka report bhejo" → RELIANCE, Hindi
+- [ ] **Voice-to-voice** — Voice note in → audio report out, language matched automatically
+
+### Cost Estimate
+| Service | Pricing | Est. Monthly (1K uses) |
+|---------|---------|------------------------|
+| Sarvam TTS (Bulbul v2) | ₹15/10K chars | ~₹750 |
+| Sarvam STT | ₹30/hr | ~₹150 |
+| WhatsApp API | ₹0 (user-initiated) | ₹0 |
 
 ---
 
