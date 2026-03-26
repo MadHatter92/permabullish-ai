@@ -95,6 +95,109 @@ def get_usage_stats(user_id: int) -> dict:
     }
 
 
+def get_whatsapp_stats(days: int = 7) -> dict:
+    """Get WhatsApp bot activity stats for the last N days."""
+    with get_db_connection() as conn:
+        cursor = get_cursor(conn)
+        p = placeholder()
+        cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+
+        # Reports sent in period
+        cursor.execute(
+            f"SELECT COUNT(*) as count FROM whatsapp_events "
+            f"WHERE event_type = 'report_sent' AND created_at >= {p}",
+            (cutoff,)
+        )
+        reports_sent = _dict_from_row(cursor.fetchone())["count"]
+
+        # New unique phones seen in period (first event in period for that phone_hash)
+        cursor.execute(
+            f"SELECT COUNT(DISTINCT phone_hash) as count FROM whatsapp_events "
+            f"WHERE created_at >= {p}",
+            (cutoff,)
+        )
+        active_phones = _dict_from_row(cursor.fetchone())["count"]
+
+        # Phones that had their very first event in this period
+        cursor.execute(
+            f"SELECT COUNT(*) as count FROM ("
+            f"  SELECT phone_hash, MIN(created_at) as first_seen "
+            f"  FROM whatsapp_events "
+            f"  GROUP BY phone_hash "
+            f"  HAVING MIN(created_at) >= {p}"
+            f") sub",
+            (cutoff,)
+        )
+        new_phones = _dict_from_row(cursor.fetchone())["count"]
+
+        # Accounts linked in period
+        cursor.execute(
+            f"SELECT COUNT(*) as count FROM whatsapp_accounts "
+            f"WHERE user_id IS NOT NULL AND linked_at >= {p}",
+            (cutoff,)
+        )
+        accounts_linked = _dict_from_row(cursor.fetchone())["count"]
+
+        # Action button taps in period
+        cursor.execute(
+            f"SELECT event_type, COUNT(*) as count FROM whatsapp_events "
+            f"WHERE event_type IN ('action_c', 'action_r', 'action_n') "
+            f"AND created_at >= {p} GROUP BY event_type",
+            (cutoff,)
+        )
+        action_rows = [_dict_from_row(r) for r in cursor.fetchall()]
+        action_counts = {r["event_type"]: r["count"] for r in action_rows}
+
+        # Blocked by limit in period
+        cursor.execute(
+            f"SELECT COUNT(*) as count FROM whatsapp_events "
+            f"WHERE event_type = 'report_blocked_limit' AND created_at >= {p}",
+            (cutoff,)
+        )
+        blocked = _dict_from_row(cursor.fetchone())["count"]
+
+        # Most popular stocks via WhatsApp in period
+        cursor.execute(
+            f"SELECT ticker, COUNT(*) as count FROM whatsapp_events "
+            f"WHERE event_type = 'report_sent' AND ticker IS NOT NULL AND created_at >= {p} "
+            f"GROUP BY ticker ORDER BY count DESC LIMIT 5",
+            (cutoff,)
+        )
+        popular_wa_stocks = [
+            f"{_dict_from_row(r)['ticker']} ({_dict_from_row(r)['count']})"
+            for r in cursor.fetchall()
+        ]
+
+        # All-time totals
+        cursor.execute("SELECT COUNT(DISTINCT phone_hash) as count FROM whatsapp_events")
+        total_phones_ever = _dict_from_row(cursor.fetchone())["count"]
+
+        cursor.execute(
+            "SELECT COUNT(*) as count FROM whatsapp_accounts WHERE user_id IS NOT NULL"
+        )
+        total_linked_ever = _dict_from_row(cursor.fetchone())["count"]
+
+        cursor.execute(
+            "SELECT COUNT(*) as count FROM whatsapp_events WHERE event_type = 'report_sent'"
+        )
+        total_reports_ever = _dict_from_row(cursor.fetchone())["count"]
+
+    return {
+        "reports_sent":      reports_sent,
+        "active_phones":     active_phones,
+        "new_phones":        new_phones,
+        "accounts_linked":   accounts_linked,
+        "action_chart":      action_counts.get("action_c", 0),
+        "action_results":    action_counts.get("action_r", 0),
+        "action_news":       action_counts.get("action_n", 0),
+        "blocked":           blocked,
+        "popular_wa_stocks": popular_wa_stocks,
+        "total_phones_ever": total_phones_ever,
+        "total_linked_ever": total_linked_ever,
+        "total_reports_ever": total_reports_ever,
+    }
+
+
 def get_total_stats(days: int = 7) -> dict:
     """Get overall platform stats."""
     with get_db_connection() as conn:
@@ -176,10 +279,15 @@ def generate_report(period: str = "daily") -> tuple[str, str]:
 
     users = get_new_users(days=days)
     stats = get_total_stats(days=days)
+    wa    = get_whatsapp_stats(days=days)
 
     # Subject
     reports_in_period = stats.get('reports_in_period', 0)
-    subject = f"[Permabullish] {period_label} Report - {len(users)} new users, {reports_in_period} reports"
+    subject = (
+        f"[Permabullish] {period_label} Report - "
+        f"{len(users)} new users, {reports_in_period} web reports, "
+        f"{wa['reports_sent']} WhatsApp reports"
+    )
 
     # Body
     lines = []
@@ -225,6 +333,25 @@ def generate_report(period: str = "daily") -> tuple[str, str]:
         for i, stock in enumerate(stats['popular_stocks'], 1):
             lines.append(f"  {i}. {stock}")
         lines.append("")
+
+    # WhatsApp section
+    lines.append(f"WHATSAPP BOT (Last {days} day{'s' if days > 1 else ''})")
+    lines.append("-" * 40)
+    lines.append(f"Reports Sent:        {wa['reports_sent']}")
+    lines.append(f"Active Phones:       {wa['active_phones']}")
+    lines.append(f"New Phones:          {wa['new_phones']}")
+    lines.append(f"Accounts Linked:     {wa['accounts_linked']}")
+    lines.append(f"Blocked (limit hit): {wa['blocked']}")
+    lines.append(f"Action Taps:         Chart={wa['action_chart']}  Results={wa['action_results']}  News={wa['action_news']}")
+    if wa['popular_wa_stocks']:
+        lines.append(f"Top Stocks:          {', '.join(wa['popular_wa_stocks'])}")
+    lines.append("")
+    lines.append("WHATSAPP ALL-TIME")
+    lines.append("-" * 40)
+    lines.append(f"Total Phones:        {wa['total_phones_ever']}")
+    lines.append(f"Linked Accounts:     {wa['total_linked_ever']}")
+    lines.append(f"Total Reports Sent:  {wa['total_reports_ever']}")
+    lines.append("")
 
     # Signup source breakdown
     if users:
