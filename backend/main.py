@@ -38,7 +38,8 @@ from config import (
     SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
     GOOGLE_REDIRECT_URI, FRONTEND_URL, CORS_ORIGINS, ENVIRONMENT,
     SUBSCRIPTION_TIERS, CASHFREE_APP_ID, CASHFREE_SECRET_KEY,
-    FEATURED_REPORT_IDS, is_us_exchange
+    FEATURED_REPORT_IDS, is_us_exchange,
+    WHATSAPP_ACCESS_TOKEN, WHATSAPP_WABA_ID
 )
 import cashfree
 import share_card
@@ -116,8 +117,21 @@ app.include_router(whatsapp_module.router)
 # Initialize database on startup
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database tables on application startup."""
+    """Initialize database tables and re-subscribe WhatsApp WABA on startup."""
     db.init_database()
+
+    # Re-subscribe WABA to app — ensures webhook receives messages after every redeploy
+    if WHATSAPP_WABA_ID and WHATSAPP_ACCESS_TOKEN:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.post(
+                    f"https://graph.facebook.com/v19.0/{WHATSAPP_WABA_ID}/subscribed_apps",
+                    headers={"Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}"},
+                )
+            logger.info(f"WhatsApp WABA subscription: {r.status_code} {r.text}")
+        except Exception as e:
+            logger.warning(f"WhatsApp WABA subscription failed (non-fatal): {e}")
 
 
 # Request/Response Models
