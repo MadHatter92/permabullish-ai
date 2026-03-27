@@ -141,7 +141,7 @@ def get_whatsapp_stats(days: int = 7) -> dict:
         # Action button taps in period
         cursor.execute(
             f"SELECT event_type, COUNT(*) as count FROM whatsapp_events "
-            f"WHERE event_type IN ('action_c', 'action_r', 'action_n') "
+            f"WHERE event_type IN ('action_b', 'action_r', 'action_n') "
             f"AND created_at >= {p} GROUP BY event_type",
             (cutoff,)
         )
@@ -187,7 +187,7 @@ def get_whatsapp_stats(days: int = 7) -> dict:
         "active_phones":     active_phones,
         "new_phones":        new_phones,
         "accounts_linked":   accounts_linked,
-        "action_chart":      action_counts.get("action_c", 0),
+        "action_bull_bear":  action_counts.get("action_b", 0),
         "action_results":    action_counts.get("action_r", 0),
         "action_news":       action_counts.get("action_n", 0),
         "blocked":           blocked,
@@ -342,7 +342,7 @@ def generate_report(period: str = "daily") -> tuple[str, str]:
     lines.append(f"New Phones:          {wa['new_phones']}")
     lines.append(f"Accounts Linked:     {wa['accounts_linked']}")
     lines.append(f"Blocked (limit hit): {wa['blocked']}")
-    lines.append(f"Action Taps:         Chart={wa['action_chart']}  Results={wa['action_results']}  News={wa['action_news']}")
+    lines.append(f"Action Taps:         Bull/Bear={wa['action_bull_bear']}  Results={wa['action_results']}  News={wa['action_news']}")
     if wa['popular_wa_stocks']:
         lines.append(f"Top Stocks:          {', '.join(wa['popular_wa_stocks'])}")
     lines.append("")
