@@ -93,6 +93,59 @@ def _get_phone_tier(phone_hash: str) -> Optional[str]:
     return user.get("subscription_tier") or "free"
 
 
+_PORTFOLIO_KEYWORDS = {
+    "portfolio", "my portfolio", "analyze portfolio", "analyse portfolio",
+    "check portfolio", "portfolio analysis", "portfolio review",
+    "review portfolio", "analyze my portfolio", "analyse my portfolio",
+    "review my portfolio", "check my portfolio", "analyse my investments",
+    "analyze my investments", "portfolio check",
+}
+
+def _is_portfolio_request(text: str) -> bool:
+    t = text.lower().strip()
+    return any(kw in t for kw in _PORTFOLIO_KEYWORDS)
+
+
+def _classify_market_cap(market_cap: Optional[float], is_us: bool) -> str:
+    """Classify a stock as Large / Mid / Small cap."""
+    if not market_cap:
+        return "Unknown"
+    if is_us:
+        if market_cap >= 10e9:
+            return "Large Cap"
+        elif market_cap >= 2e9:
+            return "Mid Cap"
+        return "Small Cap"
+    else:
+        crore = 1e7  # 1 Cr = 10M
+        if market_cap >= 20_000 * crore:
+            return "Large Cap"
+        elif market_cap >= 5_000 * crore:
+            return "Mid Cap"
+        return "Small Cap"
+
+
+async def _download_whatsapp_media(media_id: str) -> Optional[bytes]:
+    """Fetch binary content of a WhatsApp media object."""
+    headers = {"Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}"}
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"https://graph.facebook.com/v19.0/{media_id}",
+            headers=headers,
+        )
+        if r.status_code != 200:
+            logger.warning(f"Media metadata fetch failed {r.status_code}: {r.text}")
+            return None
+        media_url = r.json().get("url")
+        if not media_url:
+            return None
+        r2 = await client.get(media_url, headers=headers)
+        if r2.status_code != 200:
+            logger.warning(f"Media download failed {r2.status_code}")
+            return None
+        return r2.content
+
+
 # ─── Webhook Endpoints ────────────────────────────────────────────────────────
 
 @router.get("/webhook")
@@ -148,6 +201,16 @@ async def handle_webhook(request: Request):
             if selection_id:
                 asyncio.create_task(_handle_selection(phone, selection_id))
 
+        elif msg_type == "image":
+            caption  = message.get("image", {}).get("caption", "").strip()
+            media_id = message.get("image", {}).get("id", "")
+            if _is_portfolio_request(caption):
+                asyncio.create_task(_handle_portfolio_image(phone, media_id))
+            else:
+                asyncio.create_task(_send_unhandled_type(phone))
+                _log_event(phone, "unhandled_message_type",
+                           metadata={"type": msg_type, "caption": caption[:80]})
+
         else:
             asyncio.create_task(_send_unhandled_type(phone))
             _log_event(phone, "unhandled_message_type",
@@ -178,13 +241,27 @@ WELCOME_MESSAGE = (
 
 
 async def _handle_text(phone: str, text: str):
-    """Route incoming text: greeting, email linking, or stock search."""
+    """Route incoming text: greeting, email linking, portfolio, or stock search."""
     if text.lower().strip() in GREETINGS:
         await _send_text(phone, WELCOME_MESSAGE)
         return
 
     if _looks_like_email(text):
         await _handle_account_link(phone, text.strip().lower())
+        return
+
+    if _is_portfolio_request(text):
+        await _send_text(
+            phone,
+            "📊 *Portfolio Analysis*\n\n"
+            "Send me a screenshot of your portfolio and I'll analyze:\n"
+            "• Sector & industry allocation\n"
+            "• Large / Mid / Small cap mix\n"
+            "• Concentration & risk assessment\n"
+            "• Recent news on your holdings\n"
+            "• Personalized suggestions\n\n"
+            "Just send the screenshot with *portfolio* as the caption 👆"
+        )
         return
 
     # Clear any stale disambiguation session
@@ -693,6 +770,182 @@ async def _send_news_action(phone: str, ticker: str, exchange: str):
         )
 
 
+# ─── Portfolio Analysis ───────────────────────────────────────────────────────
+
+async def _handle_portfolio_image(phone: str, media_id: str):
+    """Analyze a portfolio screenshot: extract holdings, enrich, and generate AI analysis."""
+    import base64
+    import anthropic
+    import yfinance as yf
+    from yahoo_finance import get_ticker_symbol
+
+    phone_hash = _hash_phone(phone)
+
+    # Gate: require linked account
+    account = db.get_whatsapp_account(phone_hash)
+    if not account or not account.get("user_id"):
+        await _send_text(
+            phone,
+            "📊 *Portfolio Analysis* is available for linked accounts.\n\n"
+            "Reply with your Permabullish email to link, or sign up free at permabullish.com"
+        )
+        return
+
+    _log_event(phone, "portfolio_analysis_started")
+    await _send_text(phone, "📊 Analyzing your portfolio... This takes about 20 seconds ⏳")
+
+    # ── Download image ───────────────────────────────────────────────────────
+    image_bytes = await _download_whatsapp_media(media_id)
+    if not image_bytes:
+        await _send_text(phone, "Couldn't download the image. Please try again.")
+        _log_event(phone, "portfolio_analysis_error", metadata={"error": "download_failed"})
+        return
+
+    # Detect MIME type from magic bytes
+    if image_bytes[:4] == b'\x89PNG':
+        media_type = "image/png"
+    elif image_bytes[:4] == b'RIFF':
+        media_type = "image/webp"
+    else:
+        media_type = "image/jpeg"
+
+    image_b64 = base64.standard_b64encode(image_bytes).decode()
+
+    # ── Pass 1: Extract holdings from screenshot via Claude vision ───────────
+    ai = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
+    try:
+        extraction = ai.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1000,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": media_type, "data": image_b64},
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            "Extract all stock holdings from this portfolio screenshot.\n"
+                            "Return ONLY a valid JSON array, no other text.\n"
+                            "Format: [{\"symbol\": \"RELIANCE\", \"exchange\": \"NSE\", "
+                            "\"name\": \"Reliance Industries\", \"quantity\": 10, "
+                            "\"current_value\": 25000, \"invested_value\": 20000, \"pnl_pct\": 12.5}]\n"
+                            "Rules:\n"
+                            "- exchange: NSE or BSE for Indian stocks, NYSE or NASDAQ for US\n"
+                            "- current_value and invested_value as plain numbers (no currency symbols)\n"
+                            "- Use null for fields not visible in the screenshot\n"
+                            "- If no stocks are visible, return []"
+                        ),
+                    },
+                ],
+            }],
+        )
+        raw = extraction.content[0].text.strip()
+        # Strip markdown fences if present
+        raw = re.sub(r"```[a-z]*\n?", "", raw).strip("`").strip()
+        holdings = json.loads(raw)
+    except Exception as e:
+        logger.error(f"Portfolio extraction failed for {phone}: {e}", exc_info=True)
+        await _send_text(
+            phone,
+            "I couldn't read the portfolio from that screenshot. "
+            "Try a clearer image showing stock names and values, and caption it *portfolio*."
+        )
+        _log_event(phone, "portfolio_analysis_error", metadata={"error": "extraction_failed"})
+        return
+
+    if not holdings:
+        await _send_text(
+            phone,
+            "No stock holdings found in the screenshot. "
+            "Please send a clearer image of your portfolio holdings."
+        )
+        return
+
+    # ── Pass 2: Enrich holdings with yfinance data ───────────────────────────
+    def _enrich(h: dict) -> dict:
+        symbol   = (h.get("symbol") or "").upper()
+        exchange = (h.get("exchange") or "NSE").upper()
+        is_us    = is_us_exchange(exchange)
+        try:
+            yf_sym = get_ticker_symbol(symbol, exchange)
+            info   = yf.Ticker(yf_sym).info or {}
+            news   = yf.Ticker(yf_sym).news or []
+
+            top_news = []
+            for item in news[:2]:
+                title, _, publisher = _parse_news_item(item)
+                if title:
+                    pub = f" ({publisher})" if publisher else ""
+                    top_news.append(f"{symbol}: {title}{pub}")
+
+            return {
+                **h,
+                "sector":    info.get("sector") or "Unknown",
+                "industry":  info.get("industry") or "",
+                "cap_class": _classify_market_cap(info.get("marketCap"), is_us),
+                "beta":      info.get("beta"),
+                "news":      top_news,
+            }
+        except Exception:
+            return {**h, "sector": "Unknown", "cap_class": "Unknown", "news": []}
+
+    loop    = asyncio.get_event_loop()
+    capped  = holdings[:15]  # Limit to 15 stocks to stay within time budget
+    enriched = await loop.run_in_executor(_executor, lambda: [_enrich(h) for h in capped])
+
+    # ── Pass 3: AI portfolio analysis ────────────────────────────────────────
+    news_lines = []
+    for h in enriched[:6]:
+        news_lines.extend(h.get("news", [])[:1])
+
+    holdings_for_prompt = json.dumps(
+        [{k: v for k, v in h.items() if k != "news"} for h in enriched],
+        indent=2,
+    )
+    news_for_prompt = "\n".join(news_lines) or "No recent news available."
+
+    try:
+        analysis = ai.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1500,
+            messages=[{
+                "role": "user",
+                "content": (
+                    "Analyze this stock portfolio. Use WhatsApp formatting (* for bold).\n\n"
+                    f"Holdings:\n{holdings_for_prompt}\n\n"
+                    f"Recent news on top holdings:\n{news_for_prompt}\n\n"
+                    "Provide a concise analysis with these sections:\n"
+                    "1. *Holdings Detected* — stock names + approximate values (1–2 lines)\n"
+                    "2. *Sector Allocation* — top sectors with % (based on current_value if available, else equal weight)\n"
+                    "3. *Market Cap Mix* — Large / Mid / Small cap breakdown\n"
+                    "4. *Risk Assessment* — concentration, beta if available, key risks (3–4 lines)\n"
+                    "5. *News Highlights* — 2–3 notable headlines affecting the portfolio\n"
+                    "6. *Overall Opinion* — honest 2–3 sentence view\n"
+                    "7. *Suggestions* — 2–3 specific, actionable improvements\n\n"
+                    "Be concise. End with: ⚠️ _Not financial advice. DYOR._"
+                ),
+            }],
+        )
+        analysis_text = analysis.content[0].text.strip()
+    except Exception as e:
+        logger.error(f"Portfolio analysis generation failed: {e}", exc_info=True)
+        await _send_text(phone, "Analysis generation failed. Please try again later.")
+        return
+
+    _log_event(phone, "portfolio_analysis_sent", metadata={"holdings_count": len(holdings)})
+
+    # Split if over WhatsApp's 4096 char limit
+    if len(analysis_text) <= 4096:
+        await _send_text(phone, analysis_text)
+    else:
+        await _send_text(phone, analysis_text[:4090] + "…")
+        await asyncio.sleep(0.8)
+        await _send_text(phone, "…" + analysis_text[4090:])
+
+
 # ─── Nudge Messages ───────────────────────────────────────────────────────────
 
 async def _send_limit_blocked_nudge(phone: str, tier: Optional[str], limit: int):
@@ -747,8 +1000,9 @@ async def _send_limit_exhausted_nudge(phone: str, tier: Optional[str], limit: in
 async def _send_unhandled_type(phone: str):
     await _send_text(
         phone,
-        "I can only look up stocks by name or ticker. "
-        "Send a stock name or NSE/BSE symbol (e.g. RELIANCE, TCS, INFY).\n\n"
+        "I can look up any stock by name or ticker (e.g. RELIANCE, TCS, INFY, AAPL).\n\n"
+        "📊 Want portfolio analysis? Send a screenshot of your portfolio "
+        "with *portfolio* as the caption.\n\n"
         "For other queries, email mail@mayaskara.com"
     )
 
