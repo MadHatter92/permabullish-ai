@@ -521,6 +521,7 @@ CREATE TABLE whatsapp_sessions (
 CREATE TABLE whatsapp_accounts (
     id SERIAL PRIMARY KEY,
     phone_hash VARCHAR(64) NOT NULL UNIQUE,
+    phone_number VARCHAR(20),                -- actual phone number (e.g. +917259891109)
     user_id INTEGER REFERENCES users(id),
     linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -537,7 +538,7 @@ CREATE TABLE whatsapp_usage (
 );
 ```
 
-*Note: Raw phone numbers are never stored — only SHA-256 hashes. The actual phone number is used transiently in memory for API calls only.*
+*Note: Phone numbers are stored in `whatsapp_accounts.phone_number` (e.g. `+917259891109`) since users initiate the conversation (opt-in). SHA-256 hashes are used as the primary key for all lookups. The `export_users.py` script surfaces phone numbers for business use.*
 
 #### 5.7.8 Phase 2 — Proactive Alerts (Not in Scope Now)
 
@@ -989,7 +990,8 @@ CREATE TABLE user_comparisons (
 -- WhatsApp Account Mapping (phone ↔ Permabullish user)
 CREATE TABLE whatsapp_accounts (
     id SERIAL PRIMARY KEY,
-    phone_hash VARCHAR(64) NOT NULL UNIQUE,  -- SHA-256 of phone number
+    phone_hash VARCHAR(64) NOT NULL UNIQUE,
+    phone_number VARCHAR(20),                -- actual phone number (e.g. +917259891109)
     user_id INTEGER REFERENCES users(id),
     linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

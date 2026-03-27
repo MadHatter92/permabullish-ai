@@ -1143,16 +1143,19 @@ Build a fully automated WhatsApp bot for instant stock research — no app, no l
 
 ### 10.5 Account Mapping ✅
 
-- [x] Phone numbers stored only as SHA-256 hashes (privacy)
+- [x] Phone numbers stored in `whatsapp_accounts.phone_number` (users opt-in by initiating conversation)
+- [x] SHA-256 hash retained as primary lookup key
 - [x] Voluntary email-based linking (no OTP required — user replies with email)
-- [x] `whatsapp_accounts(phone_hash, user_id, linked_at)` table
+- [x] `whatsapp_accounts(phone_hash, phone_number, user_id, linked_at)` table
 - [x] Linking unlocks higher limits + action buttons
+- [x] `export_users.py` unified to show both email and WhatsApp users with real phone numbers
 
 ### 10.6 Tracking & Analytics ✅
 
 - [x] `whatsapp_events` table — all events logged with phone_hash, ticker, metadata, flagged flag
 - [x] WhatsApp section added to daily/weekly cron email report (`scripts/send_user_report.py`)
   - Reports sent, new phones, active phones, accounts linked, blocked count, action taps, top stocks
+- [x] WABA auto-subscribe on every backend startup (`main.py`) — prevents webhook going silent after redeploys
 
 ### Deliverables
 - ✅ WhatsApp bot live on production number (+91 72598 91109)
@@ -1174,7 +1177,7 @@ Build a fully automated WhatsApp bot for instant stock research — no app, no l
 - `.env.example` — WhatsApp vars documented
 
 ### Pending
-- [ ] Add WhatsApp CTA to permabullish.com homepage and brokers landing page
+- [x] Add WhatsApp CTA to permabullish.com homepage and brokers landing page ✅
 
 ---
 
