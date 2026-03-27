@@ -180,9 +180,9 @@ def get_conversations(days: int):
 
             # Show tickers they queried
             cur.execute(
-                f"""SELECT DISTINCT ticker FROM whatsapp_events
+                f"""SELECT ticker FROM whatsapp_events
                     WHERE phone_hash = {p} AND ticker IS NOT NULL AND created_at >= {p}
-                    ORDER BY created_at DESC LIMIT 10""",
+                    GROUP BY ticker ORDER BY MAX(created_at) DESC LIMIT 10""",
                 (ph["phone_hash"], cutoff)
             )
             tickers = [_dict_from_row(r)["ticker"] for r in cur.fetchall()]
