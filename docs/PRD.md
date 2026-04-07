@@ -642,27 +642,23 @@ WHATSAPP_APP_SECRET          # For HMAC signature validation
 | **Re-engagement** | Inactivity (7+ days) | Win back inactive users |
 | **Expiry Reminder** | Subscription ending | Encourage renewal |
 
-### 7.2 Re-engagement Email Templates (16 + 1 Weekly)
+### 7.2 Re-engagement Email Templates (10 WhatsApp-Focused + Weekly)
+
+All templates drive users to use Permabullish on WhatsApp (+91 72598 91109).
 
 | # | Type | Subject | Audience |
 |---|------|---------|----------|
-| 1 | Generic | Your AI research reports are waiting | All |
-| 2 | Broker | The research tool smart brokers are using | Brokers, Sub-brokers, APs |
-| 3 | Generic | What smart investors look for | All |
-| 4 | Broker | 2 hours of research in 30 seconds | Brokers, Sub-brokers, APs |
-| 5 | Generic | Investors are researching these stocks | All |
-| 6 | Broker | Institutional research for independent brokers | Brokers, Sub-brokers, APs |
-| 7 | Hindi | अब हिंदी में AI स्टॉक रिसर्च | Hindi speakers |
-| 8 | Gujarati | હવે ગુજરાતીમાં AI સ્ટોક રિસર્ચ | Gujarati speakers |
-| 9 | Generic | Markets moved this week | All |
-| 10 | Broker | Your competition is using AI research | Brokers, Sub-brokers, APs |
-| 11 | Hindi | आपके Hindi-speaking clients के लिए | Hindi speakers (broker angle) |
-| 12 | Gujarati | તમારા Gujarati-speaking clients માટે | Gujarati speakers (broker angle) |
-| 13 | Generic | Did you know Permabullish can do this? | All |
-| 14 | Broker | Better research = more client trades | Brokers, Sub-brokers, APs |
-| 15 | Weekly | Weekly: Your AI market insights | All (weekly digest) |
-| 16 | Kannada | ಈಗ ಕನ್ನಡದಲ್ಲಿ AI ಸ್ಟಾಕ್ ರಿಸರ್ಚ್ | Kannada speakers |
-| 17 | Kannada | ನಿಮ್ಮ Kannada-speaking clients ಗಾಗಿ | Kannada speakers (broker angle) |
+| 1 | Generic | Stock research on WhatsApp. Just type a ticker. | All |
+| 2 | Broker | Your client asks about a stock. Here's how to answer in 30 seconds. | Brokers, Sub-brokers, APs |
+| 3 | Generic | No app download. No login. Stock research where you already are. | All |
+| 4 | Broker | Research you can send your clients — on WhatsApp | Brokers, Sub-brokers, APs |
+| 5 | Hindi | WhatsApp पर हिंदी में स्टॉक रिसर्च | Hindi speakers |
+| 6 | Gujarati | WhatsApp પર ગુજરાતીમાં AI સ્ટૉક રિસર્ચ | Gujarati speakers |
+| 7 | Kannada | WhatsApp ನಲ್ಲಿ ಕನ್ನಡದಲ್ಲಿ AI ಸ್ಟಾಕ್ ರಿಸರ್ಚ್ | Kannada speakers |
+| 8 | Hindi Broker | आपके clients WhatsApp पर हैं। Research भी। | Hindi speakers (broker angle) |
+| 9 | Broker | Walk into every client meeting already prepared | Brokers, Sub-brokers, APs |
+| 10 | Gujarati Broker | તમારા clients WhatsApp પર છે. Research પણ. | Gujarati speakers (broker angle) |
+| 11 | Weekly | 3 stocks. 3 minutes. WhatsApp. | All (weekly digest) |
 
 ### 7.3 Re-engagement Eligibility Criteria
 
@@ -690,15 +686,15 @@ A registered user receives re-engagement emails only when ALL of the following c
 
 ### 7.4 Email Schedule
 
-- **Days 1-16 after signup (Daily Phase):**
+- **Days 1-14 after signup (Daily Phase):**
   - One email per day maximum
-  - Only if inactive for 7+ days
-  - Templates 1-14, 16-17 rotate in sequence
-- **Days 17-180 after signup (Weekly Phase):**
+  - Only if inactive for 1+ days
+  - Templates 1-10 rotate in sequence
+- **Days 15-180 after signup (Weekly Phase):**
   - One email per week maximum
   - Only if inactive for 7+ days
-  - Template 15 (weekly digest) used
-- Templates rotate: 1→2→3→...→14→16→17→1→...
+  - Template 11 (weekly WhatsApp digest) used
+- Templates rotate: 1→2→3→...→10→1→...
 
 ### 7.5 External Contacts System
 
@@ -708,7 +704,7 @@ Support for bulk email campaigns to external contact lists (not registered users
 |---------|-------------|
 | **Import** | CSV import via `scripts/import_external_contacts.py` |
 | **Eligibility** | All active contacts (no inactivity requirement) |
-| **Template Rotation** | Same 14 templates as registered users |
+| **Template Rotation** | Same 10 WhatsApp-focused templates as registered users (1-10) |
 | **Cleanup** | Bounce detection via `scripts/cleanup_bounced_emails.py` |
 | **Rate Limiting** | 0.6s delay between emails (Resend API: 2 req/sec) |
 

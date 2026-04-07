@@ -289,16 +289,17 @@ Polish and enhance the live product based on initial usage.
   - Plan details, expiry date, reports per month
   - Triggered from verify endpoint and webhooks
 - [x] **Re-engagement Email System (Enhanced)**
-  - **16 rotating templates + weekly digest** (expanded from 5)
+  - **10 WhatsApp-focused rotating templates + weekly digest** (pivoted Apr 2026)
+  - All templates drive users to WhatsApp bot (+91 72598 91109)
   - Template categories:
-    - 5 generic templates for retail investors
-    - 5 broker-focused templates targeting brokers, sub-brokers, APs
-    - 2 Hindi language templates (हिंदी)
-    - 2 Gujarati language templates (ગુજરાતી)
-    - 2 Kannada language templates (ಕನ್ನಡ)
+    - 2 generic templates (WhatsApp discovery, zero-friction)
+    - 3 broker-focused templates (client moment, forward-to-client, morning prep)
+    - 2 Hindi templates (general + broker angle)
+    - 2 Gujarati templates (general + broker angle)
+    - 1 Kannada template (general)
     - 1 weekly digest template
-  - Days 1-16: Daily emails (if inactive 7+ days)
-  - Days 17-180: Weekly emails (if inactive 7+ days)
+  - Days 1-14: Daily emails (if inactive 1+ days)
+  - Days 15-180: Weekly emails (if inactive 7+ days)
   - Cron script: `scripts/send_reengagement_emails.py`
   - IST timezone support
   - Rate limiting: 0.6s delay between sends (Resend API: 2 req/sec)

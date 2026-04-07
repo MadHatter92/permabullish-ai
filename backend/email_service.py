@@ -76,6 +76,8 @@ def get_email_styles() -> str:
         .content { padding: 20px 0; }
         .button { display: inline-block; background: #e8913a; color: white !important; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 10px 0; }
         .button:hover { background: #d97316; }
+        .button-wa { display: inline-block; background: #25D366; color: white !important; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; margin: 10px 0; }
+        .button-wa:hover { background: #1ebe5a; }
         .report-card { background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 10px 0; border-left: 4px solid #e8913a; }
         .report-card h4 { margin: 0 0 5px 0; color: #1e3a5f; }
         .report-card p { margin: 0; font-size: 14px; color: #666; }
@@ -217,17 +219,20 @@ def send_welcome_email(user_email: str, first_name: str, sample_reports: List[Di
 
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
 
+            <h3>Also available on WhatsApp</h3>
+            <p>No browser needed. Message <strong>+91 72598 91109</strong> on WhatsApp with any stock
+            name or ticker and get a full AI research report in seconds — straight in your chat.</p>
+
+            <p style="text-align: center;">
+                <a href="https://wa.me/917259891109?text=Hi" class="button-wa">Try on WhatsApp</a>
+            </p>
+
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+
             <h3>See what Permabullish can do:</h3>
             <p>Here are some recent AI research reports to explore:</p>
 
             {report_cards}
-
-            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-
-            <p><strong>Why Permabullish?</strong></p>
-            <p>Making investment decisions without proper research is like driving blindfolded.
-            Permabullish helps you see clearly — analyzing financials, quarterly trends, news impact,
-            and valuations across Indian and US markets so you can make decisions with confidence.</p>
 
             <p>Happy researching,<br><strong>The Permabullish Team</strong></p>
         </div>
@@ -390,6 +395,20 @@ def send_purchase_email(
 
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
 
+            <div style="background: #f0fff4; border: 1px solid #25D366; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h4 style="margin: 0 0 8px 0; color: #1e3a5f;">Also works on WhatsApp</h4>
+                <p style="margin: 0 0 12px 0; font-size: 14px; color: #444;">
+                    Your {plan_name} plan includes <strong>{reports_per_month} reports/month on WhatsApp</strong> too.
+                    Message <strong>+91 72598 91109</strong>, link your account email, and research stocks
+                    without opening a browser.
+                </p>
+                <p style="margin: 0; text-align: center;">
+                    <a href="https://wa.me/917259891109?text=Hi" class="button-wa">Open WhatsApp</a>
+                </p>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+
             <p><strong>Make the most of your subscription:</strong></p>
             <ol>
                 <li><strong>Deep-dive into your holdings</strong> — Generate reports on Indian or US stocks you already own to validate your thesis</li>
@@ -500,6 +519,14 @@ def send_subscription_expiry_email(
                 </ul>
             </div>
 
+            <div style="background: #f0fff4; border: 1px solid #25D366; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 14px; color: #444;">
+                    <strong>Still have WhatsApp access:</strong> Even on a free account, you can get
+                    stock research reports by messaging <strong>+91 72598 91109</strong> on WhatsApp.
+                    No subscription needed.
+                </p>
+            </div>
+
             <p>Questions? Just reply to this email.</p>
 
             <p>The Permabullish Team</p>
@@ -515,8 +542,8 @@ def send_subscription_expiry_email(
 
 
 # =============================================================================
-# RE-ENGAGEMENT EMAILS (16 Templates + Weekly)
-# Interspersed: Generic, Broker-focused, Hindi, Gujarati, and Kannada
+# RE-ENGAGEMENT EMAILS (9 WhatsApp-Focused Templates + Weekly)
+# Mix: Generic, Broker-focused, Hindi, Gujarati, Kannada — all WhatsApp-led
 # =============================================================================
 
 def get_reengagement_template(template_num: int, first_name: str, sample_reports: List[Dict], user_email: str = "") -> tuple:
@@ -524,523 +551,341 @@ def get_reengagement_template(template_num: int, first_name: str, sample_reports
     Get re-engagement email template by number.
     Returns (subject, html_content).
 
-    Templates 1-14 for daily rotation, template 15 for weekly.
+    Templates 1-10 for daily rotation, template 11 for weekly.
+    All templates direct users to use Permabullish on WhatsApp.
     """
     report_cards = format_report_cards(sample_reports, "reengagement")
     footer = get_footer(user_email)
+
+    # WhatsApp CTA URL (pre-filled greeting opens the conversation)
+    wa_url = "https://wa.me/917259891109?text=Hi"
 
     # Pre-build UTM-tagged URLs for templates
     gen_url = utm_url(f"{BASE_URL}/generate.html", "reengagement", f"t{template_num}")
     gen_hi_url = utm_url(f"{BASE_URL}/generate.html?lang=hi", "reengagement", f"t{template_num}")
     gen_gu_url = utm_url(f"{BASE_URL}/generate.html?lang=gu", "reengagement", f"t{template_num}")
     gen_kn_url = utm_url(f"{BASE_URL}/generate.html?lang=kn", "reengagement", f"t{template_num}")
-    pricing_url = utm_url(f"{BASE_URL}/pricing.html", "reengagement", f"t{template_num}")
 
     templates = {
-        # Template 1: Generic - Reminder
+        # Template 1: Generic - WhatsApp Discovery
         1: (
-            "Your AI research reports are waiting",
+            "Stock research on WhatsApp. Just type a ticker.",
             f"""
             <h2>Hi {first_name},</h2>
 
-            <p>Your Permabullish account is ready and waiting.</p>
+            <p>You might not know this, but Permabullish now works on WhatsApp.</p>
 
-            <p>While you've been away, markets have moved and new opportunities have emerged.
-            Our AI has been analyzing thousands of Indian and US stocks — and your personalized insights are
-            just a click away.</p>
+            <p>No browser. No login. Just open WhatsApp, send us a stock name or ticker,
+            and get a full AI research report in seconds — recommendation, target price,
+            bull and bear cases, key risks.</p>
 
-            <p><strong>You still have reports available.</strong> Why not use one to research
-            a stock you've been curious about?</p>
+            <p>Here's how it works:</p>
+            <ol>
+                <li>Open WhatsApp and message <strong>+91 72598 91109</strong></li>
+                <li>Type any stock name or ticker — RELIANCE, TCS, INFY, HDFC</li>
+                <li>Get your full AI research report instantly</li>
+            </ol>
+
+            <p>That's it. No steps after that.</p>
 
             <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Generate a Report Now</a>
+                <a href="{wa_url}" class="button-wa">Open WhatsApp</a>
             </p>
 
-            <h3>Popular reports this week:</h3>
+            <h3>What other investors are researching:</h3>
             {report_cards}
             """
         ),
 
-        # Template 2: Broker - Research That Closes Deals
+        # Template 2: Broker - The Client Moment
         2: (
-            "The research tool smart brokers are using",
+            "Your client asks about a stock. Here's how to answer in 30 seconds.",
             f"""
             <h2>Hi {first_name},</h2>
 
-            <p>When a client asks <em>"Why should I buy this stock?"</em> — what do you show them?</p>
+            <p>Picture this: you're on a call with a client. They ask about HDFC Bank.
+            You're not at your desk. You don't have a terminal open.</p>
 
-            <p>Most brokers rely on outdated reports, gut feeling, or whatever the terminal shows.
-            But the best ones come prepared with real research.</p>
+            <p>Here's what you do now:</p>
 
-            <p><strong>Permabullish gives you AI-powered equity research in seconds:</strong></p>
-            <ul>
-                <li>Target prices backed by fundamental analysis</li>
-                <li>Bull and bear cases for any stock</li>
-                <li>Risk factors and catalysts to watch</li>
-                <li>Coverage of 3,000+ Indian and 500+ US stocks</li>
-            </ul>
+            <p>Open WhatsApp. Type <strong>HDFCBANK</strong>. In 20-30 seconds, you have a full
+            AI research report — recommendation, target price, quarterly results, bull and bear cases.</p>
 
-            <p>Generate a report before your next client call. Walk in with conviction.</p>
+            <p>Forward it to your client right there in WhatsApp. Done.</p>
+
+            <p>No browser. No login. No "let me get back to you."</p>
 
             <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Try It Now</a>
+                <a href="{wa_url}" class="button-wa">Try It on WhatsApp</a>
             </p>
 
-            <h3>See AI research in action:</h3>
+            <h3>Sample AI research:</h3>
             {report_cards}
             """
         ),
 
-        # Template 3: Generic - Value/Education
+        # Template 3: Generic - Zero Friction
         3: (
-            "What smart investors look for (and how AI helps)",
+            "No app download. No login. Stock research where you already are.",
             f"""
             <h2>Hi {first_name},</h2>
 
-            <p>Did you know that professional fund managers spend hours analyzing a single stock
-            before making a decision?</p>
+            <p>Most research tools make you work for it. Open a browser, log in, search,
+            wait for the page to load. By then you've lost the moment.</p>
 
-            <p>They look at:</p>
-            <ul>
-                <li>Quarterly earnings trends</li>
-                <li>Valuation ratios vs. industry peers</li>
-                <li>Management commentary and guidance</li>
-                <li>Competitive positioning and moats</li>
-            </ul>
+            <p>Permabullish on WhatsApp is different. You're already in WhatsApp.
+            Just type a stock name and the report comes to you.</p>
 
-            <p><strong>Permabullish does all of this in seconds — for Indian and US stocks.</strong></p>
-
-            <p>Our AI analyzes fundamentals, news, and market data to give you the same insights
-            that institutional investors rely on.</p>
+            <p>It feels like texting a research analyst who knows every listed stock on NSE, BSE, NYSE, and NASDAQ.</p>
 
             <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Try It Now</a>
+                <a href="{wa_url}" class="button-wa">Message on WhatsApp</a>
             </p>
 
-            <h3>See AI analysis in action:</h3>
+            <p style="text-align: center; margin-top: 8px;">
+                <a href="{gen_url}" style="color: #888; font-size: 13px;">Or use the web version</a>
+            </p>
+
+            <h3>What the AI covers in each report:</h3>
             {report_cards}
             """
         ),
 
-        # Template 4: Broker - Time Savings
+        # Template 4: Broker - Forward Ready
         4: (
-            "2 hours of research in 30 seconds",
+            "Research you can send your clients — on WhatsApp",
             f"""
             <h2>Hi {first_name},</h2>
 
-            <p>How much time do you spend researching stocks before pitching them to clients?</p>
+            <p>Your clients are on WhatsApp all day. When you want to share research with them,
+            the smoothest path is the one that's already open.</p>
 
-            <p>Digging through quarterly results, reading news, comparing valuations,
-            understanding risks — it adds up. Time that could be spent actually talking to clients.</p>
+            <p>Here's the workflow that works:</p>
+            <ol>
+                <li>Message Permabullish on WhatsApp with any stock ticker</li>
+                <li>Receive the full AI research report in your chat</li>
+                <li>Forward it to your client — right from the same app</li>
+            </ol>
 
-            <p><strong>Permabullish does the heavy lifting:</strong></p>
-
-            <p>Enter any Indian or US stock → Get a comprehensive AI research report → Share insights with confidence</p>
-
-            <p>No more scrambling before client meetings. No more <em>"let me get back to you on that."</em></p>
+            <p>No PDFs to attach. No "check your email." No portal login for your client.
+            The research lands where they already are.</p>
 
             <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Generate Your First Report</a>
+                <a href="{wa_url}" class="button-wa">Start on WhatsApp</a>
             </p>
 
-            <h3>Example reports:</h3>
+            <h3>See what the reports look like:</h3>
             {report_cards}
             """
         ),
 
-        # Template 5: Generic - Social Proof
+        # Template 5: Hindi - WhatsApp + Hindi
         5: (
-            "Investors are researching these stocks right now",
-            f"""
-            <h2>Hi {first_name},</h2>
-
-            <p>Every day, investors use Permabullish to make smarter decisions.</p>
-
-            <p>Here's what's trending on our platform this week:</p>
-
-            {report_cards}
-
-            <p>These reports show you exactly what our AI thinks — target prices, bull/bear cases,
-            key risks, and catalysts to watch.</p>
-
-            <p><strong>What stocks are you curious about?</strong></p>
-
-            <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Research Any Stock</a>
-            </p>
-            """
-        ),
-
-        # Template 6: Broker - Client Value
-        6: (
-            "Institutional research for independent brokers",
-            f"""
-            <h2>Hi {first_name},</h2>
-
-            <p>Large brokerages have teams of analysts producing research reports.
-            Their clients get detailed stock analysis before making decisions.</p>
-
-            <p><strong>Now you can offer the same.</strong></p>
-
-            <p>Permabullish uses AI to generate equity research that rivals institutional reports — covering Indian and US markets:</p>
-            <ul>
-                <li>Quarterly earnings analysis</li>
-                <li>Valuation comparisons</li>
-                <li>News impact assessment</li>
-                <li>AI-calculated target prices</li>
-            </ul>
-
-            <p>Your clients don't need to know you're not a large brokerage.
-            They just need to see you come prepared.</p>
-
-            <p style="text-align: center;">
-                <a href="{gen_url}" class="button">See Sample Reports</a>
-            </p>
-
-            <h3>Level the playing field:</h3>
-            {report_cards}
-            """
-        ),
-
-        # Template 7: Hindi - Introduction
-        7: (
-            "अब हिंदी में AI स्टॉक रिसर्च",
+            "WhatsApp पर हिंदी में स्टॉक रिसर्च",
             f"""
             <h2>नमस्ते,</h2>
 
-            <p><strong>अब AI स्टॉक रिसर्च हिंदी में उपलब्ध है।</strong></p>
+            <p>अब आपको browser खोलने की जरूरत नहीं है।</p>
 
-            <p>Permabullish अब हिंदी में comprehensive stock reports generate करता है — Indian और US दोनों markets के लिए।</p>
+            <p>Permabullish अब WhatsApp पर भी उपलब्ध है — और रिपोर्ट्स <strong>हिंदी में</strong> मिलती हैं।</p>
 
-            <p>हमारी AI रिपोर्ट्स में शामिल है:</p>
-            <ul>
-                <li><strong>तिमाही नतीजों का विश्लेषण</strong> — Quarterly earnings analysis</li>
-                <li><strong>वैल्यूएशन मेट्रिक्स</strong> — P/E, P/B और industry comparison</li>
-                <li><strong>AI Target Price</strong> — 12 महीने का लक्ष्य मूल्य</li>
-                <li><strong>रिस्क असेसमेंट</strong> — निवेश के जोखिम</li>
-                <li><strong>US Stocks</strong> — Apple, Tesla, Microsoft जैसे 500+ S&P 500 stocks</li>
-            </ul>
+            <p>बस इतना करें:</p>
+            <ol>
+                <li>WhatsApp पर <strong>+91 72598 91109</strong> को message करें</li>
+                <li>कोई भी stock का नाम या ticker type करें — जैसे RELIANCE, TCS, HDFC</li>
+                <li>हिंदी में पूरी AI research report पाएं — recommendation, target price, risks सब कुछ</li>
+            </ol>
 
-            <p>चाहे आप खुद के लिए रिसर्च कर रहे हों या clients के लिए — <strong>हिंदी में समझना आसान है।</strong></p>
+            <p>अपने clients को हिंदी में research forward करें। वो भाषा जिसमें वे सोचते हैं।</p>
 
             <p style="text-align: center;">
-                <a href="{gen_hi_url}" class="button">हिंदी में रिपोर्ट बनाएं</a>
+                <a href="{wa_url}" class="button-wa">WhatsApp पर शुरू करें</a>
             </p>
 
-            <h3>देखें AI रिसर्च कैसे काम करती है:</h3>
+            <p style="text-align: center; margin-top: 8px;">
+                <a href="{gen_hi_url}" style="color: #888; font-size: 13px;">वेबसाइट पर हिंदी में रिपोर्ट बनाएं</a>
+            </p>
+
+            <h3>देखें AI रिसर्च कैसी दिखती है:</h3>
             {report_cards}
-
-            <p style="text-align: center; color: #1e3a5f; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                हर निवेशक को समझ में आने वाली रिसर्च मिलनी चाहिए।
-            </p>
             """
         ),
 
-        # Template 8: Gujarati - Introduction
-        8: (
-            "હવે ગુજરાતીમાં AI સ્ટોક રિસર્ચ",
+        # Template 6: Gujarati - WhatsApp + Gujarati
+        6: (
+            "WhatsApp પર ગુજરાતીમાં AI સ્ટૉક રિસર્ચ",
             f"""
             <h2>નમસ્તે,</h2>
 
-            <p><strong>હવે AI સ્ટોક રિસર્ચ ગુજરાતીમાં ઉપલબ્ધ છે.</strong></p>
+            <p>હવે browser ખોલવાની જરૂર નથી।</p>
 
-            <p>Permabullish હવે ગુજરાતીમાં comprehensive stock reports generate કરે છે — Indian અને US બંને markets માટે.</p>
+            <p>Permabullish હવે WhatsApp પર ઉપલબ્ધ છે — અને reports <strong>ગુજરાતીમાં</strong> મળે છે.</p>
 
-            <p>અમારી AI રિપોર્ટ્સમાં શામેલ છે:</p>
-            <ul>
-                <li><strong>ત્રિમાસિક પરિણામોનું વિશ્લેષણ</strong> — Quarterly earnings analysis</li>
-                <li><strong>વેલ્યુએશન મેટ્રિક્સ</strong> — P/E, P/B અને industry comparison</li>
-                <li><strong>AI Target Price</strong> — 12 મહિનાનો લક્ષ્ય ભાવ</li>
-                <li><strong>રિસ્ક એસેસમેન્ટ</strong> — રોકાણના જોખમો</li>
-                <li><strong>US Stocks</strong> — Apple, Tesla, Microsoft જેવા 500+ S&P 500 stocks</li>
-            </ul>
+            <p>બસ આ કરો:</p>
+            <ol>
+                <li>WhatsApp પર <strong>+91 72598 91109</strong> ને message કરો</li>
+                <li>કોઈ પણ stock નું નામ અથવા ticker type કરો — RELIANCE, TCS, HDFC</li>
+                <li>ગુજરાતીમાં પૂરી AI research report મળશે — recommendation, target price, risks — બધું</li>
+            </ol>
 
-            <p>ગુજરાતના રોકાણકારો માટે — અમદાવાદ, સુરત, રાજકોટ, વડોદરા — <strong>તમારી ભાષામાં રિસર્ચ.</strong></p>
+            <p>તમારા clients ને ગુજરાતીમાં research forward કરો। તેઓ જે ભાષામાં વિચારે છે તેમાં.</p>
 
             <p style="text-align: center;">
-                <a href="{gen_gu_url}" class="button">ગુજરાતીમાં રિપોર્ટ બનાવો</a>
+                <a href="{wa_url}" class="button-wa">WhatsApp પર શરૂ કરો</a>
             </p>
 
-            <h3>જુઓ AI રિસર્ચ કેવી રીતે કામ કરે છે:</h3>
+            <p style="text-align: center; margin-top: 8px;">
+                <a href="{gen_gu_url}" style="color: #888; font-size: 13px;">વેબસાઇટ પર ગુજરાતીમાં રિપોર્ટ બનાવો</a>
+            </p>
+
+            <h3>જુઓ AI રિસર્ચ કેવી દેખાય છે:</h3>
             {report_cards}
-
-            <p style="text-align: center; color: #1e3a5f; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                દરેક રોકાણકારને સમજાય એવું સંશોધન મળવું જોઈએ.
-            </p>
             """
         ),
 
-        # Template 9: Generic - Market FOMO
-        9: (
-            "Markets moved this week - here's what AI sees",
+        # Template 7: Kannada - WhatsApp + Kannada
+        7: (
+            "WhatsApp ನಲ್ಲಿ ಕನ್ನಡದಲ್ಲಿ AI ಸ್ಟಾಕ್ ರಿಸರ್ಚ್",
             f"""
-            <h2>Hi {first_name},</h2>
+            <h2>ನಮಸ್ಕಾರ,</h2>
 
-            <p>The market doesn't wait for anyone.</p>
+            <p>ಈಗ browser ತೆರೆಯುವ ಅಗತ್ಯವಿಲ್ಲ.</p>
 
-            <p>While you've been away, stocks have moved, earnings have been announced, and
-            new opportunities have emerged. Are you keeping up?</p>
+            <p>Permabullish ಈಗ WhatsApp ನಲ್ಲಿ ಲಭ್ಯವಿದೆ — ಮತ್ತು reports <strong>ಕನ್ನಡದಲ್ಲಿ</strong> ಸಿಗುತ್ತವೆ.</p>
 
-            <p><strong>Staying informed doesn't have to be hard.</strong> Generate an AI report
-            on any Indian or US stock and get:</p>
-            <ul>
-                <li>Current valuation analysis</li>
-                <li>Recent quarterly performance</li>
-                <li>News impact assessment</li>
-                <li>AI-recommended target price</li>
-            </ul>
+            <p>ಇಷ್ಟು ಮಾಡಿ:</p>
+            <ol>
+                <li>WhatsApp ನಲ್ಲಿ <strong>+91 72598 91109</strong> ಗೆ message ಮಾಡಿ</li>
+                <li>ಯಾವುದೇ stock ಹೆಸರು ಅಥವಾ ticker type ಮಾಡಿ — RELIANCE, TCS, INFY</li>
+                <li>ಕನ್ನಡದಲ್ಲಿ ಪೂರ್ಣ AI research report ಪಡೆಯಿರಿ — recommendation, target price, risks — ಎಲ್ಲವೂ</li>
+            </ol>
+
+            <p>ನಿಮ್ಮ clients ಗೆ ಕನ್ನಡದಲ್ಲಿ research forward ಮಾಡಿ. ಅವರು ಯೋಚಿಸುವ ಭಾಷೆಯಲ್ಲಿ.</p>
 
             <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Get AI Insights Now</a>
+                <a href="{wa_url}" class="button-wa">WhatsApp ನಲ್ಲಿ ಪ್ರಾರಂಭಿಸಿ</a>
             </p>
 
-            <h3>Recent AI analysis:</h3>
+            <p style="text-align: center; margin-top: 8px;">
+                <a href="{gen_kn_url}" style="color: #888; font-size: 13px;">ವೆಬ್‌ಸೈಟ್‌ನಲ್ಲಿ ಕನ್ನಡದಲ್ಲಿ ರಿಪೋರ್ಟ್ ರಚಿಸಿ</a>
+            </p>
+
+            <h3>AI ರಿಸರ್ಚ್ ಹೇಗಿರುತ್ತದೆ ನೋಡಿ:</h3>
             {report_cards}
             """
         ),
 
-        # Template 10: Broker - Competitive Edge
-        10: (
-            "Your competition is using AI research. Are you?",
-            f"""
-            <h2>Hi {first_name},</h2>
-
-            <p>The brokers winning today aren't just good at selling — they're good at <em>informing</em>.</p>
-
-            <p>When clients can Google any stock themselves, your value comes from insights
-            they can't easily find. Analysis. Context. Conviction.</p>
-
-            <p><strong>Permabullish gives you that edge:</strong></p>
-            <ul>
-                <li>AI research on any Indian or US stock in seconds</li>
-                <li>Professional reports you can share with clients</li>
-                <li>Analysis that builds trust and closes deals</li>
-            </ul>
-
-            <p>Don't let competitors out-research you.</p>
-
-            <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Get Your Edge</a>
-            </p>
-
-            <h3>See what AI research looks like:</h3>
-            {report_cards}
-            """
-        ),
-
-        # Template 11: Hindi - Broker Angle
-        11: (
-            "आपके Hindi-speaking clients के लिए",
+        # Template 8: Hindi Broker - Hindi clients on WhatsApp
+        8: (
+            "आपके clients WhatsApp पर हैं। Research भी।",
             f"""
             <h2>नमस्ते,</h2>
 
-            <p>आपके कितने clients हिंदी में stock analysis पढ़ना पसंद करेंगे?</p>
+            <p>आपके clients दिनभर WhatsApp पर हैं। जब आप उन्हें कोई stock pitch करते हैं,
+            सबसे असरदार तरीका वही है जो वो पहले से use कर रहे हैं।</p>
 
-            <p>North India, UP, MP, Rajasthan के निवेशकों के लिए — हिंदी सिर्फ comfortable नहीं है,
-            यह वो भाषा है जिसमें वे पैसों के बारे में सोचते हैं।</p>
+            <p>अब यह possible है:</p>
+            <ol>
+                <li>WhatsApp पर Permabullish को कोई stock ticker भेजें</li>
+                <li>हिंदी में पूरी AI research report पाएं</li>
+                <li>सीधे अपने client को forward करें — same app में</li>
+            </ol>
 
-            <p><strong>अब आप दे सकते हैं:</strong></p>
-            <ul>
-                <li>हिंदी में AI research reports</li>
-                <li>Institutional-quality analysis</li>
-                <li>Target prices और risk assessment जो वो समझ सकें</li>
-                <li>Indian और US दोनों stocks पर reports</li>
-            </ul>
-
-            <p>जब clients research को सच में समझते हैं, तो वे faster decisions लेते हैं।</p>
+            <p>जब client हिंदी में research पढ़ते हैं — अपनी भाषा में, अपने WhatsApp पर —
+            वे ज्यादा confident होते हैं और faster decide करते हैं।</p>
 
             <p style="text-align: center;">
-                <a href="{gen_hi_url}" class="button">हिंदी में रिपोर्ट बनाएं</a>
+                <a href="{wa_url}" class="button-wa">WhatsApp पर try करें</a>
             </p>
 
             <h3>देखें AI रिसर्च:</h3>
             {report_cards}
-
-            <p style="text-align: center; color: #1e3a5f; margin: 20px 0;">
-                अपने clients को वो research दीजिए जो वो समझ सकें।
-            </p>
             """
         ),
 
-        # Template 12: Gujarati - Broker Angle
-        12: (
-            "તમારા Gujarati-speaking clients માટે",
+        # Template 9: Broker - Preparation / Morning Routine
+        9: (
+            "Walk into every client meeting already prepared",
+            f"""
+            <h2>Hi {first_name},</h2>
+
+            <p>Here's a routine that takes 5 minutes and changes how your client meetings go.</p>
+
+            <p>In the morning, while commuting, open WhatsApp and message us the tickers
+            your clients have been asking about. By the time you sit down, you have full
+            AI research on each one — recommendation, target price, bull and bear cases.</p>
+
+            <p>Walk in prepared. Answer questions with conviction. Your clients notice.</p>
+
+            <p>The whole thing runs through WhatsApp. No extra apps, no browser tabs,
+            no time carved out of your day.</p>
+
+            <p style="text-align: center;">
+                <a href="{wa_url}" class="button-wa">Open WhatsApp</a>
+            </p>
+
+            <h3>What your clients will see:</h3>
+            {report_cards}
+            """
+        ),
+
+        # Template 10: Gujarati Broker - WhatsApp + Gujarati clients
+        10: (
+            "તમારા clients WhatsApp પર છે. Research પણ.",
             f"""
             <h2>નમસ્તે,</h2>
 
-            <p>ગુજરાતની trading culture ઊંડી છે. Dalal Street ના veterans થી લઈને નવા retail investors સુધી — ગુજરાતીઓ markets જાણે છે.</p>
+            <p>ગુજરાતની trading community ઊંડી છે — Ahmedabad, Surat, Rajkot, Vadodara ના
+            investors markets ને સારી રીતે સમજે છે.</p>
 
-            <p><strong>તેમને એ ભાષામાં research આપો જેમાં તેઓ વિચારે છે.</strong></p>
+            <p>તમારા clients આખો દિવસ WhatsApp પર છે. હવે તમે તેમને ત્યાં જ research
+            deliver કરી શકો — ગુજરાતીમાં.</p>
 
-            <p>Permabullish હવે ગુજરાતીમાં AI stock reports generate કરે છે:</p>
-            <ul>
-                <li>Complete fundamental analysis</li>
-                <li>AI-calculated target prices</li>
-                <li>Risk factors અને catalysts</li>
-                <li>Bull vs bear cases</li>
-                <li>Indian અને US બંને stocks પર reports</li>
-            </ul>
+            <p>આ workflow try કરો:</p>
+            <ol>
+                <li>WhatsApp પર <strong>+91 72598 91109</strong> ને stock ticker message કરો</li>
+                <li>ગુજરાતીમાં full AI research report મળશે</li>
+                <li>સીધા તમારા client ને forward કરો — same app માં</li>
+            </ol>
 
-            <p>જ્યારે તમારા clients ગુજરાતીમાં research વાંચે છે, ત્યારે તેઓ વધુ deeply engage થાય છે અને faster decide કરે છે.</p>
+            <p>Client ગુજરાતીમાં research વાંચે — સમજે — faster decide કરે.</p>
 
             <p style="text-align: center;">
-                <a href="{gen_gu_url}" class="button">ગુજરાતીમાં રિપોર્ટ બનાવો</a>
+                <a href="{wa_url}" class="button-wa">WhatsApp પર try કરો</a>
             </p>
 
-            <h3>જુઓ AI રિસર્ચ:</h3>
+            <p style="text-align: center; margin-top: 8px;">
+                <a href="{gen_gu_url}" style="color: #888; font-size: 13px;">વેબ પર ગુજરાતીમાં રિપોર્ટ બનાવો</a>
+            </p>
+
+            <h3>AI રિસર્ચ જુઓ:</h3>
             {report_cards}
-
-            <p style="text-align: center; color: #1e3a5f; margin: 20px 0;">
-                તમારા clients ને એવું research આપો જે તેઓ સમજી શકે.
-            </p>
             """
         ),
 
-        # Template 13: Generic - Feature Highlight
-        13: (
-            "Did you know Permabullish can do this?",
+        # Template 11: Weekly - WhatsApp focused
+        11: (
+            "3 stocks. 3 minutes. WhatsApp.",
             f"""
             <h2>Hi {first_name},</h2>
 
-            <p>You might be surprised by everything Permabullish can help you with.</p>
+            <p>Here's a quick challenge for this week.</p>
 
-            <p><strong>Beyond basic stock data, our AI provides:</strong></p>
+            <p>Pick 3 stocks you've been curious about or your clients have been asking about.
+            Message them to Permabullish on WhatsApp — one at a time.
+            Each report takes under 30 seconds.</p>
 
-            <p>📊 <strong>Quarterly Analysis</strong> — See if the company beat or missed expectations</p>
-            <p>📰 <strong>News Impact</strong> — Understand how recent events affect the stock</p>
-            <p>🎯 <strong>Target Prices</strong> — Get AI-calculated 12-month price targets</p>
-            <p>⚖️ <strong>Bull vs Bear</strong> — See both sides of the investment case</p>
-            <p>⚠️ <strong>Risk Assessment</strong> — Know what could go wrong</p>
-            <p>🇺🇸 <strong>US Stocks</strong> — Now covering 500+ S&P 500 stocks alongside Indian markets</p>
-
-            <p>All of this in a comprehensive report that takes seconds to generate.</p>
+            <p>You'll have research on all three before your next coffee is done.</p>
 
             <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Generate a Report</a>
+                <a href="{wa_url}" class="button-wa">Open WhatsApp</a>
             </p>
 
-            <h3>Example reports:</h3>
-            {report_cards}
-            """
-        ),
-
-        # Template 14: Broker - Revenue
-        14: (
-            "Better research = more client trades",
-            f"""
-            <h2>Hi {first_name},</h2>
-
-            <p>Here's a simple truth: <strong>clients trade more when they feel confident.</strong></p>
-
-            <p>And confidence comes from understanding. When you walk a client through solid research —
-            showing them why a stock makes sense, what the risks are, what price to target —
-            they're more likely to act.</p>
-
-            <p><strong>Permabullish helps you build that confidence:</strong></p>
-            <ul>
-                <li>Generate AI research reports before client meetings</li>
-                <li>Answer "why this stock?" with data, not opinion</li>
-                <li>Share professional reports that build credibility</li>
-                <li>Cover Indian and US stocks from one platform</li>
-            </ul>
-
-            <p>Better conversations. More trades. Happier clients.</p>
-
-            <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Get Started</a>
-            </p>
-
-            <h3>See AI research in action:</h3>
-            {report_cards}
-            """
-        ),
-
-        # Template 15: Weekly Digest
-        15: (
-            "Weekly: Your AI market insights",
-            f"""
-            <h2>Hi {first_name},</h2>
-
-            <p>Here's your weekly roundup from Permabullish.</p>
-
-            <p>Indian and US markets have been active, and our AI has been busy analyzing stocks.
-            Here are some reports worth checking out:</p>
-
+            <h3>Some recent research to get you thinking:</h3>
             {report_cards}
 
-            <p><strong>Your account is still active</strong> with reports available.
-            Pick a stock you're interested in and see what AI thinks.</p>
-
-            <p style="text-align: center;">
-                <a href="{gen_url}" class="button">Research a Stock</a>
-            </p>
-            """
-        ),
-
-        # Template 16: Kannada - Introduction
-        16: (
-            "ಈಗ ಕನ್ನಡದಲ್ಲಿ AI ಸ್ಟಾಕ್ ರಿಸರ್ಚ್",
-            f"""
-            <h2>ನಮಸ್ಕಾರ,</h2>
-
-            <p><strong>ಈಗ AI ಸ್ಟಾಕ್ ರಿಸರ್ಚ್ ಕನ್ನಡದಲ್ಲಿ ಲಭ್ಯವಿದೆ.</strong></p>
-
-            <p>Permabullish ಈಗ ಕನ್ನಡದಲ್ಲಿ comprehensive stock reports generate ಮಾಡುತ್ತದೆ — Indian ಮತ್ತು US ಎರಡೂ markets ಗಾಗಿ.</p>
-
-            <p>ನಮ್ಮ AI ರಿಪೋರ್ಟ್‌ಗಳಲ್ಲಿ ಇವೆ:</p>
-            <ul>
-                <li><strong>ತ್ರೈಮಾಸಿಕ ಫಲಿತಾಂಶಗಳ ವಿಶ್ಲೇಷಣೆ</strong> — Quarterly earnings analysis</li>
-                <li><strong>ಮೌಲ್ಯಮಾಪನ ಮೆಟ್ರಿಕ್ಸ್</strong> — P/E, P/B ಮತ್ತು industry comparison</li>
-                <li><strong>AI Target Price</strong> — 12 ತಿಂಗಳ ಗುರಿ ಬೆಲೆ</li>
-                <li><strong>ರಿಸ್ಕ್ ಅಸೆಸ್‌ಮೆಂಟ್</strong> — ಹೂಡಿಕೆಯ ಅಪಾಯಗಳು</li>
-                <li><strong>US Stocks</strong> — Apple, Tesla, Microsoft ನಂತಹ 500+ S&P 500 stocks</li>
-            </ul>
-
-            <p>ನೀವು ನಿಮಗಾಗಿ ರಿಸರ್ಚ್ ಮಾಡುತ್ತಿರಲಿ ಅಥವಾ clients ಗಾಗಿ — <strong>ಕನ್ನಡದಲ್ಲಿ ಅರ್ಥಮಾಡಿಕೊಳ್ಳುವುದು ಸುಲಭ.</strong></p>
-
-            <p style="text-align: center;">
-                <a href="{gen_kn_url}" class="button">ಕನ್ನಡದಲ್ಲಿ ರಿಪೋರ್ಟ್ ರಚಿಸಿ</a>
-            </p>
-
-            <h3>AI ರಿಸರ್ಚ್ ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ ನೋಡಿ:</h3>
-            {report_cards}
-
-            <p style="text-align: center; color: #1e3a5f; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                ಪ್ರತಿಯೊಬ್ಬ ಹೂಡಿಕೆದಾರರಿಗೂ ಅರ್ಥವಾಗುವ ರಿಸರ್ಚ್ ಸಿಗಬೇಕು.
-            </p>
-            """
-        ),
-
-        # Template 17: Kannada - Broker Angle
-        17: (
-            "ನಿಮ್ಮ Kannada-speaking clients ಗಾಗಿ",
-            f"""
-            <h2>ನಮಸ್ಕಾರ,</h2>
-
-            <p>ನಿಮ್ಮ ಎಷ್ಟು clients ಕನ್ನಡದಲ್ಲಿ stock analysis ಓದಲು ಇಷ್ಟಪಡುತ್ತಾರೆ?</p>
-
-            <p>Karnataka ನ ಹೂಡಿಕೆದಾರರಿಗೆ — Bengaluru, Mysuru, Hubli, Mangaluru — ಕನ್ನಡ ಕೇವಲ comfortable ಅಲ್ಲ,
-            ಅವರು ಹಣದ ಬಗ್ಗೆ ಯೋಚಿಸುವ ಭಾಷೆ ಅದು.</p>
-
-            <p><strong>ಈಗ ನೀವು ನೀಡಬಹುದು:</strong></p>
-            <ul>
-                <li>ಕನ್ನಡದಲ್ಲಿ AI research reports</li>
-                <li>Institutional-quality analysis</li>
-                <li>Target prices ಮತ್ತು risk assessment ಅವರಿಗೆ ಅರ್ಥವಾಗುವಂತೆ</li>
-                <li>Indian ಮತ್ತು US ಎರಡೂ stocks ಮೇಲೆ reports</li>
-            </ul>
-
-            <p>Clients research ಅನ್ನು ನಿಜವಾಗಿ ಅರ್ಥಮಾಡಿಕೊಂಡಾಗ, ಅವರು faster decisions ತೆಗೆದುಕೊಳ್ಳುತ್ತಾರೆ.</p>
-
-            <p style="text-align: center;">
-                <a href="{gen_kn_url}" class="button">ಕನ್ನಡದಲ್ಲಿ ರಿಪೋರ್ಟ್ ರಚಿಸಿ</a>
-            </p>
-
-            <h3>AI ರಿಸರ್ಚ್ ನೋಡಿ:</h3>
-            {report_cards}
-
-            <p style="text-align: center; color: #1e3a5f; margin: 20px 0;">
-                ನಿಮ್ಮ clients ಗೆ ಅವರಿಗೆ ಅರ್ಥವಾಗುವ research ನೀಡಿ.
+            <p style="margin-top: 20px;">
+                <a href="{gen_url}" style="color: #888; font-size: 13px;">Prefer the website? Generate reports here.</a>
             </p>
             """
         ),
@@ -1091,17 +936,17 @@ def get_template_for_day(days_since_signup: int, email_count: int) -> int:
     """
     Determine which template to use based on days since signup and emails sent.
 
-    Days 1-16: Daily emails, rotate templates 1-14, 16, 17 (generic, broker, Hindi, Gujarati, Kannada)
-    Days 17+: Weekly emails, use template 15
+    Days 1-14: Daily emails, rotate templates 1-10 (WhatsApp-focused: generic, broker, Hindi, Gujarati, Kannada)
+    Days 15+: Weekly emails, use template 11
     """
-    # Daily templates: 1-14 (original) + 16-17 (Kannada), skip 15 (weekly digest)
-    daily_templates = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17]
-    if days_since_signup <= len(daily_templates):
+    # Daily templates: 1-10, all WhatsApp-focused
+    daily_templates = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    if days_since_signup <= 14:
         # Daily phase: rotate through daily templates
         return daily_templates[email_count % len(daily_templates)]
     else:
-        # Weekly phase: use template 15
-        return 15
+        # Weekly phase: use template 11
+        return 11
 
 
 def should_send_reengagement(
